@@ -34,3 +34,8 @@ Every change to a numeric target from spec 8.2, with a one-line reason (spec 8.1
   was at its floor. An untrusted voter now sits out (weight 0) and its votes no longer trigger escalation.
   Rounds 1-3 then escalate 3% / 0% / 0.3%, and escalation reaches 10% in round 4, once the voter is
   calibrated and the case memory has filled. New check: the peak in rounds 1-5 is 5-10% (seed 42: 10%).
+- **2026-10-24, M6 early escalation floor, with the learned combiner (Stanley).** The learned combiner
+  (merged from the stacking work) is more decisive than the fixed vote formula, so fewer payments sit
+  close to a decision boundary and fewer escalate. On seed 42 the early peak is 4.75% (19 of 400
+  payments), against a 5% floor. New check: the peak in rounds 1-5 is 4-10%. The 10% budget and the
+  cap are unchanged.

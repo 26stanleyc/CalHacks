@@ -49,7 +49,7 @@ def test_build_engine_never_settles_for_real_unless_asked(monkeypatch, live):
     try:
         assert engine.settlement.mode == "stub" and engine.live_settlement is None
         assert type(engine.world).__name__ == "MarketplaceWorld"
-        assert [v.name for v in engine.pipeline.voters] == ["xgboost"]
+        assert [v.name for v in engine.pipeline.voters] == ["xgboost", "anomaly"]
         conformance.check_engine(engine, team_sender="dashboard")
     finally:
         engine.stop()

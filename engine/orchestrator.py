@@ -3,7 +3,8 @@ with the lowest expected cost under the cost matrix.
 
 Combined suspicion p is a weighted noisy-OR of voter scores, 1 - prod(1 - w_i * s_i), with
 weights scaled so the largest is 1. One confident lane can carry a decision; weak signals from
-several lanes add up. Hedge updates the weights in S4.
+several lanes add up. Hedge updates the weights in S4. Once there's enough labeled history, a learned
+combiner (engine/learning/stacking.py) replaces the noisy-OR with a calibrated probability.
 """
 
 from dataclasses import dataclass, field
@@ -67,6 +68,14 @@ VETO_TEXT = {
 class Orchestrator:
     costs: CostMatrix = field(default_factory=CostMatrix)
     weights: dict[str, float] = field(default_factory=dict)  # voter -> weight; missing voters weigh 1.0
+    combiner: object | None = None  # the learned combiner (engine/learning/stacking.py), once trained
+
+    def probability(self, tx: Transaction, votes: list[Vote]) -> float:
+        """The fraud probability the cost matrix acts on: the learned combiner's once it exists,
+        the noisy-OR until then."""
+        if self.combiner is not None:
+            return self.combiner.probability(votes, tx.amount_cents)
+        return self.combined_score(votes)
 
     def combined_score(self, votes: list[Vote]) -> float:
         raw = {v.voter: self.weights.get(v.voter, 1.0) for v in votes}
@@ -77,7 +86,7 @@ class Orchestrator:
         return 1.0 - miss
 
     def decide(self, tx: Transaction, votes: list[Vote], features: FeatureVector) -> Decision:
-        p = self.combined_score(votes)
+        p = self.probability(tx, votes)
         veto = hard_veto(features)
         costs = self.costs.expected_costs(p, tx.amount_cents)
         action = Action.BLOCK if veto else min(costs, key=costs.get)

@@ -73,12 +73,14 @@ def _brain() -> Brain:
 
 
 def _voters() -> list:
+    from engine.anomaly import AnomalyVoter
+
     try:
         from bench.xgb_voter import XGBoostVoter
     except ImportError:  # e.g. no OpenMP runtime for XGBoost (brew install libomp)
-        log.warning("Ryan's XGBoost voter is unavailable; the specialists vote alone")
-        return []
-    return [XGBoostVoter()]
+        log.warning("Ryan's XGBoost voter is unavailable; the specialists vote with the anomaly voter only")
+        return [AnomalyVoter()]
+    return [XGBoostVoter(), AnomalyVoter()]
 
 
 def _held_out() -> list:

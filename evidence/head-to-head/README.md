@@ -82,12 +82,37 @@ models ([bitdeer.md](bitdeer.md), [mock-seed42-6rounds.md](mock-seed42-6rounds.m
   as on mock: our system holds its 2% FP cap (max 2.01%), and the baselines reach 6.7%.
 - **This is one seed.** Real-model runs vary from run to run, so treat it as a first reading, not a result.
 
+## 4. The new design (learned combiner + anomaly voter) on real models (fresh seeds 100-102, 6 rounds)
+
+This is the other session's design: a learned combiner replaces the fixed vote formula, and an anomaly
+voter (an Isolation Forest on honest traffic) joins. This run used its S7b version, before the later
+"guard" (see `evidence/stacking/strategy-log.md`). It took 1,622 model calls, 10.5M tokens and 18
+answers that didn't parse, over 96 minutes for 3 seeds in parallel.
+See [bitdeer-stacking.md](bitdeer-stacking.md), and [mock-stacking.md](mock-stacking.md) for the same
+seeds on mock models.
+
+| contender | new attacks, first round | total cost | mean FP | max FP |
+|---|---|---|---|---|
+| **full (new design)** | $11.9k | $58.3k | **1.14%** | **2.67%** |
+| xgboost_retrained | $12.3k | $66.4k | 3.47% | 13.0% |
+| rules_plus_xgboost | $11.8k | **$55.5k** | 4.23% | 14.0% |
+| xgboost_frozen | $21.2k | $104.0k | 7.25% | 16.1% |
+| static_rules | $21.6k | $111.2k | 0.78% | 1.67% |
+
+- **Ties the industry stack on new attacks** ($11.9k vs $11.8k; the spread across seeds is large).
+- **Beats retrained XGBoost on total cost** and comes within 5% of `rules_plus_xgboost`.
+- **Flags about a quarter as many honest shoppers.** On real-model traffic the baselines' worst rounds
+  flag 13-14% of honest shoppers. Ours peaks at 2.67%, still slightly over its own 2% cap, the
+  breach the later guard version targets.
+- 3 seeds with big seed-to-seed variance: a strong first reading, not a final result.
+
 ## What this means for the pitch
 
 - Supported: "it adapts to new attacks faster than a model trained on yesterday's fraud," and "real
   models make the agent layer much stronger."
-- Not supported yet: "it beats a retrained XGBoost or the standard rules-plus-ML stack." It doesn't
-  on cost, though it does keep false positives at or under the cap where they don't.
+- With the new design on real models: "it matches the standard rules-plus-ML stack on new attacks and
+  comes within 5% on cost, while bothering about a quarter as many honest shoppers." That's supported
+  by 3 seeds. "It beats it" still isn't.
 - The honest framing, on real models: it loses about 1.7x what retrained XGBoost loses on new attacks,
   while flagging about a third as many honest shoppers (0.73% vs 1.95%). Its total cost is still
   higher, because the cost matrix prices fraud far above friction.

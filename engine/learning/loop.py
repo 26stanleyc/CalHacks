@@ -18,20 +18,22 @@ their reasons.
 
 import contextlib
 import copy
+import zlib
 import logging
 from collections import deque
 from dataclasses import dataclass, field
 
-from contracts.schemas import Lane, TrafficSource
+from contracts.schemas import Action, Lane, TrafficSource, Vote
 from engine.brains import Brain, parallel
 from engine.dsl import MAX_RULES, Rule, condition_features, holds, regular_rules, validate_rule
-from engine.learning import hedge
+from engine.learning import hedge, stacking
+from engine.learning.stacking import WINDOW_ROUNDS as STACK_WINDOW
 from engine.learning.critic import Critic
 from engine.learning.drafts import DraftPool
 from engine.learning.labels import UNCOVERED, LegitReference, Record
 from engine.learning.reflection import INSTRUCTIONS, MAX_RULES_PER_REFLECTION, ReflectionProposal
 from engine.learning.replay import VoterVotes, fp_rate, replay_rule
-from engine.orchestrator import Orchestrator
+from engine.orchestrator import Orchestrator, hard_veto
 from engine.pipeline import DefensePipeline
 from engine.specialists import Specialist
 from engine.store import LogStore
@@ -39,6 +41,18 @@ from engine.store import LogStore
 RETIRE_AFTER = 3  # rounds without a true hit
 GUARD_AT = 0.5  # of the FP cap: above this, the rules causing false alarms come out (headroom for drift)
 VOTER_AT = 0.5  # of the FP cap: what a retrained voter is calibrated to, out of sample
+STACK_AT = 0.75  # of the FP cap: what the learned combiner is calibrated to, on recent honest rounds
+STACK_CALIBRATION_ROUNDS = 3  # honest rounds it's calibrated on, pooled (stacking.POOLED_CALIBRATION)
+STACK_BOOTSTRAP_AT = 0.1  # of the FP cap: a cautious first combiner after round 1, on out-of-fold scores (S7b);
+#                         None turns it off. Strict, because round 2's honest traffic shifts as agents gain history
+STACK_CALIBRATION_FOLDS = 3  # the guard, part 1: calibrate with voter copies trained on all the deployed voters'
+#                              data except a held-out fold of the round scored (0 = the voters as they were before
+#                              this round's retrain, which missed how new attacks make them more aggressive)
+STACK_GUARD_TIGHTEN_ABOVE = 0.75  # of the FP cap: a round this high tightens the next target (the guard, part 2)
+STACK_GUARD_RELAX_BELOW = 0.25  # of the FP cap: rounds this quiet relax it slowly back toward STACK_AT
+STACK_GUARD_MIN = 0.25  # the tightest the feedback goes: a quarter of STACK_AT
+STACK_WARMUP_ROUNDS = 2  # the first rounds have little agent history yet (no baselines), so honest traffic
+#                          looks unlike later rounds; they're left out of calibration once later rounds exist
 REVET_HONEST_SHARE = 0.003  # a learned rule firing on more of the growing honest record than this retires
 HOLDOUT_HONEST_SHARE = 0.005  # a new rule may fire on at most this share of the newest (held-out) honest round
 MIN_HONEST_ROUNDS = 3  # rounds of honest history before a new rule can be judged rare enough to deploy
@@ -70,7 +84,7 @@ class RoundLearning:
 
 class LearningLoop:
     def __init__(self, pipeline: DefensePipeline, brain: Brain, store: LogStore, run_id: str, fp_cap: float = 0.02,
-                 lock: contextlib.AbstractContextManager | None = None, drafts: bool = False):
+                 lock: contextlib.AbstractContextManager | None = None, drafts: bool = False, stacking: bool = True):
         self.lock = lock or contextlib.nullcontext()  # held only while the live defense changes
         self.drafts = DraftPool() if drafts else None  # rulebook drafts (stretch): off unless asked for
         self._drafting = False
@@ -91,6 +105,14 @@ class LearningLoop:
         self.example_rounds: list[list[tuple]] = []  # (features, is_fraud) per round, every training label so far
         self.hedge_weights: dict[str, float] = dict(pipeline.orchestrator.weights)  # Hedge's own state
         self.voter_caps: dict[str, float] = {}  # the most weight each extra voter has earned, out of sample
+        self.stacking = stacking  # learn the orchestrator's combiner (engine/learning/stacking.py)
+        self.stack_records: deque[list[Record]] = deque(maxlen=STACK_WINDOW)  # the combiner's training rounds
+        self.stack_round_nos: deque[int] = deque(maxlen=STACK_WINDOW)
+        self.example_index: dict[int, int] = {}  # round -> its position in example_rounds
+        self.stack_margin = 1.0  # the guard's feedback on STACK_AT, from the false alarms the combiner really made
+        self.stack_target = None  # the FP target the deployed combiner was calibrated to
+        self.stack_bootstrap_live = False  # the deployed combiner is the round-1 bootstrap
+        self.stack_version = 0
         self._closest: dict[str, str] = {}  # uncovered miss -> the lane whose features come closest
         self._holdout: list[Record] = []  # the newest honest round, held out from threshold picking
 
@@ -100,7 +122,8 @@ class LearningLoop:
         self.pipeline = copy.copy(self.live)  # staging: the same features and voters, its own rulebooks and weights
         self.pipeline.specialists = dict(self.live.specialists)
         self.pipeline.orchestrator = Orchestrator(costs=self.live.orchestrator.costs,
-                                                  weights=dict(self.live.orchestrator.weights))
+                                                  weights=dict(self.live.orchestrator.weights),
+                                                  combiner=self.live.orchestrator.combiner)
         self.voter_votes = VoterVotes(self.pipeline)
         try:
             return self._learn(round_no, records)
@@ -158,20 +181,131 @@ class LearningLoop:
 
         self.hedge_weights = hedge.update(self.hedge_weights, records, self.pipeline.orchestrator.costs)
         self.example_rounds.append([(r.features, r.truth.is_fraud) for r in records])
+        self.example_index[round_no] = len(self.example_rounds) - 1
         weights = self._relative(self.hedge_weights)
         self.voter_caps = self._calibrate_voters(weights, records)
         for voter in self.pipeline.voters:
             weights[voter.name] = min(weights.get(voter.name, 1.0), self.voter_caps.get(voter.name, 1.0))
         examples = [e for rnd in self.example_rounds for e in rnd]
+        combiner = self._train_combiner(round_no, records)
         with self.lock:  # commit everything at once
             self.live.specialists = dict(self.pipeline.specialists)
             self.live.orchestrator.weights = weights
+            if self.stacking:  # None (too little data, or no safe calibration) falls back to the noisy-OR
+                self.live.orchestrator.combiner = combiner
             for r in records:  # agent baselines learn from honest payments only
                 if not r.truth.is_fraud:
                     self.live.features.learn_baseline(r.tx)
             for voter in self.live.voters:
                 voter.retrain(examples)
         out.weights = dict(weights)
+        return out
+
+    def _train_combiner(self, round_no: int, records: list[Record]):
+        """Retrain the orchestrator's learned combiner (engine/learning/stacking.py). Every input is out of
+        sample: the specialists' votes as cast, and out-of-fold scores from the extra voters. Vetoed
+        payments and honest mandate breaches are left out: the veto decides those whatever the scores say.
+        Calibration uses the newest STACK_CALIBRATION_ROUNDS rounds' honest payments, re-scored by the staged rulebooks."""
+        if not self.stacking:
+            return None
+        self._guard_feedback(records)
+        self.stack_records.append([r for r in records if not r.decision.vetoed_by
+                                   and not (r.truth.breaches_mandate and not r.truth.is_fraud)])
+        self.stack_round_nos.append(round_no)
+        window = list(self.stack_records)
+        settled = [rnd for rnd, no in zip(window, self.stack_round_nos) if no > STACK_WARMUP_ROUNDS]
+        calibrate_on = (settled or window)[-STACK_CALIBRATION_ROUNDS:]
+        lanes = {lane.value for lane in self.pipeline.lanes}
+        # After one round there are no out-of-sample votes from trained voters yet; the bootstrap (S7b) uses
+        # out-of-fold scores for that first combiner, at a much stricter FP target (STACK_BOOTSTRAP_AT).
+        bootstrap = STACK_BOOTSTRAP_AT is not None and len(window) == 1
+        use_oof = stacking.OUT_OF_FOLD or bootstrap
+        if not use_oof:  # the extra voters' votes as cast: out of sample in time
+            oof = {r.tx.tx_id: {v.voter: v.score for v in r.decision.votes if v.voter not in lanes}
+                   for rnd in window for r in rnd}
+        else:
+            oof = self._out_of_fold([r for rnd in window for r in rnd])
+
+        def extra(r: Record) -> list[Vote]:
+            return [Vote.model_construct(tx_id=r.tx.tx_id, voter=name, score=score, vote=Action.ALLOW, rule_ids=[],
+                                         rationale=None) for name, score in oof.get(r.tx.tx_id, {}).items()]
+
+        rounds = [[([v for v in r.decision.votes if v.voter in lanes] + extra(r), r.tx.amount_cents, r.truth.is_fraud)
+                   for r in rnd] for rnd in window]
+        if use_oof:
+            calibration = [[([self.pipeline.vote(lane, r.tx, r.features) for lane in self.pipeline.lanes] + extra(r),
+                             r.tx.amount_cents) for r in rnd if not r.truth.is_fraud] for rnd in calibrate_on]
+        else:  # re-scored by the staged defense: its new rulebooks, and extra voters as they'll be deployed
+            nos = [no for rnd, no in zip(window, self.stack_round_nos) if any(rnd is c for c in calibrate_on)]
+            fresh = self._held_out_scores(calibrate_on, nos, STACK_CALIBRATION_FOLDS) if STACK_CALIBRATION_FOLDS else None
+
+            def voters_now(r: Record) -> list[Vote]:
+                if fresh is None:
+                    return [voter.score(r.tx, r.features) for voter in self.pipeline.voters]
+                return [Vote.model_construct(tx_id=r.tx.tx_id, voter=name, score=score, vote=Action.ALLOW, rule_ids=[],
+                                             rationale=None) for name, score in fresh.get(r.tx.tx_id, {}).items()]
+
+            calibration = [[([self.pipeline.vote(lane, r.tx, r.features) for lane in self.pipeline.lanes] + voters_now(r),
+                             r.tx.amount_cents) for r in rnd if not r.truth.is_fraud] for rnd in calibrate_on]
+        target = self.fp_cap * (STACK_BOOTSTRAP_AT if bootstrap else STACK_AT * self.stack_margin)
+        combiner = stacking.train(rounds, calibration, self.pipeline.orchestrator.costs, target, self.stack_version + 1,
+                                  min_rounds=1 if bootstrap else stacking.MIN_ROUNDS)
+        if combiner is not None:
+            self.stack_version = combiner.version
+            self.stack_target = target
+        self.stack_bootstrap_live = bootstrap and combiner is not None
+        return combiner
+
+    def _guard_feedback(self, records: list[Record]) -> None:
+        """The guard, part 2: compare the false alarms the deployed combiner actually made this round with
+        the cap. A round near or over the cap tightens the next calibration target; quiet rounds relax it
+        slowly. This corrects drift the calibration can't see (new attacks reshaping rules and models)."""
+        if self.live.orchestrator.combiner is None or self.stack_bootstrap_live:
+            return  # the bootstrap has its own, stricter target; round 2's warm-up shift says little about later rounds
+        honest = [r for r in records if not r.truth.is_fraud and not r.truth.breaches_mandate]
+        if not honest:
+            return
+        fp = sum(r.decision.action != Action.ALLOW for r in honest) / len(honest)
+        if fp > self.fp_cap * STACK_GUARD_TIGHTEN_ABOVE:
+            self.stack_margin = max(STACK_GUARD_MIN, self.stack_margin * 0.6)
+        elif fp < self.fp_cap * STACK_GUARD_RELAX_BELOW:
+            self.stack_margin = min(1.0, self.stack_margin * 1.1)
+
+    def _held_out_scores(self, rounds: list[list[Record]], round_nos: list[int], folds: int) -> dict[str, dict[str, float]]:
+        """The guard, part 1: each extra voter's score on each calibration round's honest payments, from a
+        copy trained on everything the deployed (just retrained) voter is trained on, except a held-out fold
+        of that round. That's how the deployed voter will treat honest traffic it hasn't seen.
+        Scoring with the voter from before the retrain missed how the newest attacks make it more
+        aggressive (fresh seeds: 3-4.7% false alarms in round 4). Leaving a whole round out was too
+        pessimistic (0% false alarms, catch collapsed). Both are logged in evidence/stacking/strategy-log.md."""
+        out: dict[str, dict[str, float]] = {}
+        for rnd, no in zip(rounds, round_nos):
+            idx = self.example_index.get(no)
+            fold_of = {r.tx.tx_id: zlib.crc32(r.tx.tx_id.encode()) % folds for r in rnd}
+            honest = [r for r in rnd if not r.truth.is_fraud]
+            for f in range(folds):
+                held = {r.tx.tx_id for r in rnd if fold_of[r.tx.tx_id] == f}
+                examples = [(fv, y) for i, ex in enumerate(self.example_rounds) for fv, y in ex
+                            if i != idx or fv.tx_id not in held]
+                for voter in self.pipeline.voters:
+                    shadow = copy.deepcopy(voter)
+                    shadow.retrain(examples)
+                    for r in honest:
+                        if r.tx.tx_id in held:
+                            out.setdefault(r.tx.tx_id, {})[voter.name] = shadow.score(r.tx, r.features).score
+        return out
+
+    def _out_of_fold(self, rows: list[Record], folds: int = 5) -> dict[str, dict[str, float]]:
+        """Each extra voter's score on each row from a copy trained without that row's fold."""
+        fold_of = {r.tx.tx_id: zlib.crc32(r.tx.tx_id.encode()) % folds for r in rows}
+        out: dict[str, dict[str, float]] = {r.tx.tx_id: {} for r in rows}
+        for voter in self.pipeline.voters:
+            for f in range(folds):
+                shadow = copy.deepcopy(voter)
+                shadow.retrain([(r.features, r.truth.is_fraud) for r in rows if fold_of[r.tx.tx_id] != f])
+                for r in rows:
+                    if fold_of[r.tx.tx_id] == f:
+                        out[r.tx.tx_id][voter.name] = shadow.score(r.tx, r.features).score
         return out
 
     def _relative(self, hedge_weights: dict[str, float]) -> dict[str, float]:

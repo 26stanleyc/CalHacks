@@ -44,6 +44,7 @@ class Sandbox:
         self.rulebooks = {lane: s.rulebook for lane, s in pipeline.specialists.items()}
         self.costs = pipeline.orchestrator.costs
         self.weights = dict(pipeline.orchestrator.weights)
+        self.combiner = pipeline.orchestrator.combiner  # never mutated after training, so sharing is safe
         self.voters = list(pipeline.voters)
         self.product_text = pipeline.features.product_text
         self.identities = dict(identities)
@@ -69,7 +70,7 @@ class Sandbox:
         self.runs += 1
         identities = dict(self.identities)
         pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, identities,
-                                   Orchestrator(costs=self.costs, weights=dict(self.weights)), voters=self.voters,
+                                   Orchestrator(costs=self.costs, weights=dict(self.weights), combiner=self.combiner), voters=self.voters,
                                    product_text=self.product_text)
         txs, accounts = [], {}
         per_wave = [n // WAVES + (w < n % WAVES) for w in range(WAVES)]
@@ -109,7 +110,7 @@ class Sandbox:
 
         self.runs += 1
         pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, dict(self.identities),
-                                   Orchestrator(costs=self.costs, weights=dict(self.weights)), voters=self.voters,
+                                   Orchestrator(costs=self.costs, weights=dict(self.weights), combiner=self.combiner), voters=self.voters,
                                    product_text=self.product_text)
         txs = []
         for wave in range(WAVES):

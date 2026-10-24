@@ -63,10 +63,9 @@ class RulesPlusXGBoost:
 def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
     from bench.baselines import StaticRulesDefense, XGBoostDefense, trainable
     from bench.metrics import cost_cents
-    from bench.xgb_voter import XGBoostVoter
     from contracts.schemas import Action
     from engine.engine import FraudEngine
-    from engine.entrypoints import _brain
+    from engine.entrypoints import _brain, _voters
     from engine.sim.marketplace import MarketplaceWorld
     from engine.store import MemoryStore
 
@@ -75,7 +74,7 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
     run_id = f"h2h-{'real' if real else 'mock'}-{seed}" + (f"-{record}" if record else "")
     database = PostgresStore() if record else None
     engine = FraudEngine(store=TeeStore(MemoryStore(), database) if record else MemoryStore(), world=MarketplaceWorld(seed=seed), allowlist={"h2h"}, seed=seed,
-                         run_id=run_id, voters=[XGBoostVoter()], threat_intel=True,
+                         run_id=run_id, voters=_voters(), threat_intel=True,
                          **({"brain": _brain()} if real else {}))
     started = time.monotonic()
     for _ in range(rounds):

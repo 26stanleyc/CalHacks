@@ -17,18 +17,19 @@ from pathlib import Path
 SETUPS = {
     "full": {},
     "outsiders_only": {"arena": False},
-    "no_xgb_voter": {"voters": []},
+    "no_xgb_voter": {},  # the voters minus XGBoost (see run_one)
     "intel_off": {"intel_watch": False},
 }
 FP_CAP = 0.02
 
 
 def run_one(setup: str, seed: int, rounds: int, tuning_tries: int | None) -> dict:
-    from bench.xgb_voter import XGBoostVoter
     from engine.engine import FraudEngine
+    from engine.entrypoints import _voters
     from engine.sim.marketplace import MarketplaceWorld
 
-    kwargs = {"voters": [XGBoostVoter()], "threat_intel": True, **SETUPS[setup]}
+    voters = [v for v in _voters() if not (setup == "no_xgb_voter" and v.name == "xgboost")]
+    kwargs = {"voters": voters, "threat_intel": True, **SETUPS[setup]}  # as build_engine runs it
     engine = FraudEngine(world=MarketplaceWorld(seed=seed), allowlist={"experiments"}, seed=seed,
                          run_id=f"exp-{setup}-{seed}", tuning_tries=tuning_tries, **kwargs)
     rows = []

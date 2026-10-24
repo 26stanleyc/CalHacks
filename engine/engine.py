@@ -107,7 +107,7 @@ class FraudEngine:
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
                  arena: bool = True, hijacker: bool = True, drafts: bool = False, threat_intel: bool = False,
-                 intel_watch: bool = True, threat_source=None):
+                 intel_watch: bool = True, threat_source=None, stacking: bool = True):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -141,7 +141,7 @@ class FraudEngine:
         self._lock = threading.RLock()
         self._round_lock = threading.Lock()
         self.learning = LearningLoop(self.pipeline, self.brain, self.store, self.run_id, FP_CAP, lock=self._lock,
-                                     drafts=drafts)
+                                     drafts=drafts, stacking=stacking)
         self.escalation_cap = escalation_cap
         self.investigator = Investigator(self.brain, self.pipeline, self.scanner,
                                          page_url_for=getattr(self.world, "page_url_for", lambda tx: None))

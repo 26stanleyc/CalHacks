@@ -64,6 +64,7 @@ class DefensePipeline:
         """A hash of everything learning can change: rulebooks, weights and the feature catalog."""
         state = {"rules": {lane.value: s.rulebook.model_dump(mode="json") for lane, s in self.specialists.items()},
                  "weights": self.orchestrator.weights, "features": sorted(self.catalog.lanes),
+                 "combiner": getattr(self.orchestrator.combiner, "version", None),
                  "voters": [getattr(v, "version", None) for v in self.voters]}
         return hashlib.sha256(json.dumps(state, sort_keys=True).encode()).hexdigest()
 
