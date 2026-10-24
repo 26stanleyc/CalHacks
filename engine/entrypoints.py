@@ -8,6 +8,8 @@ serve.py are the only places that wire in Eric's implementations:
 - settlement: integrations.x402_settlement.X402Settlement in stub mode for every allowed round
   payment, always. ENGINE_LIVE_SETTLEMENT=1 adds the demo's live tail: one honest allowed payment
   per round also settles for real on Base Sepolia, at a token amount within X402_MAX_SETTLE_CENTS.
+- traffic: Ryan's marketplace (data/, M1) through engine.sim.marketplace.MarketplaceWorld: his
+  catalog and legitimate shoppers, one simulated day per round
 
 `build_engine` is also the factory Eric's chat agents look for when ENGINE_SOURCE=inprocess
 (integrations/asi_one/engine_source.py).
@@ -48,11 +50,21 @@ def _settlements():
     return X402Settlement(mode="stub"), live
 
 
+def _world(seed: int):
+    try:
+        from engine.sim.marketplace import MarketplaceWorld
+    except ImportError:
+        log.warning("data/ (Ryan's marketplace) is unavailable; using the engine's own simulated world")
+        return None
+    return MarketplaceWorld(seed=seed)
+
+
 def build_engine() -> FraudEngine:
     store = MemoryStore() if os.environ.get("ENGINE_STORE") == "memory" else PostgresStore()
     run_id = os.environ.get("ENGINE_RUN_ID") or "dev-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    seed = int(os.environ.get("ENGINE_SEED", 42))
     settlement, live = _settlements()
-    engine = FraudEngine(store=store, run_id=run_id, seed=int(os.environ.get("ENGINE_SEED", 42)),
-                         allowlist=team_allowlist(), scanner=_scanner(), settlement=settlement,
-                         live_settlement=live, transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
+    engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(),
+                         settlement=settlement, live_settlement=live, world=_world(seed),
+                         transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
     return engine.start()

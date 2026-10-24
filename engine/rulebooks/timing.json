@@ -5,11 +5,11 @@
     {
       "id": "timing.rapid_fire",
       "score": 0.7,
-      "description": "Six or more payments from one agent within a minute: machine-speed bursts.",
+      "description": "Eight or more payments from one agent within a minute: machine-speed bursts (a human's subscription renewals stay under it).",
       "when": {
         "feature": "t_count_agent_60s",
         "op": ">=",
-        "value": 6
+        "value": 8
       }
     },
     {

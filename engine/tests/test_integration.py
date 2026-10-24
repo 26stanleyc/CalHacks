@@ -1,4 +1,5 @@
-"""Eric's integrations running against the real engine (not the stub): the I2 seams."""
+"""Eric's integrations (the I2 seams) and Ryan's marketplace and benchmarks (I1) running against
+the real engine, not the stubs."""
 
 import pytest
 
@@ -47,6 +48,7 @@ def test_build_engine_never_settles_for_real_unless_asked(monkeypatch, live):
     engine = build_engine()
     try:
         assert engine.settlement.mode == "stub" and engine.live_settlement is None
+        assert type(engine.world).__name__ == "MarketplaceWorld"
         conformance.check_engine(engine, team_sender="dashboard")
     finally:
         engine.stop()
@@ -172,3 +174,61 @@ def test_x402_settlement_reports_why_a_blocked_payment_did_not_settle():
     blocked = Decision(tx_id=tx.tx_id, action=Action.BLOCK, weighted_score=0.9, votes=[])
     result = X402Settlement(mode="stub").settle(tx, blocked)
     assert not result.settled and result.reason
+
+
+# --- Ryan's marketplace and benchmarks -------------------------------------------------------------
+
+
+@pytest.mark.parametrize("seed", [42, 7, 123])
+def test_seed_rulebooks_meet_m2_on_ryans_marketplace(seed):
+    # M2 is defined on the fixed scripted fraud suite (adaptive outsiders are M3's job).
+    from engine.pipeline import DefensePipeline
+    from engine.sim.marketplace import MarketplaceWorld
+
+    world = MarketplaceWorld(seed=seed)
+    pipeline = DefensePipeline(identities=world.identities)
+    legit, by_persona = [], {}
+    for round_no in range(1, 5):
+        for tx, truth in world.round_traffic(f"m2-{seed}", round_no, n_legit=300, fraud_per_persona=25):
+            decision, _ = pipeline.decide(tx)
+            if decision.action == Action.ALLOW:
+                pipeline.features.record_spend(tx)
+            flagged = decision.action != Action.ALLOW
+            if truth.is_fraud:
+                persona = next(p for p in ("card_tester", "structurer", "account_farmer", "prompt_injection") if p in truth.attacker_id)
+                by_persona.setdefault(persona, []).append(flagged)
+            elif not truth.breaches_mandate:
+                legit.append(flagged)
+    assert sum(legit) / len(legit) <= 0.02
+    assert len(by_persona) == 4
+    assert all(sum(hits) / len(hits) >= 0.70 for hits in by_persona.values()), {
+        p: sum(h) / len(h) for p, h in by_persona.items()}
+
+
+def test_marketplace_rounds_use_ryans_shoppers_catalog_and_identities():
+    from data.catalog import load_catalog
+    from engine.sim.marketplace import MarketplaceWorld
+
+    world = MarketplaceWorld(seed=42)
+    traffic = world.round_traffic("mkt", 2, n_legit=100, fraud_per_persona=5)
+    merchants = {p.merchant_id for p in load_catalog()}
+    assert all(tx.merchant_id in merchants for tx, _ in traffic)  # fraud shops at the same merchants
+    assert all(86_400 <= tx.ts < 2 * 86_400 + 3_600 for tx, _ in traffic)  # round 2 is the second day
+    legit = [tx for tx, truth in traffic if not truth.is_fraud]
+    assert len(legit) == 100 and all(world.identities.get(tx.principal_id) for tx in legit)
+
+
+def test_static_baseline_and_full_engine_agree_on_shared_features():
+    # The static_rules baseline is the seed rulebooks never updated, so before any learning it
+    # makes the same calls as the engine when both see the same features.
+    from bench.baselines import StaticRulesDefense
+    from data.features import build_features
+    from data.shoppers import Population, generate_legit_traffic
+
+    pop = Population(42)
+    txs = [lt.tx for lt in generate_legit_traffic("agree", 1, 200, 42, pop)]
+    features = build_features(txs, pop.identity)
+    baseline = StaticRulesDefense()
+    engine_pipeline = FraudEngine(world=World(seed=42)).pipeline
+    for tx in txs:
+        assert baseline.decide(tx, features[tx.tx_id]).action == engine_pipeline.score(tx, features[tx.tx_id]).action

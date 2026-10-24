@@ -12,6 +12,7 @@ import math
 import re
 import unicodedata
 from collections import defaultdict, deque
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from contracts.schemas import FeatureVector, IdentityStatus, Lane, Transaction
@@ -38,13 +39,15 @@ UNKNOWN_IDENTITY = 1.0  # treated like a thin file
 # so ordinary shopper notes ("don't block my card", "accept the order if the box is dented") pass.
 INJECTION_PATTERNS = [re.compile(p, re.IGNORECASE | re.DOTALL) for p in (
     r"\b(ignore|disregard|forget)\b.{0,40}\b(previous|prior|above|all|your|the)\s+(instructions?|rules?|guidelines?|policy|policies|limits?|budget)\b",
-    r"\b(override|bypass|disable|skip|turn\s+off)\b.{0,40}\b(rules?|checks?|limits?|filters?|security|fraud|verification|reviews?)\b",
+    r"\b(override|bypass|disable|skip|turn\s+off|ignore)\b.{0,40}\b(rules?|checks?|limits?|filters?|security|fraud|verification|reviews?|caps?|mandates?|budgets?)\b",
     r"\b(approve|allow|whitelist|authori[sz]e)\b.{0,20}\b(this|the)\s+(payment|transaction|purchase|order|charge)\b.{0,40}\b(without|regardless|no\s+matter|even\s+if\s+(it|flagged|suspicious))\b",
     r"\bsystem\s*prompt\b",
     r"\byou\s+are\s+now\s+(in\s+)?(a\s+|an\s+)?\w*\s*(mode|assistant|agent|admin|administrator|developer|reviewer)\b",
     r"\b(do\s+not|don'?t|never)\s+(flag|block|report|review|check)\s+(this|the|my|our)\s+(payment|transaction|purchase|order|charge)\b",
     r"\bas\s+an?\s+(ai|assistant|agent|language\s+model)\b.{0,40}\b(you\s+)?(must|should|have\s+to|are\s+required\s+to)\b",
-    r"\b(note|message|instruction)s?\s+(to|for)\s+the\s+(reviewer|checker|fraud|security|ai|agent|model)\b",
+    r"\b(note|message|instruction)s?\s+(to|for)\s+(the\s+)?(payment\s+)?(reviewer|checker|fraud|security|ai|agent|model)\b",
+    r"\b(treat|treated|consider|considered|count|counted|mark|marked)\b.{0,30}\b(within|inside|under)\s+(the\s+|its\s+|my\s+)?(mandate|budget|limit|cap)\b",
+    r"(?:^|[\s\[(])(system|assistant|admin|administrator|developer)\s*:\s",
 )]
 ZERO_WIDTH = dict.fromkeys(map(ord, "​‌‍⁠﻿­"), None)
 
@@ -221,7 +224,8 @@ class FeatureService:
         first_principal = self.first_seen_principal.get(tx.principal_id)
         values["i_principal_age_s"] = now - first_principal if first_principal is not None else 0.0
 
-        spent_today = sum(a for ts, a in self.spend_principal.get(tx.principal_id, ()) if 0 <= now - ts < DAY_SECONDS)
+        day = now // DAY_SECONDS  # the daily cap resets at midnight (UTC), like a card's daily limit
+        spent_today = sum(a for ts, a in self.spend_principal.get(tx.principal_id, ()) if ts <= now and ts // DAY_SECONDS == day)
         m = tx.mandate
         values["m_over_cap_ratio"] = _cap_ratio(tx.amount_cents, m.per_payment_cap_cents) if m else 0.0
         values["m_daily_spend_ratio"] = _cap_ratio(spent_today + tx.amount_cents, m.daily_cap_cents) if m else 0.0
@@ -256,6 +260,20 @@ class FeatureService:
         spend.append((tx.ts, tx.amount_cents))
         while spend and tx.ts - spend[0][0] >= DAY_SECONDS:
             spend.popleft()
+
+
+def build_features(txs: Iterable[Transaction], identities: dict[str, IdentityStatus] | None = None,
+                   catalog: FeatureCatalog | None = None) -> dict[str, FeatureVector]:
+    """Features for a batch of payments, fed in time order: what benchmarks give every contender
+    (spec 5.1) and what seeded rows carry. With no defense deciding, every payment within its
+    mandate's caps counts as settled toward its principal's daily spend."""
+    service = FeatureService(catalog, identities)
+    out: dict[str, FeatureVector] = {}
+    for tx in sorted(txs, key=lambda t: (t.ts, t.tx_id)):
+        features = out[tx.tx_id] = service.compute(tx, commit=True)
+        if features.values["m_over_cap_ratio"] <= 1.0 and features.values["m_daily_spend_ratio"] <= 1.0:
+            service.record_spend(tx)
+    return out
 
 
 def _cap_ratio(amount_cents: int, cap_cents: int) -> float:

@@ -41,7 +41,10 @@ class DefensePipeline:
         order = {lane.value: i for i, lane in enumerate(self.lanes)}
         return self.orchestrator.decide(tx, sorted(votes, key=lambda v: order.get(v.voter, 99)), features)
 
+    def score(self, tx: Transaction, features: FeatureVector) -> Decision:
+        """Decide from features computed elsewhere (benchmarks give every contender the same ones)."""
+        return self.combine(tx, [self.vote(lane, tx, features) for lane in self.lanes], features)
+
     def decide(self, tx: Transaction, commit: bool | None = None) -> tuple[Decision, FeatureVector]:
         features = self.featurize(tx, commit)
-        votes = [self.vote(lane, tx, features) for lane in self.lanes]
-        return self.combine(tx, votes, features), features
+        return self.score(tx, features), features

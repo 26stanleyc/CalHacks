@@ -7,6 +7,7 @@ from each transaction (GroundTruth), and attacker ids are set only on fraud tran
 
 import random
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 from contracts.schemas import GroundTruth, IdentityStatus, Mandate, TrafficSource, Transaction
 
@@ -63,10 +64,11 @@ class World:
     products: list[Product] = field(default_factory=list)
     shoppers: list[Shopper] = field(default_factory=list)
     identities: dict[str, IdentityStatus] = field(default_factory=dict)  # what an identity check would say
+    round_seconds: ClassVar[float] = 4 * 3600
 
     def __post_init__(self):
         rng = random.Random(f"world:{self.seed}")
-        for m in range(self.n_merchants):
+        for m in range(self.n_merchants if not self.products else 0):
             category = CATEGORIES[m % len(CATEGORIES)]
             for k in range(4):
                 price = _price(rng, category)
@@ -142,6 +144,13 @@ class World:
             cell += 1
         return out[:n]
 
+    def fraud_mandate(self, principal_id: str, amount_cents: int, categories: list[str], daily_need_cents: int,
+                      rng: random.Random) -> Mandate:
+        """The mandate a fraud account writes for itself: shaped like this world's honest ones, so
+        mandate features aren't a giveaway. Here every shopper has the same generous caps."""
+        return Mandate(mandate_id=f"md-{principal_id}", principal_id=principal_id, per_payment_cap_cents=300_000,
+                       daily_cap_cents=3_000_000, request_text=f"routine shopping for {principal_id}")
+
     def _fraud_shopper(self, rng: random.Random, name: str, identity: IdentityStatus) -> Shopper:
         return self._shopper(name, identity, rng)
 
@@ -199,12 +208,13 @@ class World:
             source=TrafficSource.ATTACKER if attacker_id else TrafficSource.LEGIT, attacker_id=attacker_id,
         )
 
-    def round_traffic(self, run_id: str, round: int, n_legit: int = 300, fraud_per_persona: int = 25,
-                      round_seconds: float = 4 * 3600) -> list[tuple[Transaction, GroundTruth]]:
-        start = (round - 1) * round_seconds
-        traffic = self.legit_traffic(run_id, round, n_legit, start, round_seconds)
+    def round_traffic(self, run_id: str, round: int, n_legit: int = 300,
+                      fraud_per_persona: int = 25) -> list[tuple[Transaction, GroundTruth]]:
+        start = (round - 1) * self.round_seconds
+        traffic = self.legit_traffic(run_id, round, n_legit, start, self.round_seconds)
         for i, persona in enumerate(FRAUD_PERSONAS):
-            traffic += self.fraud_traffic(run_id, round, persona, fraud_per_persona, start + 600 + i * 1800)
+            start_ts = start + 600 + i * self.round_seconds / 8
+            traffic += self.fraud_traffic(run_id, round, persona, fraud_per_persona, start_ts)
         return sorted(traffic, key=lambda pair: (pair[0].ts, pair[0].tx_id))
 
 

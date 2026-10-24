@@ -9,12 +9,15 @@ dependencies = [
     "eth-account>=0.14.0",
     "fastapi>=0.162.0",
     "httpx>=0.28.1",
+    "numpy>=2.5.4",
     "psycopg[binary]>=3.2",
     "pydantic>=2.7",
     "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
     "uagents>=0.25.5",
     "uvicorn>=0.54.0",
     "x402[evm,httpx]>=2.25.0",
+    "xgboost>=3.4.1",
 ]
 
 [dependency-groups]
@@ -23,9 +26,12 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["contracts/tests", "engine/tests", "integrations/tests"]
+testpaths = ["contracts/tests", "engine/tests", "integrations/tests", "data/tests", "bench/tests"]
 markers = [
     "m00: M0 foundations",
+    "m01: M1 marketplace and legitimate traffic",
     "m02: M2 defense skeleton",
+    "m07: M7 held-out attackers",
+    "m12: M12 XGBoost voter, baselines and metrics",
 ]
 pythonpath = ["."]

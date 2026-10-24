@@ -82,7 +82,7 @@ class Orchestrator:
         costs = self.costs.expected_costs(p, tx.amount_cents)
         action = Action.BLOCK if veto else min(costs, key=costs.get)
         return Decision(
-            tx_id=tx.tx_id, action=action, weighted_score=round(p, 6), votes=votes,
+            tx_id=tx.tx_id, action=action, weighted_score=1.0 if veto else round(p, 6), votes=votes,
             weights={v.voter: self.weights.get(v.voter, 1.0) for v in votes},
             vetoed_by=veto, escalated=False, explanation=_explain(action, veto, votes),
         )
