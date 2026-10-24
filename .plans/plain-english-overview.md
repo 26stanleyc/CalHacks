@@ -6,7 +6,7 @@ A readable overview of everything we've decided. The detailed technical spec is 
 
 ## 1. The one-paragraph pitch
 
-AI agents are starting to shop and pay for things on their own, using payment rails like Coinbase's **x402**. That opens new kinds of fraud: bad agents attacking stores, and bad stores tricking good agents. We built a **fraud-defense layer for the whole x402 network**. A team of AI defense agents checks every payment. The defense **attacks itself**: every defender builds the attacker most likely to beat it, then learns from it. It also **reads the news**: it scrapes public reports of new scams and puts them on a watchlist before attackers can use them. The result is a defense that keeps getting harder to fool, and we measure exactly how hard. Everything runs on open AI models.
+AI agents are starting to shop and pay for things on their own, using payment rails like Coinbase's **x402**. That opens new kinds of fraud: bad agents attacking stores, and bad stores tricking good agents. We built a **fraud-defense layer for the whole x402 network**. A team of AI defense agents checks every payment. The defense **attacks itself**: every defender builds the attacker most likely to beat it, then learns from it. All attackers live in a shared **arena** with one shelf per type of attack, so they can't all copy the same trick, and training focuses where the defense is shakiest. It also **reads the news**: it scrapes public reports of new scams and puts them on a watchlist before attackers can use them. The result is a defense that keeps getting harder to fool, and we measure exactly how hard. Everything runs on open AI models.
 
 ---
 
@@ -78,12 +78,62 @@ Each specialist keeps a **rulebook**: simple rules it wrote itself, like "more t
    - prompt-injection attacker
    - hijacker (stolen agent credentials)
    - malicious merchant (poisoned product pages)
-3. **The league.** A hall of fame of past attackers, brought back so the defense never forgets old tricks.
+3. **The arena.** A shared collection of every attacker that's been good enough to keep, organized by type of attack (see the next section). Old tricks keep coming back, so the defense never forgets them.
 4. **Threat-intel test attackers.** When the watchlist adds a new scam from the news, a test attacker tries that scam, to check the defense really catches it. At most one per round.
 
 ---
 
-## 5. The threat-intel watchlist (Apify)
+## 5. How we train: the Tag-Team Arena
+
+Our training method combines "tag-teaming" (each defender builds its own attacker) with three ideas from recent research papers.
+
+### The arena: one shelf per type of attack
+Picture a trophy case with a grid of shelves, one shelf per **kind** of attack:
+- **style:** fast bursts, slow drip, many accounts, or hijack/injection
+- **amount:** under $10, $10–$100, or over $100
+- **side:** attacks on stores, or attacks on shoppers
+
+That's 24 shelves. Each shelf keeps its **top 3 attackers**: the ones that make the most profit (money stolen minus what the attack cost them, like burned cards and failed checks).
+
+- A new attacker only competes with attackers **on its own shelf**. A great structurer can never push out the best hijacker, so one popular trick can't take over.
+- Near-copies of an attacker already on the shelf are rejected, so the top 3 stay different from each other.
+- Shelves belong to **attack types, not defenders**. All defenders share one arena and are tested on every shelf.
+- Every attacker source writes into it: self-made attackers, the swarm, and threat-intel test attackers.
+
+This is based on **Rainbow Teaming** (NeurIPS 2024), a Meta research method for finding varied attacks on AI models.
+
+### Focus where the defense is shaky
+For each shelf we track how often the defense catches its attackers:
+- always caught: nothing left to learn
+- never caught: too hard for now
+- **caught about half the time: the most to learn**
+
+Like studying the exam questions you sometimes get wrong. These "shaky" shelves get the most attention:
+- most attackers each round are drawn from shaky shelves, plus 20% at random so nothing is forgotten
+- defenders focus their reflection on misses from shaky shelves
+- self-made attackers aim at shaky shelves
+
+### Tag-teaming: each defender aims at its own weak spot
+Each round, every specialist builds one attacker:
+1. **Picks a target shelf** in its own area: its shakiest one, or an empty shelf nobody has tried.
+2. **Starts from one of that shelf's top attackers.**
+3. **Hands over its own rulebook as intel** (slightly blurred).
+4. **A different AI model builds the attacker**, with the goal "beat these rules." It then attacks the **whole team**, not just its parent.
+5. **After the round,** the attacker takes a spot on its shelf if it beats the current top 3.
+
+No two defenders aim at the same shelf in one round.
+
+**Why attackers stay different even though they share one arena:** each has a different target shelf, a different rulebook to beat, a different AI model, a different starting attacker, and different feedback on who caught it. For example, two attackers starting from the same "slow drip" attacker diverge: the one built by the velocity specialist varies its amounts to dodge amount rules, while the one built by the timing specialist randomizes its timing to dodge timing rules.
+
+### Bonus, if time allows: rulebook drafts
+Each specialist keeps up to 3 versions of its rulebook, each kept because it's best at stopping some type of attack, and uses the best overall. That way a good old version is never lost by overwriting it. This comes from **GEPA** (ICLR 2026). It's a stretch goal because it's the most work.
+
+### What we deliberately left out
+A shared "hive mind" memory where every agent reads every other agent's experiences. Research (MemCollab, 2026) found that sharing raw memory between different AI models can make them **worse**, and it would make our specialists think alike. The arena already shares what matters: the attackers.
+
+---
+
+## 6. The threat-intel watchlist (Apify)
 
 The idea: **learn about new scams from the outside world and be ready before an attacker tries them on us**, instead of only learning after losing money.
 
@@ -93,6 +143,7 @@ The idea: **learn about new scams from the outside world and be ready before an 
 4. **Vet.** The critic tests the watch rule on recent honest traffic and throws it out if it would block too many real shoppers.
 5. **Keep or expire.** A watch rule that catches real fraud can become a normal rule. One that catches nothing for 5 rounds expires.
 6. **Test.** A test attacker tries the new scam, so we can prove the watch rule works.
+7. **Into the arena.** The test attacker then takes its place on the matching arena shelf, often an empty one. From there, defenders can build variations of it. Real-world scams seed the arena, and tag-teaming explores their variations.
 
 **How we prove it helps:** we run the same new scam with the watchlist **on** and **off**.
 - **Off:** the defense loses money for a few rounds before it learns.
@@ -100,7 +151,7 @@ The idea: **learn about new scams from the outside world and be ready before an 
 
 ---
 
-## 6. What happens to one payment
+## 7. What happens to one payment
 
 1. A payment arrives at the facilitator.
 2. A shared **feature service** attaches useful facts: how many payments this agent made recently, which accounts it's linked to, its human's identity profile, its mandate, and a "does this page or text look like an injection?" score.
@@ -114,23 +165,25 @@ The idea: **learn about new scams from the outside world and be ready before an 
 
 ---
 
-## 7. What happens each round (how it learns)
+## 8. What happens each round (how it learns)
 
-1. All attackers and normal shoppers run against the defense.
+1. **Pick this round's attackers:** the new self-made attackers, the swarm, attackers from the arena (mostly from shaky shelves, plus some at random), and any threat-intel test attacker. They run against the defense, mixed with normal shoppers.
 2. We check every decision against the truth (the simulation knows who's a fraudster).
-3. The critic decides **whose fault** each miss was.
-4. Each specialist **reflects** on its mistakes and on attacks that beat the team, then rewrites its rulebook. It may only use facts from its own area, so specialists stay specialists. At most 15 rules each; rules that never catch anything are retired.
-5. The critic rejects rules that would block too many honest shoppers.
-6. The orchestrator adjusts how much it trusts each specialist.
-7. Attackers rewrite their strategies. The best ones join the league.
-8. New self-made attackers are built for the next round, and the watchlist adds any newly vetted watch rules.
-9. **Score:** we freeze the defense and send fresh attackers at it. How much they can still steal is the **exploitability** score. Lower is better.
+3. **Update the arena:** each attacker takes a spot on its shelf if it beats the top 3 there.
+4. **Update which shelves are shaky.**
+5. The critic decides **whose fault** each miss was.
+6. Each specialist **reflects** on its mistakes and on attacks that beat the team, focusing on shaky shelves, then rewrites its rulebook. It may only use facts from its own area, so specialists stay specialists. At most 15 rules each; rules that never catch anything are retired.
+7. The critic rejects rules that would block too many honest shoppers.
+8. The orchestrator adjusts how much it trusts each specialist.
+9. **Each specialist picks its shakiest shelf (or an empty one)** and builds next round's attacker aimed there. The watchlist adds any newly vetted watch rules.
+10. **Score:** we freeze the defense and send fresh attackers plus the arena's best at it. How much they can still steal is the **exploitability** score. Lower is better.
 
 ---
 
-## 8. What makes this special
+## 9. What makes this special
 
 - **It attacks itself.** Each defender builds its own worst enemy. Specialists also learn from *each other's* attackers, so blind spots get exposed. Real fraud teams do this by hand; agents make fraudsters adapt in minutes, so the defense has to adapt that fast too.
+- **Its attackers can't all copy one trick.** The arena keeps the best attackers for every type of attack, so the defense trains against everything, focusing where it's shakiest. The method combines tag-teaming with proven research: Rainbow Teaming (NeurIPS 2024) and GEPA (ICLR 2026).
 - **It finds the gaps between experts.** One attacker targets the case where each specialist is only "a little suspicious" and the payment slips through.
 - **It's ready before the attack.** The Apify watchlist turns news of new scams into watch rules before attackers try them.
 - **It protects both sides.** Bad buyers *and* bad merchants, because it sits at the facilitator.
@@ -140,7 +193,7 @@ The idea: **learn about new scams from the outside world and be ready before an 
 
 ---
 
-## 9. How people use it: chat in ASI:One
+## 10. How people use it: chat in ASI:One
 
 For the Fetch.ai track, judges must be able to use the project by chatting in **ASI:One**, Fetch.ai's chat app for agents. We register 2 public agents on **Agentverse**, Fetch.ai's agent directory:
 
@@ -166,7 +219,7 @@ The dashboard's buttons call the same functions, so chat and dashboard always ag
 
 ---
 
-## 10. The sponsor tools and what each does
+## 11. The sponsor tools and what each does
 
 | Tool | Role |
 |---|---|
@@ -179,11 +232,12 @@ The dashboard's buttons call the same functions, so chat and dashboard always ag
 
 ---
 
-## 11. The demo (3 minutes)
+## 12. The demo (3 minutes)
 
 1. **30s, the problem:** AI agents are paying for things; here's how they get abused, in both directions.
 2. **40s, the arms race:** a replay of 20+ rounds, with losses going down as the defense learns.
 3. **50s, self-red-teaming and proof:**
+   - the arena grid: shelves light up red when a new type of attack appears, then turn green as the defense learns to stop it, with arrows showing where each defender is aiming its attacker
    - a heatmap of which self-made attacker beat which specialist
    - the gap attacker slipping through, then getting caught
    - the benchmark chart: us vs. fixed rules vs. XGBoost vs. our system without self-made attackers
@@ -198,7 +252,7 @@ The dashboard's buttons call the same functions, so chat and dashboard always ag
 
 ---
 
-## 12. Build order (3 people, ~36 hours)
+## 13. Build order (3 people, ~36 hours)
 
 Every step has a check that proves it's done. Most are automated tests with a fixed random seed; a few are manual, with a saved screenshot or recording as proof. The exact tests and numbers are in section 8 of the technical spec.
 
@@ -211,7 +265,7 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 | 5 | The learning loop and freeze button (as functions, not just buttons) | **Minimum demo**: this alone is a complete project | Over 10 rounds, losses fall to at most 60% of round 1 while false alarms stay under the cap. Freezing makes losses climb; unfreezing brings them back. |
 | 6 | Dashboard (built alongside steps 3–5) | Make it visible | An automated browser test checks that every panel shows data and matches the database. |
 | 7 | Escalation (AI discusses close calls) | Shows the agents thinking | 5–15% of payments escalate, decisions take at most 5 s, and a "please approve me" note in a fraud payment doesn't get it approved. |
-| 8 | **Self-made attackers + gap attacker** | **The main idea** | Self-made attackers find holes the swarm misses, the exploitability score drops over rounds, and the gap attacker sneaks through where no single specialist would alarm. |
+| 8 | **Tag-Team Arena:** the arena of 24 shelves, focusing on shaky shelves, self-made attackers aimed at shelves, and the gap attacker | **The main idea** | Self-made attackers find holes the swarm misses, the exploitability score drops over rounds, more shelves get filled over time, no shelf holds more than 3 attackers or near-copies, and the gap attacker sneaks through where no single specialist would alarm. |
 | 9 | **ASI:One chat agents** (Fraud Desk, Merchant Scanner) | **Required for the Fetch.ai prize** | Chat gives the same answer as calling the system directly, chat payments never affect training, and a screen recording shows three chat prompts working. |
 | 10 | Mandate specialist + hijacker persona | Cheap, big pitch upgrade | At least 80% of hijacked payments caught, and over-budget or wrong-store payments always blocked. |
 | 11 | Malicious merchants + page-reading shoppers + Apify page scanning | The "protects both sides" story | Poisoned pages fool at least 30% of shoppers without our defense, and our defense blocks at least 80% of those payments. |
@@ -221,16 +275,18 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 
 **Main pitch:** a defense that red-teams itself, sitting at the x402 facilitator. Mandates, protecting both sides, and the threat-intel watchlist support it.
 
+**Bonus if time allows:** rulebook drafts (each specialist keeps its best few rulebook versions).
+
 **If time runs out:** stop after step 6 (solid project), step 8 (the main pitch), step 10 (strong pitch), step 11 (protects both sides) or step 12 (ready before the attack). Steps 11 and 12 compete for time; if one isn't working by Saturday afternoon, cut it rather than finish half of it. **Steps 9, 13 and 14 are never skipped.**
 
 **Who does what:**
 - **Person A:** agents, defense team, ASI:One chat agents, payments and identity.
-- **Person B:** attackers, learning loop, critic, turning scraped scams into watch rules and test attackers.
+- **Person B:** attackers, the arena, learning loop, critic, turning scraped scams into watch rules and test attackers.
 - **Person C:** database, dashboard, all Apify scraping, benchmark baselines, demo runs.
 
 ---
 
-## 13. Honest limitations
+## 14. Honest limitations
 
 - The traffic is simulated, though products and prices are real.
 - AI rewriting its own rules isn't true machine-learning training and can be unstable. The critic and the rule limits help.
@@ -239,13 +295,15 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 - We designed the simulation we benchmark in, and there's no standard benchmark for AI-agent fraud yet. On fixed public datasets, XGBoost will likely beat us; our claim is about adapting.
 - AI discussions on close calls aren't perfectly repeatable and add a few seconds.
 - The watchlist only sees scams reported publicly, which lag behind real fraud. Watch rules are only as good as the AI's reading of each report.
+- The arena is only as good as how we define its shelves: too broad hides variety, too narrow leaves most shelves empty. We start with 24.
+- Each part of our training method is backed by published research, but nobody has tested this exact combination. That's also what makes it new.
 - The critic runs on an open model rather than a top closed model; a fixed rubric reduces, but doesn't remove, the risk of bad judgments.
 - Real x402 payments run only in the live demo rounds. Identities are simulated unless we get CRS test access.
 - Payments checked through ASI:One chat get real decisions but aren't used for training.
 
 ---
 
-## 14. Glossary
+## 15. Glossary
 
 - **ASI:One:** Fetch.ai's chat app where people talk to agents. Judges use our project there.
 - **Agentverse:** Fetch.ai's directory where agents are registered so ASI:One can find them.
@@ -262,7 +320,11 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 - **Step-up (extra check):** asking the human behind the agent to confirm, instead of a straight allow or block.
 - **Self-made (spawned) attacker:** an attacker a defender builds to beat itself.
 - **Gap attacker:** an attacker that targets the blind spots between specialists.
-- **League:** the collection of past attackers kept for retesting.
+- **Arena (attack archive):** the shared grid of shelves, one per type of attack, each holding its top 3 attackers.
+- **Shelf:** one type of attack in the arena, e.g. "slow drip, $10–$100, attacking stores."
+- **Shaky shelf:** a type of attack the defense catches only about half the time; where training focuses.
+- **Tag-Team Arena:** our training method: tag-teaming plus the arena plus focusing on shaky shelves.
+- **Rulebook drafts:** a specialist's few best rulebook versions, each kept because it's best at stopping some type of attack (bonus goal).
 - **Exploitability:** how much a fresh attacker can still steal. Lower is better.
 - **Prompt injection:** hidden text that tricks an AI agent into doing something it shouldn't.
 - **False positive:** blocking an honest shopper by mistake.
@@ -270,7 +332,7 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 
 ---
 
-## 15. On hold / future directions
+## 16. On hold / future directions
 
 Parked so we can build the core first. We come back to these only once steps 1–14 work end to end.
 
