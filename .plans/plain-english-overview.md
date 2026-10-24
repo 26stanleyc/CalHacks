@@ -69,17 +69,21 @@ Each specialist keeps a **rulebook**: simple rules it wrote itself, like "more t
 
 **Why identity isn't enough on its own:** a verified human can still be a fraudster, have their identity stolen, rent it to a fraud ring, or have their agent hijacked. Identity tells us *who* is responsible; the other specialists decide whether they're *behaving*. Banks work the same way: they verify every customer *and* watch every transaction.
 
-### The attackers (four sources)
-1. **Self-made attackers.** Each round, every specialist builds an attacker designed to beat *itself*, using its own rulebook as intel. The orchestrator builds one more that targets the gaps *between* specialists. Each one runs on a different AI model than the defender that built it, so it thinks differently.
-2. **The swarm.** Classic fraudster characters:
+### The attackers: one arena, three ways in
+All attackers live in one shared **arena**, organized by type of attack (see the next section). Old tricks keep coming back, so the defense never forgets them. Attackers get into the arena three ways:
+1. **Self-made attackers (insiders).** Each round, every specialist builds an attacker designed to beat *itself*, using its own rulebook as intel. The orchestrator builds one more that targets the gaps *between* specialists. Each one runs on a different AI model than the defender that built it, so it thinks differently.
+2. **Outsider characters.** Six classic fraudsters who **can't see our rules**, only whether they got through, like real fraudsters:
    - card tester
    - structurer (splits payments to stay under limits)
    - account farmer
    - prompt-injection attacker
    - hijacker (stolen agent credentials)
    - malicious merchant (poisoned product pages)
-3. **The arena.** A shared collection of every attacker that's been good enough to keep, organized by type of attack (see the next section). Old tricks keep coming back, so the defense never forgets them.
-4. **Threat-intel test attackers.** When the watchlist adds a new scam from the news, a test attacker tries that scam, to check the defense really catches it. At most one per round.
+
+   Each keeps its name and keeps evolving all run long, so you can watch, say, the card tester adapt. They run every round.
+3. **Threat-intel test attackers.** When the watchlist adds a new scam from the news, a test attacker tries that scam, to check the defense really catches it. At most one per round.
+
+(These outsiders used to be a separate "swarm." They overlapped with the arena, so we merged them in.)
 
 ---
 
@@ -98,7 +102,8 @@ That's 24 shelves. Each shelf keeps its **top 3 attackers**: the ones that make 
 - A new attacker only competes with attackers **on its own shelf**. A great structurer can never push out the best hijacker, so one popular trick can't take over.
 - Near-copies of an attacker already on the shelf are rejected, so the top 3 stay different from each other.
 - Shelves belong to **attack types, not defenders**. All defenders share one arena and are tested on every shelf.
-- Every attacker source writes into it: self-made attackers, the swarm, and threat-intel test attackers.
+- **One of the 3 spots on every shelf is saved for an outsider.** Insiders see our rules, so they usually score higher. Without a saved spot they'd push the outsiders out, and we'd lose our realistic outside attackers. At least 20% of attack traffic always comes from outsiders.
+- Every way in writes into it: self-made attackers, outsider characters, and threat-intel test attackers.
 
 This is based on **Rainbow Teaming** (NeurIPS 2024), a Meta research method for finding varied attacks on AI models.
 
@@ -167,7 +172,7 @@ The idea: **learn about new scams from the outside world and be ready before an 
 
 ## 8. What happens each round (how it learns)
 
-1. **Pick this round's attackers:** the new self-made attackers, the swarm, attackers from the arena (mostly from shaky shelves, plus some at random), and any threat-intel test attacker. They run against the defense, mixed with normal shoppers.
+1. **Pick this round's attackers:** the new self-made attackers, the six outsider characters, attackers from the arena (mostly from shaky shelves, plus some at random), and any threat-intel test attacker. They run against the defense, mixed with normal shoppers.
 2. We check every decision against the truth (the simulation knows who's a fraudster).
 3. **Update the arena:** each attacker takes a spot on its shelf if it beats the top 3 there.
 4. **Update which shelves are shaky.**
@@ -261,11 +266,11 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 | 1 | Basic plumbing: agents talking, database, check that CRS, Bitdeer (including GLM-5.3) and x402 access work. If CRS test access isn't available by the end of this step, CRS stays on hold. Plus a 30-minute test: register a "hello" agent on Agentverse and chat with it in ASI:One. Read the Fetch.ai hackathon rules. | Find blockers early | A test payment passes through the agents and shows up in the database. A script reports each sponsor tool as working or mocked. The hello agent answers in ASI:One (screenshot). |
 | 2 | Marketplace with normal shoppers | Need honest traffic to measure false alarms | 1,000 honest payments are logged, every shopper type appears, and the same seed gives the same traffic. |
 | 3 | Defense team with hand-written starter rules, plus a "check one payment" function | Need something to attack; the chat agents will call that function later | At most 2% of honest shoppers flagged, at least 70% of scripted frauds caught, each payment checked in under 50 ms. |
-| 4 | The swarm of fraudster characters | Need attacks | Every fraudster character runs each round, losses are logged per character, and blocked characters change their strategy. |
+| 4 | The outsider fraudster characters | Need attacks | Every character runs each round, sees only whether it got through (never our rules), losses are logged per character, and blocked characters change their strategy. |
 | 5 | The learning loop and freeze button (as functions, not just buttons) | **Minimum demo**: this alone is a complete project | Over 10 rounds, losses fall to at most 60% of round 1 while false alarms stay under the cap. Freezing makes losses climb; unfreezing brings them back. |
 | 6 | Dashboard (built alongside steps 3–5) | Make it visible | An automated browser test checks that every panel shows data and matches the database. |
 | 7 | Escalation (AI discusses close calls) | Shows the agents thinking | 5–15% of payments escalate, decisions take at most 5 s, and a "please approve me" note in a fraud payment doesn't get it approved. |
-| 8 | **Tag-Team Arena:** the arena of 24 shelves, focusing on shaky shelves, self-made attackers aimed at shelves, and the gap attacker | **The main idea** | Self-made attackers find holes the swarm misses, the exploitability score drops over rounds, more shelves get filled over time, no shelf holds more than 3 attackers or near-copies, and the gap attacker sneaks through where no single specialist would alarm. |
+| 8 | **Tag-Team Arena:** the arena of 24 shelves, focusing on shaky shelves, self-made attackers aimed at shelves, and the gap attacker | **The main idea** | Self-made attackers find holes the outsiders miss, the exploitability score drops over rounds, more shelves get filled over time, no shelf holds more than 3 attackers or near-copies, the saved outsider spot is never taken by an insider, and the gap attacker sneaks through where no single specialist would alarm. |
 | 9 | **ASI:One chat agents** (Fraud Desk, Merchant Scanner) | **Required for the Fetch.ai prize** | Chat gives the same answer as calling the system directly, chat payments never affect training, and a screen recording shows three chat prompts working. |
 | 10 | Mandate specialist + hijacker persona | Cheap, big pitch upgrade | At least 80% of hijacked payments caught, and over-budget or wrong-store payments always blocked. |
 | 11 | Malicious merchants + page-reading shoppers + Apify page scanning | The "protects both sides" story | Poisoned pages fool at least 30% of shoppers without our defense, and our defense blocks at least 80% of those payments. |
@@ -321,6 +326,8 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 - **Self-made (spawned) attacker:** an attacker a defender builds to beat itself.
 - **Gap attacker:** an attacker that targets the blind spots between specialists.
 - **Arena (attack archive):** the shared grid of shelves, one per type of attack, each holding its top 3 attackers.
+- **Insider attacker:** a self-made attacker that gets to see its parent defender's rules.
+- **Outsider attacker:** an attacker that can't see our rules, only whether it got through, like a real fraudster. One spot on every shelf is saved for an outsider.
 - **Shelf:** one type of attack in the arena, e.g. "slow drip, $10–$100, attacking stores."
 - **Shaky shelf:** a type of attack the defense catches only about half the time; where training focuses.
 - **Tag-Team Arena:** our training method: tag-teaming plus the arena plus focusing on shaky shelves.
