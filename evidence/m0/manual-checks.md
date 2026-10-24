@@ -17,8 +17,16 @@ uv run python -m integrations.asi_one.hello_agent
 Leave it running, then:
 
 1. Open <https://asi1.ai> and sign in with the same account the `AGENTVERSE_API_KEY` belongs to.
-2. Search for **fraud-defense-hello**, or paste its address:
-   `agent1qwucnzmjn7j00nullzjwyee7tutp5jyyf6cvgpc02x3nfh009n7t2ncq9vp`
+2. Search for **fraud-defense-hello**, or paste the address the agent printed at startup.
+
+   On Eric's machine that is
+   `agent1qwucnzmjn7j00nullzjwyee7tutp5jyyf6cvgpc02x3nfh009n7t2ncq9vp`, but unlike the two
+   public agents the hello agent has no seed in `.env`: it generates one into
+   `integrations/.local/hello.seed`, which is gitignored. So it keeps a stable address on a
+   given machine and has a **different** address on each of ours. Read it from the log line
+   `Starting agent with address: ...`. Set `HELLO_AGENT_SEED` in `.env` if we ever want one
+   shared address for it.
+
 3. Say "hello", then "what is this project?".
 4. **Save a screenshot of the reply to `evidence/m0/asi-one-hello.png`.**
 
