@@ -1,3 +1,15 @@
+# Secrets: never commit these
 .env
+.env.*
+!.env.example
+*.pem
+cdp_api_key*.json
+cdp_wallet_secret*
+
+# Python
 .venv/
 __pycache__/
+*.pyc
+
+# macOS
+.DS_Store
