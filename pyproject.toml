@@ -4,11 +4,16 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "apify-client>=3.3.0",
+    "cdp-sdk>=1.51.0",
+    "certifi>=2026.10.23",
+    "eth-account>=0.14.0",
     "fastapi>=0.162.0",
     "httpx>=0.28.1",
     "pydantic>=2.7",
     "python-dotenv>=1.2.4",
+    "uagents>=0.25.5",
     "uvicorn>=0.54.0",
+    "x402[evm,httpx]>=2.25.0",
 ]
 
 [dependency-groups]
@@ -17,5 +22,5 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["contracts/tests"]
+testpaths = ["contracts/tests", "integrations/tests"]
 pythonpath = ["."]
