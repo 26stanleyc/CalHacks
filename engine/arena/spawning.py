@@ -289,9 +289,10 @@ class InsiderAttacker:
                 self.playbook = tuning.best.model_copy(update={"playbook_id": f"{self.attacker_id}-t{self.retunes}"})
 
 
-def build_spawned(parent: str, target: ShelfKey, archive: Archive, brain: Brain, sandbox: Sandbox, rulebook,
-                  run_id: str, round_no: int, seed: int, tries: int) -> Spawned | None:
-    """One spawned attacker for next round: seed, intel, other-family model, then tuning in the sandbox."""
+def _spawn_brief(parent: str, target: ShelfKey, archive: Archive, rulebook, round_no: int,
+                 seed: int) -> tuple[random.Random, dict, AttackerRecord | None]:
+    """The draft's input, its seed attacker, and the random stream the tuner continues from
+    (deterministic per attacker)."""
     rng = random.Random(f"spawn:{seed}:{round_no}:{parent}:{target.id()}")
     shelf = archive.shelves[target.id()]
     seed_record = shelf.entries[rng.choice(shelf.ranked())] if shelf.entries else None
@@ -299,8 +300,27 @@ def build_spawned(parent: str, target: ShelfKey, archive: Archive, brain: Brain,
             "seed_playbook": seed_record.playbook.model_dump(mode="json") if seed_record else None,
             "parent_rules": gray_box(rulebook, rng) if rulebook is not None else [],
             "realism_limits": {k: list(v) for k, v in REALISM.items()}}
-    draft = brain.ask(spawn_role(parent), SpawnDraft, SPAWN_INSTRUCTIONS.format(
+    return rng, data, seed_record
+
+
+def draft_spawn(parent: str, target: ShelfKey, archive: Archive, brain: Brain, rulebook, round_no: int,
+                seed: int) -> SpawnDraft | None:
+    """The model's draft for one spawned attacker (no shared state, so several can be asked at once)."""
+    _, data, _ = _spawn_brief(parent, target, archive, rulebook, round_no, seed)
+    return brain.ask(spawn_role(parent), SpawnDraft, SPAWN_INSTRUCTIONS.format(
         parent=parent, style=target.style.value, amount=target.amount.value, side=target.side.value), data)
+
+
+NOT_ASKED = object()
+
+
+def build_spawned(parent: str, target: ShelfKey, archive: Archive, brain: Brain, sandbox: Sandbox, rulebook,
+                  run_id: str, round_no: int, seed: int, tries: int, draft=NOT_ASKED) -> Spawned | None:
+    """One spawned attacker for next round: seed, intel, other-family model, then tuning in the sandbox.
+    Pass `draft` when it was already asked for (drafts are asked in parallel, tuning runs one at a time)."""
+    rng, _, seed_record = _spawn_brief(parent, target, archive, rulebook, round_no, seed)
+    if draft is NOT_ASKED:
+        draft = draft_spawn(parent, target, archive, brain, rulebook, round_no, seed)
     if draft is None:
         return None
     attacker_id = f"spawned-r{round_no}-{parent}-{target.style.value}-{target.amount.value}"

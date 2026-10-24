@@ -23,7 +23,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from contracts.schemas import Lane, TrafficSource
-from engine.brains import Brain
+from engine.brains import Brain, parallel
 from engine.dsl import MAX_RULES, Rule, condition_features, holds, regular_rules, validate_rule
 from engine.learning import hedge
 from engine.learning.critic import Critic
@@ -136,8 +136,15 @@ class LearningLoop:
         out.removed += self._guard(round_no, records, stats)
         start = {lane: s.rulebook for lane, s in self.pipeline.specialists.items()}
         self._drafting = self.drafts is not None  # reflection's edits go into a draft, not live
-        for lane in self.pipeline.lanes:
-            self._reflect(round_no, lane, records, replayed, reflection_reference, out, stats)
+        # Every specialist reflects at once (the model calls run in parallel); each lane only changes its
+        # own rulebook, and the edits are applied one lane at a time, in lane order.
+        lanes = list(self.pipeline.lanes)
+        asks = [self._reflection_request(round_no, lane, records, reflection_reference, out, stats) for lane in lanes]
+        proposals = parallel(lambda ask: ask and self.brain.ask(ask["lane"].value, ReflectionProposal, ask["instructions"],
+                                                                ask["data"]), asks)
+        for ask, proposal in zip(asks, proposals):
+            if ask:
+                self._reflect(round_no, ask, proposal, replayed, out, stats)
         self._drafting = False
         if self.drafts is not None:
             self._choose_drafts(round_no, start, replayed, out)
@@ -334,8 +341,9 @@ class LearningLoop:
 
     # --- reflection -----------------------------------------------------------------------------
 
-    def _reflect(self, round_no: int, lane: Lane, records: list[Record], replayed: list[Record],
-                 reference: LegitReference, out: RoundLearning, stats: dict) -> None:
+    def _reflection_request(self, round_no: int, lane: Lane, records: list[Record], reference: LegitReference,
+                            out: RoundLearning, stats: dict) -> dict | None:
+        """What a specialist is asked to reflect on, or None when it has nothing to learn from."""
         names = self.pipeline.catalog.lane_features(lane)
         mine = [r for r in records if (r.missed or r.code_missed) and (out.assignments.get(r.tx.tx_id) == lane.value
                                                      or self._closest.get(r.tx.tx_id) == lane.value)]
@@ -363,11 +371,16 @@ class LearningLoop:
                              for r in false_alarms[:FALSE_ALARMS_PER_REFLECTION]],
         }
         if not mine and not false_alarms:
-            return
+            return None
         instructions = INSTRUCTIONS.format(lane=lane.value, max_rules=MAX_RULES_PER_REFLECTION, room=room, cap=MAX_RULES)
-        proposal = self.brain.ask(lane.value, ReflectionProposal, instructions, data)
-        outcome = {"proposal": proposal.model_dump(mode="json") if proposal else None, "misses": len(mine),
-                   "false_alarms": len(false_alarms), "deployed": [], "vetoed": [], "removed": []}
+        return {"lane": lane, "instructions": instructions, "data": data, "misses": len(mine),
+                "false_alarms": len(false_alarms)}
+
+    def _reflect(self, round_no: int, ask: dict, proposal: ReflectionProposal | None, replayed: list[Record],
+                 out: RoundLearning, stats: dict) -> None:
+        lane = ask["lane"]
+        outcome = {"proposal": proposal.model_dump(mode="json") if proposal else None, "misses": ask["misses"],
+                   "false_alarms": ask["false_alarms"], "deployed": [], "vetoed": [], "removed": []}
         if proposal is not None:
             try:
                 self._apply(round_no, lane, proposal, replayed, out, outcome, stats)

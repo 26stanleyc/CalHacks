@@ -281,10 +281,9 @@ class OutsiderAttacker:
                 "realism_limits": {k: list(v) for k, v in REALISM.items()},
                 "free_text_payloads": self.playbook.free_text_payloads, "last_wave": summary,
                 "history": self.history}
-        failures = len(self.brain.failures)
         rewrite = self.brain.ask(self.role, PlaybookRewrite, REWRITE_INSTRUCTIONS.format(name=self.persona.name), data)
         if rewrite is None:
-            schema = any(f.get("kind") == "schema" for f in self.brain.failures[failures:])
+            schema = (self.brain.last_failure() or {}).get("kind") == "schema"
             self.rewrites["invalid" if schema else "failed"] += 1
             return f"{reason}; {'the rewrite did not match the schema' if schema else 'the rewrite call failed'}, kept the playbook"
         candidate = self._playbook(rewrite.strategy, {k: float(v) for k, v in rewrite.params.items()},

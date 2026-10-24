@@ -30,8 +30,8 @@ from engine.arena.playbooks import REALISM, WAVES
 from engine.arena.sandbox import SANDBOX_PAYMENTS, TUNING_TRIES, Sandbox, tune
 from engine.arena.spawning import (ACTION_INSTRUCTIONS, BUDGET, GAP_ATTACKER_MIN_SHARE, GAP_PARENT, INSIDER_STEP_UP_PASS,
                                    SPAWN_AT_LEAST_EVERY, ActionChoice, InsiderAttacker, allocate, build_spawned,
-                                   shelf_bounds)
-from engine.brains import Brain, mock_answer
+                                   draft_spawn, shelf_bounds)
+from engine.brains import Brain, mock_answer, parallel
 from engine.sim.world import INJECTION_MEMOS
 
 ARCHIVE_DRAWS = 4
@@ -293,9 +293,10 @@ class Arena:
                                                       reason=f"coverage gap: {gaps[gap_shelf]:.0%} of its attempts got past every specialist quietly"),
                              gaps[gap_shelf]))
             taken.add(gap_shelf)
-        for lane in self.lanes:
-            status = self._status(lane, round_no, records)
-            choice = self.brain.ask(lane.value, ActionChoice, ACTION_INSTRUCTIONS.format(lane=lane.value), status)
+        statuses = [self._status(lane, round_no, records) for lane in self.lanes]
+        choices = parallel(lambda pair: self.brain.ask(pair[0].value, ActionChoice, ACTION_INSTRUCTIONS.format(lane=pair[0].value),
+                                                       pair[1]), list(zip(self.lanes, statuses)))  # every lane at once
+        for lane, status, choice in zip(self.lanes, statuses, choices):
             area_ids = {s["shelf_id"] for s in status["area"]}
             if choice is None or (choice.action == "spawn" and choice.target_shelf not in area_ids):
                 choice = ActionChoice(action="skip", reason="no usable choice; skipping")
@@ -318,16 +319,26 @@ class Arena:
                 priority = 2.0  # the guardrail comes before any other request
             requests.append((lane.value, choice, priority))
         self.grants = allocate(requests, BUDGET)
+        spawns = [g for g in self.grants if g.granted and g.choice.action == "spawn"]
+
+        def brief(grant):
+            rulebook = pipeline.specialists[Lane(grant.actor)].rulebook if grant.actor != GAP_PARENT else None
+            return grant.actor, self.archive.shelves[grant.choice.target_shelf].key, rulebook
+
+        def draft(grant):
+            parent, target, rulebook = brief(grant)
+            return draft_spawn(parent, target, self.archive, self.brain, rulebook, round_no, self.seed)
+
+        # the drafts are asked at once; tuning in the sandbox then runs one attacker at a time
+        drafts = dict(zip(map(id, spawns), parallel(draft, spawns)))
         rows, self.last_spawned = [], []
         for grant in self.grants:
             choice = grant.choice
             detail = {"target_shelf": choice.target_shelf} if choice.target_shelf else {}
             if grant.granted and choice.action == "spawn":
-                parent = grant.actor
-                rulebook = pipeline.specialists[Lane(parent)].rulebook if parent != GAP_PARENT else None
-                target = self.archive.shelves[choice.target_shelf].key
+                parent, target, rulebook = brief(grant)
                 spawned = build_spawned(parent, target, self.archive, self.brain, sandbox, rulebook, self.run_id, round_no,
-                                        self.seed, self.tuning_tries)
+                                        self.seed, self.tuning_tries, draft=drafts[id(grant)])
                 if spawned is not None:
                     self.spawned_next.append(spawned.record)
                     self.last_spawned.append(spawned)
@@ -350,9 +361,12 @@ class Arena:
         best, best_id = 0, None
         candidates = sorted(self.archive.members(), key=lambda r: -r.profit_cents)[:EXAM_TOP]
         shelves = sorted(self.archive.shelves.values(), key=lambda s: -s.state(round_no).learnability)
-        for i, shelf in enumerate([s for s in shelves if s.key.side == Side.MERCHANT][:EXAM_FRESH]):
+        fresh_shelves = [s for s in shelves if s.key.side == Side.MERCHANT][:EXAM_FRESH]
+        drafts = parallel(lambda pair: draft_spawn(GAP_PARENT, pair[1].key, self.archive, self.brain, None,
+                                                   round_no * 1000 + pair[0], self.seed), list(enumerate(fresh_shelves)))
+        for i, shelf in enumerate(fresh_shelves):
             fresh = build_spawned(GAP_PARENT, shelf.key, self.archive, self.brain, sandbox, None, self.run_id,
-                                  round_no * 1000 + i, self.seed, self.tuning_tries)
+                                  round_no * 1000 + i, self.seed, self.tuning_tries, draft=drafts[i])
             if fresh is not None:
                 candidates.append(fresh.record)
         for record in candidates:

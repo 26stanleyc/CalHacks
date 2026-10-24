@@ -49,7 +49,7 @@ from engine.arena.hijacker import HijackerAttacker
 from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
-from engine.brains import Brain
+from engine.brains import Brain, parallel
 from engine.intel.corpus import CorpusSource
 from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
 from engine.investigator import Investigator
@@ -330,8 +330,9 @@ class FraudEngine:
                                         if tx.attacker_id in insiders else None)  # insiders learn who objected
                             feedback[tx.attacker_id].append(AttackFeedback(tx_id=tx.tx_id, outcome=record.decision.action,
                                                                            settled=record.settled, objected_by=objected))
-                    for attacker, _ in running:  # outsiders get outcomes only
-                        attacker.observe(feedback[attacker.attacker_id])
+                    # outsiders get outcomes only; each adapts on its own (a rewrite is a model call), all at once
+                    parallel(lambda attacker: attacker.observe(feedback[attacker.attacker_id]), [a for a, _ in running])
+                    for attacker, _ in running:
                         self._log_wave(attacker, round_no)
                 if self.arena:
                     self.arena.after_waves(round_no, records, self.attackers + [a for a, _ in intel])

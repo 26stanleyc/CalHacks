@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel, Field
 
 from contracts.schemas import Lane
-from engine.brains import Brain, mock_answer
+from engine.brains import Brain, mock_answer, parallel
 from engine.dsl import Rule
 from engine.learning.labels import UNCOVERED, LegitReference, Record, best_separating_lane
 from engine.learning.replay import RuleReplay
@@ -174,17 +174,23 @@ class Critic:
         result: dict[str, str] = {}
         critic_misses = misses[:MAX_MISSES_FOR_CRITIC]
         second = self.routed_to_second_opinion("miss_assignment")
+        chunks = []
         for start in range(0, len(critic_misses), MISSES_PER_CALL):
             chunk = critic_misses[start:start + MISSES_PER_CALL]
             alias = {f"miss-{start + i}": m.tx.tx_id for i, m in enumerate(chunk)}  # simulator ids name the attacker
             data = {"reference": reference_stats, "misses": [
                 {"tx_id": a, "lanes": {lane.value: {n: m.features.values[n] for n in feats if n in m.features.values}
                                        for lane, feats in lane_features.items()}} for a, m in zip(alias, chunk)]}
-            answer = self.brain.ask("critic", MissAssignments, ASSIGN_RUBRIC.format(lanes=names), data)
+            chunks.append((chunk, alias, data))
+        # every chunk, and the second opinion on it, is asked at once; the answers are used in order
+        roles = ["critic", "critic_second"] if second else ["critic"]
+        answers = parallel(lambda job: self.brain.ask(job[0], MissAssignments, ASSIGN_RUBRIC.format(lanes=names), job[1]),
+                           [(role, data) for _, _, data in chunks for role in roles])
+        for i, (chunk, alias, data) in enumerate(chunks):
+            answer = answers[i * len(roles)]
             given = {alias[k]: v for k, v in self._valid_assignments(answer).items() if k in alias}
-            other = ({alias[k]: v for k, v in self._valid_assignments(self.brain.ask(
-                "critic_second", MissAssignments, ASSIGN_RUBRIC.format(lanes=names), data)).items() if k in alias}
-                if second else {})
+            other = ({alias[k]: v for k, v in self._valid_assignments(answers[i * len(roles) + 1]).items() if k in alias}
+                     if second else {})
             for m in chunk:
                 tx_id = m.tx.tx_id
                 if tx_id not in given:  # no usable critic answer: the automated one stands, and nothing is spot-checked
