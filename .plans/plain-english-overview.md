@@ -317,8 +317,8 @@ Every step has a check that proves it's done. Most are automated tests with a fi
 | 14 | Precompute runs, benchmark chart, ASI:One and Agentverse links for submission, backup recording | Required for the demo | The full demo runs twice in a row with no fixes, a real testnet payment is visible online, and the backup video plays. |
 
 **Scope (what we actually commit to):** the full list is 2–3× what 3 people can ship in 36 hours, so:
-- **Must ship:** steps 1–10, **one of** step 11 or step 12 (pick at kickoff, whichever integration works first), and steps 13–14.
-- **Bonus:** the other of steps 11/12, and rulebook drafts.
+- **Must ship:** steps 1–11 and steps 13–14. **Decided: step 11 (malicious stores and page scanning) is core**, since it's the stronger demo and makes the Merchant Scanner chat agent real. Step 12 (the news watchlist) is a bonus.
+- **Bonus:** step 12 (the news watchlist), and rulebook drafts.
 - **If core runs late, cut in this order:** waves (go back to 1 wave), then defenders choosing their own moves (go back to a fixed schedule), then the XGBoost voter (keep it only as a benchmark). The investigator stays.
 - **Lighter testing:** each step counts as done when its top 3 checks pass; the rest run if there's time.
 
@@ -332,7 +332,7 @@ To fit, each precomputed round uses 400 payments and at most 40 close calls. Fix
 
 **Main pitch:** a defense that red-teams itself, sitting at the x402 facilitator. Mandates, plus protecting both sides or the threat-intel watchlist, support it.
 
-**If time runs out:** stop after step 6 (solid project), step 8 (the main pitch), step 10 (strong pitch), or after whichever of steps 11/12 you picked. If it isn't working by Saturday afternoon, cut it rather than finish half of it. **Steps 9, 13 and 14 are never skipped.**
+**If time runs out:** stop after step 6 (solid project), step 8 (the main pitch), step 10 (strong pitch), or step 11 (protects both sides). If it isn't working by Saturday afternoon, cut it rather than finish half of it. **Steps 9, 13 and 14 are never skipped.**
 
 **Who does what (25% / 25% / 50%):**
 - **Person 1, Ryan: data, dashboard and benchmarks (25%):** database, the marketplace (catalog, honest shoppers, mandates), the dashboard, the XGBoost voter, the comparison runs, the 6 hand-written held-out attackers, the demo recording. Steps 2, 6, 13, 14.
@@ -375,8 +375,8 @@ The ~36 hours are split into 4 blocks, each ending at a checkpoint:
 3. *Block 2:* the real Bitdeer connection (fake AI until the credits arrive)
 4. *Block 2:* x402 payments: a stand-in for precompute, real testnet payments for the demo
 5. *Block 2:* chat agents switched to the real engine
-6. *Block 3:* the chosen Apify milestone: store-page scanning and malicious stores, **or** the news watchlist and new-scam attackers (picked at kickoff)
-7. *Block 4 (bonus):* the other Apify milestone, and CRS if we get access
+6. *Block 3:* store-page scanning and malicious stores (step 11, core)
+7. *Block 4 (bonus):* the news watchlist and new-scam attackers (step 12), and CRS if we get access
 
 **Stanley (50%)**
 1. *Block 1:* the shared contracts

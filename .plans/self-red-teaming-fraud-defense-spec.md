@@ -669,8 +669,8 @@ The full M0–M13 list is about 2–3× what a 3-person team ships in 36 hours, 
 
 | Tier | Milestones | Notes |
 |---|---|---|
-| **Core (must ship)** | M0–M9, **one of** M10 or M11, M12, M13 | Pick M10 or M11 at kickoff, based on which integration works first. The chosen one is core; the other is bonus. |
-| **Bonus (only once core works end to end)** | The other of M10/M11; rulebook drafts; the stretch list above | |
+| **Core (must ship)** | M0–M10, M12, M13 | **Decided at kickoff: M10 is core** (malicious stores, page-reading shoppers, Apify page scans). It's the stronger demo and makes the Merchant Scanner chat agent real. M11 (the threat-intel watchlist) is bonus. |
+| **Bonus (only once core works end to end)** | M11 (threat-intel watchlist and news-driven attackers); rulebook drafts; the stretch list above | |
 | **On hold** | Everything in §11 | |
 
 Within core, cut in this order if time runs short: waves (fall back to 1 wave), then defender-chosen actions (fall back to the fixed spawn schedule), then the XGBoost voter (keep it as a baseline only). The investigator stays: it's the main tool-use demo.
@@ -679,7 +679,7 @@ Within core, cut in this order if time runs short: waves (fall back to 1 wave), 
 
 **Main pitch:** a self-red-teaming defense at the x402 facilitator. The mandate specialist (M9), plus protecting both sides (M10) or the threat-intel watchlist (M11), support it.
 
-**Fallback lines:** stop at M5 for the original plan, M7 for the self-red-teaming pitch, M9 for the mandate pitch, then M10 or M11, whichever was chosen. **Required whatever you cut:** M8 (Fetch eligibility), M12's 4 must-run comparisons (static rules, XGBoost alone, outsiders-only, no XGBoost voter), and M13. If the chosen M10/M11 isn't working by Saturday afternoon, cut it rather than finish half of it; Apify then appears only through the catalog scrape.
+**Fallback lines:** stop at M5 for the original plan, M7 for the self-red-teaming pitch, M9 for the mandate pitch, then M10 for "protects both sides", then M11 if time allows. **Required whatever you cut:** M8 (Fetch eligibility), M12's 4 must-run comparisons (static rules, XGBoost alone, outsiders-only, no XGBoost voter), and M13. If M10 isn't working by Saturday afternoon, cut it rather than finish half of it, and fall back to M11 only if there's time; otherwise Apify appears only through the catalog scrape.
 
 ### 8.4 Team split (25 / 25 / 50) and independent builds
 
@@ -784,8 +784,8 @@ The shared milestones M0–M13 (8.2) stay the definition of done, and their chec
 | E3 | B2 | **Real Bitdeer client:** `LLMClient` with the model assignments from 2.1, falling back to `MockLLM` while credits are pending | M0 / 2.1 | Contract tests pass; one real call per chat model once credits arrive | S0 |
 | E4 | B2 | **x402 settlement:** `Settlement` stub for precompute, and real Base Sepolia settlement with the buyer and merchant wallets | M13 (x402) | A real testnet payment settles and its hash opens on a block explorer | S0 |
 | E5 | B2 | **Chat agents on the real engine:** switch from `stubs.py` to the real entry points; sandboxing and team allowlist | M8 | M8's checks pass at I2 | E2, S2 |
-| E6 | B3 | **Chosen core Apify milestone:** either M10 (merchant pages, page-reading shoppers, `scan_page`, malicious-merchant attacker) or M11 (scraper, corpus, extraction, watch rules, threat-intel attackers), picked at kickoff | M10 or M11 | That milestone's checks pass; at I3 its attackers and scanner run in the arena | S0, S6 |
-| E7 | B4 | **Bonus:** the other of M10/M11; CRS if access was confirmed | M10/M11, §11 | Its checks pass | E6 |
+| E6 | B3 | **M10 (core, decided at kickoff):** merchant pages, page-reading shoppers, real `scan_page` via Apify, malicious-merchant attacker | M10 | That milestone's checks pass; at I3 its attackers and scanner run in the arena | S0, S6 |
+| E7 | B4 | **Bonus:** M11 (scraper, corpus, extraction, watch rules, threat-intel attackers); CRS if access was confirmed | M11, §11 | Its checks pass | E6 |
 
 #### Stanley (P3): core engine, 50%
 
