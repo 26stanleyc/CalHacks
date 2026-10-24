@@ -681,10 +681,72 @@ Within core, cut in this order if time runs short: waves (fall back to 1 wave), 
 
 **Fallback lines:** stop at M5 for the original plan, M7 for the self-red-teaming pitch, M9 for the mandate pitch, then M10 or M11, whichever was chosen. **Required whatever you cut:** M8 (Fetch eligibility), M12's 4 must-run comparisons (static rules, XGBoost alone, outsiders-only, no XGBoost voter), and M13. If the chosen M10/M11 isn't working by Saturday afternoon, cut it rather than finish half of it; Apify then appears only through the catalog scrape.
 
-**Lanes (3 people):**
-- **A — Agents:** Bureau, feature service, DSL, specialists (including mandate), orchestrator as facilitator, entry-point functions, the investigator and its tools, the action budget, the CRS access check in M0, x402, the ASI:One agents, the pluggable defense interface (M0, M2, M6, M8, M9 defense side, M12 interface, x402 in M13).
-- **B — Attack + Learning:** outsider personas (including hijacker and malicious merchant), reflection loop, critic, the attack archive and learnability weighting, spawning, defender action choices, waves, number tuning, coverage map, rulebook drafts (stretch), threat-intel extraction, watch rules and threat-intel attackers (M3, M4, M7, M9 hijacker, M10 merchant persona, M11 rules and personas).
-- **C — Dashboard + Data:** schema, all Apify scraping (catalog, page scans, threat-intel sources and corpus), scripted and page-reading shoppers, mandates, Next.js dashboard, the XGBoost voter and other baselines, benchmark metrics, precompute runs, submission links, backup recording (M1, M5, M10 shoppers and scans, M11 scraper and panel, M12 baselines, M13).
+### 8.4 Team split (25 / 25 / 50) and independent builds
+
+Each person owns one folder and can build and test it **alone**, against mocks of the other two. The parts are combined later through a small set of shared contracts.
+
+**Who owns what**
+
+| Person | Share | Owns | Milestones |
+|---|---|---|---|
+| **P1: Data, dashboard and benchmarks** | 25% | <ul><li>`data/` and `bench/`, plus `dashboard/`</li><li>Postgres schema and migrations</li><li>catalog (including the Apify catalog scrape), scripted legitimate shoppers, identity profiles, mandate data</li><li>Next.js dashboard and all its panels</li><li>XGBoost voter and the static-rules / XGBoost baselines</li><li>benchmark metrics, precompute runner, spend tracking view</li><li>the 6 hand-written held-out attackers (P1 doesn't write seed rules, so this fits the held-out rule)</li><li>submission links and backup recording</li></ul> | M1, M5, M12, M13; the schema part of M0 |
+| **P2: Integrations and Apify** | 25% | <ul><li>`integrations/`</li><li>the real Bitdeer client behind the shared LLM interface, and the M0 integration probes (Bitdeer, x402, CRS)</li><li>x402 facilitator layer and live testnet settlement</li><li>Agentverse/ASI:One smoke test and the M8 chat agents</li><li>M10: merchant pages, page-reading shoppers, `scan_page`, malicious-merchant persona</li><li>M11: scraper, corpus, extraction, watch rules, threat-intel attackers</li><li>CRS if access is confirmed</li></ul> | Probes in M0, M8, M10, M11 (whichever is core), x402 in M13 |
+| **P3: Core engine** | 50% | <ul><li>`engine/`</li><li>repo setup, uAgents Bureau, message schemas</li><li>feature service, rule DSL, the 5 specialists, orchestrator, entry-point functions</li><li>outsider personas and waves</li><li>learning loop, critic and spot-check, Hedge weights, freeze</li><li>investigator and its tools</li><li>Tag-Team Arena: archive, re-scoring, learnability, number tuning, defender actions, spawning, gap attacker, coverage map</li><li>mandate specialist, hijacker, behavior baseline</li><li>rulebook drafts (stretch)</li></ul> | M0 (except schema and probes), M2, M3, M4, M6, M7, M9 |
+
+**Repo layout**
+
+```
+contracts/     shared, frozen at kickoff; changes need all three to agree
+  schemas.py      pydantic models: Transaction, Mandate, Vote, Decision, Playbook,
+                  AttackerRecord, ShelfState, RoundMetrics, ThreatReport, PageScan
+  db.sql          the append-only Postgres tables (section 6)
+  llm.py          LLMClient interface + MockLLM (canned, schema-valid answers)
+  interfaces.py   Voter, Attacker, PageScanner, ThreatIntelSource, Settlement
+  entrypoints.py  signatures for check_payment, explain, scan_page, get_metrics,
+                  run_round, set_freeze, latest_threat_intel
+  stubs.py        a fake engine implementing every entry point with canned data
+  tests/          contract tests every real implementation must pass
+engine/        P3
+integrations/  P2
+data/  bench/  dashboard/   P1
+```
+
+**How each person builds alone**
+- **P3** runs the whole engine with `MockLLM`, a small fake catalog and fake legitimate traffic from `contracts`, plus stub voters and scanners. No Bitdeer, Apify or dashboard needed.
+- **P2** builds the chat agents and x402 layer against `contracts/stubs.py`, which answers every entry point with canned data. It builds `scan_page` and threat intel against the `PageScanner` and `ThreatIntelSource` interfaces, and tests them with fixture pages and reports. No engine needed.
+- **P1** builds the dashboard against a replay database seeded with fake rows that match `db.sql`, and builds the XGBoost voter against the `Voter` interface using generated feature vectors. No engine needed.
+
+**How the parts connect later (the only integration points)**
+
+| Seam | Producer | Consumer |
+|---|---|---|
+| Postgres tables in `db.sql` | P3 and P2 write | P1's dashboard and benchmarks read |
+| Entry-point functions | P3 implements | P2's chat agents and P1's dashboard buttons call |
+| `LLMClient` | P2's Bitdeer client (MockLLM until credits arrive) | P3's agents |
+| `Voter` | P1's XGBoost voter | P3's orchestrator |
+| `Attacker` | P2's malicious merchant and threat-intel attackers; P1's held-out attackers | P3's arena and exam |
+| `PageScanner`, `ThreatIntelSource` | P2 | P3's feature service, investigator and watch rules |
+| `Settlement` | P2's x402 layer (stub during precompute) | P3's orchestrator |
+
+**Rules that keep the parts independent**
+1. **Contracts first.** In the first 1–2 hours, P3 drafts `contracts/` and all three review it together. After that, a contract change needs a short note to the other two and an update to `stubs.py` and the contract tests in the same commit.
+2. **Own folder only.** Nobody edits another person's folder. If you need a change there, ask the owner.
+3. **Mocks behind every seam.** Each seam has a mock or stub, chosen by an environment flag (e.g. `USE_MOCK_LLM`, `USE_STUB_ENGINE`), so any part runs alone.
+4. **Contract tests.** Every real implementation passes the tests in `contracts/tests` before merging, which proves it fits the seam.
+5. **Branches and merges.** Each person works on their own branch and merges to `main` at three fixed checkpoints (below). `main` must always pass all tests.
+
+**Integration checkpoints**
+
+| Checkpoint | When | What gets combined | Done when |
+|---|---|---|---|
+| **I1** | End of the first build block | P3's engine writes to P1's real schema; P1's dashboard shows a real round | One real round appears on the dashboard |
+| **I2** | Saturday afternoon | P2's chat agents call the real entry points; P2's Bitdeer client replaces `MockLLM` if credits have arrived; P1's XGBoost voter joins the orchestrator | The M8 chat prompts return real decisions; the XGBoost vote is logged |
+| **I3** | Saturday night | P2's M10 or M11 attackers and scanner plug into the arena; precompute runs start | A full precompute run completes with every part live |
+
+**Day-1 plan (before I1)**
+- **P3:** contracts draft, then M0 and M2 (Bureau, feature service, DSL, 4 specialists, orchestrator, entry points), all on `MockLLM`.
+- **P2:** M0 integration probes, the Agentverse/ASI:One smoke test, the x402 facilitator stub, and the chat-agent shell against `stubs.py`.
+- **P1:** schema and migrations, the M1 catalog and legitimate shoppers, and the dashboard against seeded fake rows.
 
 ## 9. Known limitations
 - Traffic is simulated (real catalog, scripted shoppers); labels come from the simulation; chargeback delay isn't modeled.
