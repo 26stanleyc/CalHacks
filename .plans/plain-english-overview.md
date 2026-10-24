@@ -351,7 +351,47 @@ In the first 1–2 hours, the team agrees on a small set of shared "contracts" (
 
 **Git branches:** Ryan works on `ryan/data-dashboard`, Eric on `eric/integrations`, Stanley on `stanley/core-engine`. Merge to `main` at each checkpoint.
 
-Full details, including the folder layout, are in section 8.4 of the technical spec.
+### Each person's milestones
+The ~36 hours are split into 4 blocks, each ending at a checkpoint:
+- **Block 1, hours 0–8:** ends when real engine data shows on the dashboard
+- **Block 2, hours 8–20:** ends Saturday afternoon, with chat on the real engine and real AI plugged in
+- **Block 3, hours 20–28:** ends Saturday night, when Apify attackers join the arena
+- **Block 4, hours 28–36:** precompute, rehearsal and submission
+
+**First 2 hours, everyone:** Stanley drafts the shared contracts; Ryan and Eric review them. Everyone waits on this one step.
+
+**Ryan (25%)**
+1. *Block 1:* database tables plus fake seed data
+2. *Block 1:* the marketplace: catalog, honest shoppers, identities, mandates
+3. *Block 1:* dashboard v1 on fake data, switching to real data at checkpoint 1
+4. *Block 2:* the 6 hand-written held-out attackers
+5. *Block 2:* the XGBoost voter, the baselines, the benchmark scores
+6. *Block 3:* the rest of the dashboard (arena grid, investigator case files, defender choices, waves, both sides, threat intel, benchmark chart)
+7. *Block 4:* precompute runs (4 comparisons × 3 seeds within budget), backup video, submission links
+
+**Eric (25%)**
+1. *Block 1:* check every sponsor connection (Bitdeer, x402, CRS, Agentverse) and get a "hello" agent answering in ASI:One
+2. *Block 1:* the Fraud Desk and Merchant Scanner chat agents, answering from the fake engine
+3. *Block 2:* the real Bitdeer connection (fake AI until the credits arrive)
+4. *Block 2:* x402 payments: a stand-in for precompute, real testnet payments for the demo
+5. *Block 2:* chat agents switched to the real engine
+6. *Block 3:* the chosen Apify milestone: store-page scanning and malicious stores, **or** the news watchlist and new-scam attackers (picked at kickoff)
+7. *Block 4 (bonus):* the other Apify milestone, and CRS if we get access
+
+**Stanley (50%)**
+1. *Block 1:* the shared contracts
+2. *Block 1:* engine foundations: agents talking, logging to the database
+3. *Block 1:* the defense team: facts, rules, 4 specialists, orchestrator, "check one payment," all on fake AI
+4. *Block 2:* outsider attackers and the 3 waves
+5. *Block 2:* the learning loop: critic, reflection, trust weights, freeze button, spending tracker
+6. *Block 2:* the investigator and its tools
+7. *Block 3:* the Tag-Team Arena: shelves, score refresh, number tuning, defenders' choices, self-made and gap attackers, the held-out exam
+8. *Block 3:* mandates, the mandate specialist and the hijacker
+9. *Block 4 (bonus):* rulebook drafts
+
+**Heads-up:** Stanley's track is the critical path; both later checkpoints depend on it. If it falls behind, use the cut order (waves, then defenders' choices, then the XGBoost voter), or hand mandates to whoever is ahead.
+
+Full details, including the folder layout and each milestone's "done when," are in sections 8.4 and 8.5 of the technical spec.
 
 ---
 

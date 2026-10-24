@@ -750,6 +750,59 @@ data/  bench/  dashboard/   P1
 - **P2:** M0 integration probes, the Agentverse/ASI:One smoke test, the x402 facilitator stub, and the chat-agent shell against `stubs.py`.
 - **P1:** schema and migrations, the M1 catalog and legitimate shoppers, and the dashboard against seeded fake rows.
 
+### 8.5 Per-person milestones
+
+The shared milestones M0–M13 (8.2) stay the definition of done, and their checks still apply. This section splits them into a personal track for each person, in build order, against four time blocks of the ~36 hours:
+
+| Block | Hours (approx.) | Ends at |
+|---|---|---|
+| B1 | 0–8 | **I1:** the engine's real round shows on the dashboard |
+| B2 | 8–20 | **I2 (Saturday afternoon):** chat agents call the real engine; real Bitdeer client and XGBoost voter plugged in |
+| B3 | 20–28 | **I3 (Saturday night):** Eric's attackers and scanner join the arena; precompute starts |
+| B4 | 28–36 | Precompute, benchmark chart, rehearsal, submission |
+
+**Everyone, hour 0–2: S0 Contracts.** Stanley drafts `contracts/` (schemas, `db.sql`, `LLMClient` and `MockLLM`, interfaces, entry-point signatures, `stubs.py`, contract tests). Ryan and Eric review it before starting their own tracks. This is the one step everyone waits on.
+
+#### Ryan (P1): data, dashboard and benchmarks, 25%
+
+| ID | Block | Milestone | Part of | Done when | Depends on |
+|---|---|---|---|---|---|
+| R1 | B1 | **Schema and seed data:** apply `db.sql` to Supabase, plus a seed script that fills every table with fake rows | M0 | Tables exist in Supabase; the seed script fills all of them | S0 |
+| R2 | B1 | **Marketplace:** hand-made catalog (Apify catalog scrape when ready), scripted legitimate shoppers with weird-but-legit personas, identity profiles, mandate data | M1 | M1's checks pass | S0 |
+| R3 | B1 | **Dashboard v1:** transaction stream, curves, freeze button, built on seeded data and calling `stubs.py` entry points | M5 | Playwright smoke test passes on seeded data; at I1, it shows a real round | R1 |
+| R4 | B2 | **Hand-written held-out attackers (6):** `Attacker` implementations, one per attack style plus one buyer-side | M7 (held-out set) | 6 attackers pass the `Attacker` contract tests and are flagged `held_out` | S0 |
+| R5 | B2 | **XGBoost voter and baselines:** `Voter` implementation retrained between rounds; static-rules and XGBoost-alone baselines; benchmark metrics; spend view | M12 | Contract tests pass; at I2, the XGBoost vote is logged in real decisions | S0 |
+| R6 | B3 | **Remaining dashboard panels:** arena grid with spawn arrows, investigator case files, defender decisions, wave view, both-sides view, threat-intel panel, benchmark chart and table, critic agreement, spend | M5 and 7 | Every panel shows real data after I3 | I2 |
+| R7 | B4 | **Precompute and submission:** runner for the full system plus the 4 must-run comparisons × 3 seeds within the $110 allocation; backup recording; submission links | M12, M13 | M12 and M13 checks pass | I3 |
+
+#### Eric (P2): integrations and Apify, 25%
+
+| ID | Block | Milestone | Part of | Done when | Depends on |
+|---|---|---|---|---|---|
+| E1 | B1 | **Integration probes:** Bitdeer model list and prices, x402 facilitator, CRS decision, Agentverse hello agent answering in ASI:One | M0 | `scripts/probe_integrations.py` prints OK/MOCK for each; ASI:One screenshot saved; CRS decision recorded | — |
+| E2 | B1 | **Chat-agent shell:** Fraud Desk and Merchant Scanner with the Chat Protocol and mailbox, registered on Agentverse, calling `stubs.py` | M8 | Three scripted ASI:One prompts get canned answers | S0, E1 |
+| E3 | B2 | **Real Bitdeer client:** `LLMClient` with the model assignments from 2.1, falling back to `MockLLM` while credits are pending | M0 / 2.1 | Contract tests pass; one real call per chat model once credits arrive | S0 |
+| E4 | B2 | **x402 settlement:** `Settlement` stub for precompute, and real Base Sepolia settlement with the buyer and merchant wallets | M13 (x402) | A real testnet payment settles and its hash opens on a block explorer | S0 |
+| E5 | B2 | **Chat agents on the real engine:** switch from `stubs.py` to the real entry points; sandboxing and team allowlist | M8 | M8's checks pass at I2 | E2, S2 |
+| E6 | B3 | **Chosen core Apify milestone:** either M10 (merchant pages, page-reading shoppers, `scan_page`, malicious-merchant attacker) or M11 (scraper, corpus, extraction, watch rules, threat-intel attackers), picked at kickoff | M10 or M11 | That milestone's checks pass; at I3 its attackers and scanner run in the arena | S0, S6 |
+| E7 | B4 | **Bonus:** the other of M10/M11; CRS if access was confirmed | M10/M11, §11 | Its checks pass | E6 |
+
+#### Stanley (P3): core engine, 50%
+
+| ID | Block | Milestone | Part of | Done when | Depends on |
+|---|---|---|---|---|---|
+| S0 | B1 | **Contracts** (see above) | all | Reviewed by Ryan and Eric; contract tests run | — |
+| S1 | B1 | **Engine foundations:** repo, uAgents Bureau, one transaction through the agents into the log tables | M0 | M0's automated checks pass | S0, R1 (or a local Postgres until R1 lands) |
+| S2 | B1 | **Defense skeleton:** feature service, rule DSL, 4 specialists, orchestrator, `check_payment` and `explain`, all on `MockLLM` | M2 | M2's checks pass; at I1 a real round reaches Ryan's dashboard | S1 |
+| S3 | B2 | **Outsider personas and waves** | M3 | M3's checks pass | S2 |
+| S4 | B2 | **Learning loop:** labels, critic and spot-check, reflection, rule cap and vetoes, Hedge weights (including Ryan's voter), freeze, spend tracking | M4 | M4's checks pass (minimum viable demo) | S3 |
+| S5 | B2 | **Investigator** with its 5 tools, escalation budget and timeout (using a stub `PageScanner` until Eric's lands) | M6 | M6's checks pass | S2 |
+| S6 | B3 | **Tag-Team Arena:** archive, re-scoring, learnability, number tuning, defender actions, spawning, gap attacker, coverage map, held-out exam harness (using Ryan's R4 attackers) | M7 | M7's checks pass; Eric's attackers can be inserted at I3 | S4, R4 |
+| S7 | B3 | **Mandates and hijacker:** mandate specialist, local mandate matching, hard veto, behavior baseline, hijacker persona | M9 | M9's checks pass | S4 |
+| S8 | B4 | **Stretch:** rulebook drafts | 3.9 point 4 | Its own test file passes | S6 |
+
+**Load warning.** Stanley's track is the critical path: I1 needs S2, I2 needs S2–S5, I3 needs S6. If Stanley falls behind, use the cut order in 8.3 (waves, then defender actions, then the XGBoost voter as voter), or move S7 (mandates) to whichever of Ryan or Eric is ahead. Mandates touch only the feature service, one specialist and one persona, so they hand off cleanly once S4 is done.
+
 ## 9. Known limitations
 - Traffic is simulated (real catalog, scripted shoppers); labels come from the simulation; chargeback delay isn't modeled.
 - LLM rule rewriting isn't gradient-based RL and can be unstable; the critic, false-positive cap and rule cap reduce this but don't eliminate it.
