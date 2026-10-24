@@ -17,6 +17,7 @@ from contracts.schemas import (
     AttackStyle,
     Decision,
     FeatureVector,
+    GroundTruth,
     Mandate,
     PageScan,
     Playbook,
@@ -179,3 +180,29 @@ class StubThreatIntel:
 class StubSettlement:
     def settle(self, tx: Transaction, decision: Decision) -> SettlementResult:
         return SettlementResult(tx_id=tx.tx_id, settled=decision.action == Action.ALLOW)
+
+
+class StubDefense:
+    """A trivial contender: blocks anything over a fixed amount, and 'learns' by lowering it."""
+
+    name = "stub_threshold"
+
+    def __init__(self, threshold_cents: int = 50_000):
+        self.threshold_cents = threshold_cents
+        self.frozen = False
+
+    def decide(self, tx: Transaction, features: FeatureVector) -> Decision:
+        block = tx.amount_cents > self.threshold_cents
+        vote = Vote(tx_id=tx.tx_id, voter=self.name, score=0.9 if block else 0.1,
+                    vote=Action.BLOCK if block else Action.ALLOW)
+        return Decision(tx_id=tx.tx_id, action=vote.vote, weighted_score=vote.score, votes=[vote])
+
+    def learn(self, round: int, labeled: list[tuple[Transaction, FeatureVector, GroundTruth]]) -> None:
+        if self.frozen:
+            return
+        missed = [tx.amount_cents for tx, _, truth in labeled if truth.is_fraud and tx.amount_cents <= self.threshold_cents]
+        if missed:
+            self.threshold_cents = max(1, min(missed) - 1)
+
+    def freeze(self, on: bool) -> None:
+        self.frozen = on

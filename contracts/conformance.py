@@ -4,13 +4,14 @@ Use them from your own tests, e.g. in bench/tests: `check_voter(XGBoostVoter())`
 """
 
 from contracts.entrypoints import Engine, NotAllowed
-from contracts.interfaces import Attacker, PageScanner, Settlement, ThreatIntelSource, Voter
+from contracts.interfaces import Attacker, Defense, PageScanner, Settlement, ThreatIntelSource, Voter
 from contracts.schemas import (
     Action,
     AttackerSource,
     AttackFeedback,
     Decision,
     FeatureVector,
+    GroundTruth,
     Mandate,
     PageScan,
     RoundMetrics,
@@ -66,6 +67,21 @@ def check_settlement(settlement: Settlement) -> None:
     tx = sample_tx()
     blocked = Decision(tx_id=tx.tx_id, action=Action.BLOCK, weighted_score=0.9, votes=[])
     assert settlement.settle(tx, blocked).settled is False, "blocked payments must never settle"
+
+
+def check_defense(defense: Defense) -> None:
+    assert isinstance(defense, Defense)
+    tx = sample_tx("tx-defense", amount_cents=2_500)
+    features = FeatureVector(tx_id=tx.tx_id, values={"amount_cents": 2_500.0})
+    before = defense.decide(tx, features)
+    assert before.tx_id == tx.tx_id
+    labeled = [(tx, features, GroundTruth(tx_id=tx.tx_id, is_fraud=True))]
+    defense.freeze(True)
+    defense.learn(1, labeled)
+    frozen = defense.decide(tx, features)
+    assert frozen.action == before.action, "a frozen defense must not change when learn() is called"
+    defense.freeze(False)
+    defense.learn(2, labeled)
 
 
 def check_engine(engine: Engine, team_sender: str) -> None:
