@@ -116,6 +116,7 @@ STATIC_FEATURES: dict[str, Lane] = {
     "m_new_merchant_for_agent": Lane.MANDATE,
     "m_new_category_for_agent": Lane.MANDATE,
     "m_hour_shift": Lane.MANDATE,
+    "m_day_spend_vs_agent": Lane.MANDATE,
 }
 
 # Which side of a feature looks like fraud. Reflection may only write rules in this direction, so a
@@ -129,10 +130,11 @@ SUSPICIOUS_WHEN: dict[str, str] = {
     "i_identity_status": "high", "i_principal_age_s": "low",
     "m_over_cap_ratio": "high", "m_daily_spend_ratio": "high", "m_category_allowed": "low", "m_merchant_allowed": "low",
     "m_request_match": "low", "m_amount_vs_agent": "high", "m_new_merchant_for_agent": "high",
-    "m_new_category_for_agent": "high", "m_hour_shift": "high",
+    "m_new_category_for_agent": "high", "m_hour_shift": "high", "m_day_spend_vs_agent": "high",
 }
 BASELINE_MIN = 3  # payments an agent needs before its baseline means anything
 BASELINE_KEEP = 50
+BASELINE_MIN_DAYS = 2  # honest days an agent needs before its usual daily spend means anything
 
 SEED_PRIMITIVES: dict[str, tuple[Lane, Primitive]] = {
     "t_count_agent_60s": (Lane.TIMING, Primitive("agent_id", "tx", "count", 60)),
@@ -173,6 +175,12 @@ class FeatureCatalog:
     def owner(self, name: str) -> Lane | None:
         return self.lanes.get(name)
 
+    def about_payer(self, name: str) -> bool:
+        """False for a feature that describes a merchant's recent traffic rather than this payment: it has
+        the same value for every payer at that merchant, honest ones included."""
+        primitive = self.primitives.get(name)
+        return primitive is None or primitive.entity != "merchant_id"
+
 
 class FeatureService:
     """Stateful: transactions must be fed in time order. `commit=False` computes features without
@@ -192,6 +200,7 @@ class FeatureService:
         self.agents_of_principal: dict[str, set] = defaultdict(set)
         self.principals_of_agent: dict[str, set] = defaultdict(set)
         self.spend_principal: dict[str, deque] = defaultdict(deque)
+        self.attempted_today: dict[str, tuple[float, int]] = {}  # agent -> (day, cents attempted that day)
         self.clock = 0.0  # latest committed transaction time
 
 
@@ -283,15 +292,28 @@ class FeatureService:
         mean_hour = (math.atan2(sum(map(math.sin, angles)), sum(map(math.cos, angles))) / (2 * math.pi) * 24) % 24
         hour = (tx.ts % DAY_SECONDS) / 3600
         shift = abs(hour - mean_hour)
-        return {"m_amount_vs_agent": tx.amount_cents / median,
-                "m_new_merchant_for_agent": 0.0 if any(p[0] == tx.merchant_id for p in past) else 1.0,
-                "m_new_category_for_agent": 0.0 if any(p[1] == tx.category for p in past) else 1.0,
-                "m_hour_shift": min(shift, 24 - shift)}
+        out = {"m_amount_vs_agent": tx.amount_cents / median,
+               "m_new_merchant_for_agent": 0.0 if any(p[0] == tx.merchant_id for p in past) else 1.0,
+               "m_new_category_for_agent": 0.0 if any(p[1] == tx.category for p in past) else 1.0,
+               "m_hour_shift": min(shift, 24 - shift)}
+        # Today's attempted spend through this agent (this payment included) against its usual honest day:
+        # a hijacker drains the account in a day, an owner rarely spends many times their norm.
+        today = tx.ts // DAY_SECONDS
+        days: dict[float, int] = defaultdict(int)
+        for p in past:
+            if p[4] < today:
+                days[p[4]] += p[2]
+        if len(days) >= BASELINE_MIN_DAYS:
+            usual = sorted(days.values())[len(days) // 2] or 1
+            day, attempted = self.attempted_today.get(tx.agent_id, (today, 0))
+            out["m_day_spend_vs_agent"] = ((attempted if day == today else 0) + tx.amount_cents) / usual
+        return out
 
     def learn_baseline(self, tx: Transaction) -> None:
         """Add a payment known to be honest to its agent's baseline. Called after the round from labeled
         traffic, so a hijacker's own payments never teach the baseline that its behavior is normal."""
-        self.baseline[tx.agent_id].append((tx.merchant_id, tx.category, tx.amount_cents, (tx.ts % DAY_SECONDS) / 3600))
+        self.baseline[tx.agent_id].append((tx.merchant_id, tx.category, tx.amount_cents, (tx.ts % DAY_SECONDS) / 3600,
+                                           tx.ts // DAY_SECONDS))
 
     def _commit(self, tx: Transaction, record: dict, gap: float | None) -> None:
         now = tx.ts
@@ -307,6 +329,8 @@ class FeatureService:
         if gap is not None:
             self.gaps_agent[tx.agent_id].append(gap)
         self.last_ts_agent[tx.agent_id] = now
+        day, attempted = self.attempted_today.get(tx.agent_id, (now // DAY_SECONDS, 0))
+        self.attempted_today[tx.agent_id] = (now // DAY_SECONDS, (attempted if day == now // DAY_SECONDS else 0) + tx.amount_cents)
         self.agents_of_principal[tx.principal_id].add(tx.agent_id)
         self.principals_of_agent[tx.agent_id].add(tx.principal_id)
 

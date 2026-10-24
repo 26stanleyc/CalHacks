@@ -422,6 +422,25 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** ⭐ talking point "it reads the news". A report arrives, a watch rule appears in the specialist's lane, and the new attacker's first-contact catch rate shows on the dashboard.
 
+### Sat Oct 24, 18:00 · Hardening while waiting on Bitdeer · Stanley
+**Did:**
+- **Experiment runner:** `python -m engine.experiments` runs the full system and three ablations over several seeds in parallel and writes `evidence/experiments/`.
+- **False-positive spikes fixed** (full system, 3 seeds × 10 rounds: 5 rounds over the 2% cap → 0; max FP 3.0% → 2.0%; mean 0.97% → 0.55%):
+  - a learned rule must look at the payer, not only at a merchant's recent traffic;
+  - an untrusted XGBoost voter sits out instead of voting at the floor, and its votes no longer trigger escalations;
+  - the voter is calibrated on its worst recent round;
+  - threat-intel duplicates are judged by their signals.
+- **Hijacker:** a new feature, today's spend against the agent's usual honest day. Caught 36% → 41%; still short of 80%.
+- **Real-model readiness:** `python -m engine.llm_readiness` measures every prompt the engine sends (about 150k tokens a round, roughly $0.04 at assumed prices) and saves one per role. `--replay` sends them to Bitdeer once credits are live. 4 prompt templates that didn't name all their answer fields are fixed.
+
+**Proof:**
+- `evidence/experiments/README.md` (before/after);
+- `evidence/llm-readiness.md`;
+- `engine/tests/test_llm_readiness.py`;
+- the M6 early-escalation target change in `evidence/target-changes.md`.
+
+**Demo angle:** none, behind the scenes. The FP fix keeps the demo's FP line under the cap.
+
 ---
 
 ## Entry template

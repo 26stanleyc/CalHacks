@@ -151,9 +151,13 @@ class SpawnDraft(BaseModel):
 SPAWN_INSTRUCTIONS = """You build an attacker to test a fraud defense from the inside. Your parent is the {parent}
 specialist: you can see its rule names and rough thresholds, and your job is to get fraud past the
 WHOLE defense, not just your parent. Target shelf: style {style}, amount {amount}, side {side}.
-Write a playbook: a strategy in plain words, a starting value and an allowed [low, high] range for
-every number in realism_limits (inside those limits), and memos if memo_rate > 0. A cheap optimizer
-will tune the numbers against a frozen copy of the defense afterwards."""
+Write a playbook:
+- strategy: one or two sentences in plain words.
+- params: a starting value for every number in realism_limits, each inside its limits.
+- param_bounds: an allowed [low, high] range for each number, inside realism_limits.
+- free_text_payloads: memos to send if memo_rate > 0.
+- reasoning: one line on why this should get past the whole defense.
+A cheap optimizer will tune the numbers against a frozen copy of the defense afterwards."""
 
 STYLE_DEFAULTS = {
     AttackStyle.BURST: {"interval_s": 6.0, "n_accounts": 1.0, "n_merchants": 8.0, "memo_rate": 0.0},

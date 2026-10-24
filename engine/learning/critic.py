@@ -50,7 +50,8 @@ class RuleVerdict(BaseModel):
 ASSIGN_RUBRIC = """You are the critic for a team of fraud specialists. Each specialist only sees its own lane's
 features. For each missed fraud payment, name the one lane whose features best show it is fraud
 (the feature values furthest outside the honest reference ranges), or "uncovered" if no lane's
-features look unusual. Use only these lane names: {lanes}, or "uncovered". Give a one-line reason."""
+features look unusual. Use only these lane names: {lanes}, or "uncovered". Answer with assignments: one
+{{"tx_id", "lane", "reason"}} per missed payment, the reason in one line."""
 
 VETO_RUBRIC = """You are the critic for a fraud defense. A specialist proposes a new rule. Approve it only if:
 - it catches real fraud on the replayed traffic (fires_on_fraud > 0, ideally newly_caught_misses > 0)

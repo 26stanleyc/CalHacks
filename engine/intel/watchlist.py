@@ -61,7 +61,8 @@ MOCK_PATTERNS = (
     (("gift card", "every 20 seconds"), "velocity", [{"feature": "v_sum_agent_3600s", "op": ">=", "value": 60_000},
                                                      {"feature": "v_count_principal_3600s", "op": ">=", "value": 4}]),
     (("synthetic accounts", "newly created accounts", "freshly created"), "graph",
-     [{"feature": "g_new_agent_tx_merchant_600s", "op": ">=", "value": 6},
+     [{"feature": "g_agent_new", "op": ">=", "value": 1},
+      {"feature": "g_new_agent_tx_merchant_600s", "op": ">=", "value": 6},
       {"feature": "g_principals_per_merchant_600s", "op": ">=", "value": 6}]),
     (("just under",), "velocity", [{"feature": "v_near_threshold_count_agent_3600s", "op": ">=", "value": 3}]),
     (("middle of the night", "overnight"), "mandate", [{"feature": "m_hour_shift", "op": ">=", "value": 8},
@@ -70,6 +71,14 @@ MOCK_PATTERNS = (
     (("small and regular",), "timing", [{"feature": "t_gap_cv_agent", "op": "<=", "value": 0.05},
                                         {"feature": "t_count_agent_600s", "op": ">=", "value": 2}]),
 )
+
+
+def _comparisons(when: dict) -> list[dict]:
+    """The comparisons inside a rule condition, flattened."""
+    if "feature" in when:
+        return [when]
+    inner = when.get("all") or when.get("any") or []
+    return [c for part in inner for c in _comparisons(part)] if not when.get("not") else _comparisons(when["not"])
 
 
 def _number(text: str, pattern: str, default: float) -> float:
@@ -202,9 +211,11 @@ class Watchlist:
             self.items.append(item)
             return item
         when = {"all": signals} if len(signals) > 1 else signals[0]
-        key = json.dumps(when, sort_keys=True)
-        if key in self.patterns or any(r.when == when for s in loop.pipeline.specialists.values() for r in s.rulebook.rules):
-            return None  # the same pattern was already seen (watched, promoted or not): skip the duplicate report
+        key = json.dumps(sorted((s["feature"], s["op"]) for s in signals))  # the same signals, whatever the thresholds
+        covered = {json.dumps(sorted((c["feature"], c["op"]) for c in _comparisons(r.when)))
+                   for s in loop.pipeline.specialists.values() for r in s.rulebook.rules}
+        if key in self.patterns or key in covered:
+            return None  # a rule on the same signals exists or the pattern was already seen: skip the duplicate
         self.patterns.add(key)
         params = playbooks.clamp({k: float(v) for k, v in extraction.playbook.items() if k in REALISM}, REALISM)
         if not extraction.free_text_payloads:
@@ -229,6 +240,9 @@ class Watchlist:
             validate_rule(rule, lane, loop.pipeline.catalog)
         except Exception as exc:
             item.critic_verdict = f"invalid: {exc}"
+            return
+        if not any(loop.pipeline.catalog.about_payer(n) for n in condition_features(rule.when)):
+            item.critic_verdict = "vetoed: it only describes the merchant's recent traffic, not the payer"
             return
         book = loop.pipeline.specialists[lane].rulebook
         if sum(r.watch for r in book.rules) >= MAX_WATCH_RULES:
@@ -309,7 +323,7 @@ class Watchlist:
                 self.source.seen.add(report.report_id)
             if not row["granted"] or detail.get("when") is None:
                 continue
-            self.patterns.add(json.dumps(detail["when"], sort_keys=True))
+            self.patterns.add(json.dumps(sorted((c["feature"], c["op"]) for c in _comparisons(detail["when"]))))
             item = IntelItem(report, watch_rule_id=detail.get("watch_rule_id"), when=detail["when"],
                              params=detail["params"], payloads=detail.get("payloads") or [])
             self._spawn(row["round"], report, item.params, item.payloads, item)

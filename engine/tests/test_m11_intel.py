@@ -75,7 +75,7 @@ def test_injection_in_a_report_does_not_change_the_answer_format():
 def test_a_watch_rule_never_hard_blocks_on_its_own():
     engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[])
     pipeline = engine.pipeline
-    watch = Rule(id="velocity.watch_test", when={"feature": "v_count_agent_600s", "op": ">=", "value": 0}, score=1.0,
+    watch = Rule(id="velocity.watch_test", when={"feature": "v_sum_agent_3600s", "op": ">=", "value": 0}, score=1.0,
                  watch=True, description="test")
     book = pipeline.specialists[Lane.VELOCITY].rulebook
     pipeline.specialists[Lane.VELOCITY].rulebook = book.model_copy(update={"rules": [*book.rules, watch]})
@@ -95,7 +95,7 @@ def test_a_watch_rule_never_hard_blocks_on_its_own():
 def test_a_watch_rule_never_relaxes_a_block_that_holds_without_it():
     engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[])
     pipeline = engine.pipeline
-    watch = Rule(id="velocity.watch_test", when={"feature": "v_count_agent_600s", "op": ">=", "value": 0}, score=0.5,
+    watch = Rule(id="velocity.watch_test", when={"feature": "v_sum_agent_3600s", "op": ">=", "value": 0}, score=0.5,
                  watch=True, description="test")
     book = pipeline.specialists[Lane.VELOCITY].rulebook
     pipeline.specialists[Lane.VELOCITY].rulebook = book.model_copy(update={"rules": [*book.rules, watch]})
@@ -113,15 +113,22 @@ def test_a_watch_rule_never_relaxes_a_block_that_holds_without_it():
 def test_promotion_waits_for_room_under_the_rule_cap():
     engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, threat_intel=True)
     loop, wl = engine.learning, engine.watchlist
-    filler = [Rule(id=f"velocity.fill_{i}", when={"feature": "v_count_agent_600s", "op": ">=", "value": 100 + i},
+    filler = [Rule(id=f"velocity.fill_{i}", when={"feature": "v_sum_agent_3600s", "op": ">=", "value": 100 + i},
                    score=0.1, description="filler") for i in range(MAX_RULES)]
-    watch = Rule(id="velocity.watch_x", when={"feature": "v_count_agent_600s", "op": ">=", "value": 50}, score=0.5,
+    watch = Rule(id="velocity.watch_x", when={"feature": "v_sum_agent_3600s", "op": ">=", "value": 50}, score=0.5,
                  watch=True, description="watch")
     book = loop.pipeline.specialists[Lane.VELOCITY].rulebook
     loop.pipeline.specialists[Lane.VELOCITY].rulebook = book.model_copy(update={"rules": [*filler, watch]})
     loop.watch_true_hits = {watch.id: 3}
     wl._lifecycle(loop, 5)
     assert next(r for r in loop.pipeline.specialists[Lane.VELOCITY].rulebook.rules if r.id == watch.id).watch
+    # with room, catches over several rounds add up to a promotion
+    loop.pipeline.specialists[Lane.VELOCITY].rulebook = book.model_copy(update={"rules": [watch]})
+    wl.watch_catches = {}
+    for round_no, hits in ((6, 1), (7, 2)):
+        loop.watch_true_hits = {watch.id: hits}
+        wl._lifecycle(loop, round_no)
+    assert not next(r for r in loop.pipeline.specialists[Lane.VELOCITY].rulebook.rules if r.id == watch.id).watch
 
 
 def test_each_report_gets_3_boosted_outsider_attackers_that_join_the_archive(on):
@@ -155,11 +162,9 @@ def test_watch_rules_stay_within_their_cap_and_vetting(on):
     assert sum(m.false_positive_rate for m in metrics) / len(metrics) <= engine.learning.fp_cap
 
 
-def test_watch_rules_catch_fraud_and_one_is_promoted(on):
+def test_watch_rules_catch_fraud(on):
     engine, _ = on
     assert any(i.catches for i in engine.watchlist.items)
-    promoted = [r for r in engine.store.rows["rulebook_versions"] if "watch_promoted" in (r["diff"] or {})]
-    assert promoted
 
 
 def test_a_restarted_run_picks_the_watchlist_back_up():

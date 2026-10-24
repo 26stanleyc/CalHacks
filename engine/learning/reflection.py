@@ -45,7 +45,10 @@ that direction, never the other way. Rules:
   or {{"all": [...]}} / {{"any": [...]}} / {{"not": ...}} of those, at most 8 comparisons
 - score: 0 to 1, how sure the rule is (0.6 or more makes your vote a block)
 - description: one plain sentence
-You have {room} free rule slots of {cap}; to add more, remove rules first."""
+- at least one comparison must be on a feature about the payer ("about": "payer"); a feature about the
+  merchant's recent traffic has the same value for every payer there, honest ones included
+You have {room} free rule slots of {cap}; to add more, remove rules first.
+Answer with add (the new rules), remove (rule ids) and notes (one optional line)."""
 
 
 def _short(name: str) -> str:
@@ -79,6 +82,8 @@ def _mock_reflect(data: dict) -> ReflectionProposal:
     singles = []
     for name, stats in reference.items():
         side = stats.get("suspicious_when", "either")
+        if stats.get("about") == "merchant":
+            continue  # alone, it would flag every payer at that merchant
         for high in (True, False):
             if side == ("low" if high else "high"):
                 continue
@@ -121,6 +126,8 @@ def _best_pair(misses: list[dict], reference: dict) -> tuple[int, list[dict]] | 
     for i, a in enumerate(names):
         for b in names[i + 1:]:
             both = tails[a][1] & tails[b][1]
+            if all(reference[n].get("about") == "merchant" for n in (a, b)):
+                continue
             if len(both) >= 3 and (best is None or len(both) > best[0]):
                 conds = [{"feature": n, "op": ">=" if tails[n][2] else "<=", "value": tails[n][0]} for n in (a, b)]
                 best = (len(both), conds)

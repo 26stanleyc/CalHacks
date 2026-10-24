@@ -149,7 +149,8 @@ def test_specialists_only_see_their_own_lane():
         # a lane's slice holds only its own features; only agent baselines may be missing (no history yet)
         missing = set(pipeline.catalog.lane_features(lane)) - set(sliced.values)
         assert set(sliced.values) <= set(pipeline.catalog.lane_features(lane))
-        assert missing <= {"m_amount_vs_agent", "m_new_merchant_for_agent", "m_new_category_for_agent", "m_hour_shift"}
+        assert missing <= {"m_amount_vs_agent", "m_new_merchant_for_agent", "m_new_category_for_agent", "m_hour_shift",
+                           "m_day_spend_vs_agent"}
 
 
 def test_features_never_read_the_hidden_attacker_id():

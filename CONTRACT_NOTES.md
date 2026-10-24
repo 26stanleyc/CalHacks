@@ -310,3 +310,6 @@ No schema changes. M11 uses the existing `ThreatReport`, `ThreatPattern`, `Threa
   - `rulebook_versions` rows with `deployed = false` and no veto when reflection writes a draft
     (drafts are on only with `drafts=True`). The `draft` column is the draft's stable id within
     its lane.
+- **For Ryan:** a new mandate-lane feature, `m_day_spend_vs_agent`: today's attempted spend through the agent
+  against its usual honest day. It's missing until the agent has 2 honest days. The XGBoost voter picks it
+  up automatically.

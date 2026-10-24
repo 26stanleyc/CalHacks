@@ -130,7 +130,7 @@ def test_agent_baselines_learn_only_from_honest_payments(run):
     hijacked = {(t.agent_id, t.merchant_id, t.amount_cents) for t in engine.store.transactions
                 if t.attacker_id == hijacker.attacker_id}
     learned = {(agent, merchant, amount) for agent, rows in engine.pipeline.features.baseline.items()
-               for merchant, _, amount, _ in rows}
+               for merchant, _, amount, *_ in rows}
     assert not hijacked & learned
 
 

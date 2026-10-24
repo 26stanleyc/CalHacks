@@ -177,22 +177,29 @@ class LearningLoop:
     def _calibrate_voters(self, weights: dict[str, float], latest: list[Record]) -> dict[str, float]:
         """Each extra voter's cap, vetted like a rule but out of sample: a shadow copy trained on every
         round but the latest is replayed on the latest round's honest payments, and the cap is the
-        largest weight (up to 1) that keeps the defense under VOTER_AT of the FP cap there. With no
-        earlier round to train on, a voter is capped at the floor."""
+        largest weight (up to 1) that keeps the defense under VOTER_AT of the FP cap there. A voter
+        with too few labeled rounds, or one that goes over the target even at the floor, sits out
+        (weight 0): under the cost matrix even a 5% vote can block an expensive honest payment."""
         caps = {}
-        recent = [r for rnd in list(self.honest)[-2:] for r in rnd] if len(self.honest) > 1 else latest
-        honest = [r for r in recent if not r.truth.is_fraud and not r.truth.breaches_mandate]
+        recent = list(self.honest)[-2:] if len(self.honest) > 1 else [latest]
+        rounds = [[r for r in rnd if not r.truth.is_fraud and not r.truth.breaches_mandate] for rnd in recent]
+        rounds = [rnd for rnd in rounds if rnd]
+        honest = [r for rnd in rounds for r in rnd]
         target = self.fp_cap * VOTER_AT
         for voter in self.pipeline.voters:
             if len(self.example_rounds) < MIN_HONEST_ROUNDS or not honest:  # too few labels to trust it yet
-                caps[voter.name] = hedge.FLOOR
+                caps[voter.name] = 0.0
                 continue
             shadow = copy.deepcopy(voter)  # trained without the rounds it's judged on
             held = 2 if len(self.example_rounds) > 2 else 1
             shadow.retrain([e for rnd in self.example_rounds[:-held] for e in rnd])
             cap = 1.0
-            while cap > hedge.FLOOR and self._shadow_fp(shadow, {**weights, voter.name: cap}, honest) > target:
+            # judged on its worst held-out round, not the average: drift shows up one round at a time
+            worst = lambda c: max(self._shadow_fp(shadow, {**weights, voter.name: c}, rnd) for rnd in rounds)
+            while cap > hedge.FLOOR and worst(cap) > target:
                 cap = max(hedge.FLOOR, cap * 0.7)
+            if cap == hedge.FLOOR and worst(cap) > target:
+                cap = 0.0
             caps[voter.name] = round(cap, 6)
         return caps
 
@@ -391,6 +398,9 @@ class LearningLoop:
             outcome["removed"] = removed
         for spec in proposal.add[:MAX_RULES_PER_REFLECTION]:
             rule, problem = self._candidate(spec, lane)
+            if problem is None and not any(self.pipeline.catalog.about_payer(n) for n in condition_features(rule.when)):
+                problem = ("it only describes the merchant's recent traffic, so it would flag every payer there, honest "
+                           "ones included; pair it with a signal about the payer")
             if problem is None and regular_rules(self.pipeline.specialists[lane].rulebook) >= MAX_RULES:
                 problem = f"the {lane.value} rulebook is at its cap of {MAX_RULES}; merge or replace a rule first"
             if problem is None and len(self.honest) < MIN_HONEST_ROUNDS:
@@ -450,5 +460,6 @@ def quantiles(reference: LegitReference, names: list[str], catalog) -> dict[str,
             n = len(column) - 1
             out[name] = {"min": column[0], "p01": column[int(0.01 * n)], "p05": column[int(0.05 * n)],
                          "p50": column[int(0.5 * n)], "p95": column[int(0.95 * n)], "p99": column[int(0.99 * n)],
-                         "max": column[-1], "suspicious_when": catalog.direction(name)}
+                         "max": column[-1], "suspicious_when": catalog.direction(name),
+                         "about": "payer" if catalog.about_payer(name) else "merchant"}
     return out

@@ -38,7 +38,7 @@ def test_5_to_10_percent_of_payments_escalate_and_never_more_than_the_cap(ten_ro
         assert escalated <= engine.escalation_cap
     rates = [m.escalation_rate for m in metrics]
     assert all(r <= 0.10 for r in rates), rates
-    assert 0.05 <= max(rates[:3]) <= 0.10, rates
+    assert 0.05 <= max(rates[:5]) <= 0.10, rates  # early: before the case memory fills (evidence/target-changes.md)
 
 
 def test_escalated_cases_use_at_most_4_tools_and_finish_in_5_seconds(ten_rounds):

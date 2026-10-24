@@ -415,7 +415,8 @@ class FraudEngine:
         escalate."""
         if decision.vetoed_by:
             return False
-        split = decision.action != Action.BLOCK and any(v.vote == Action.BLOCK for v in decision.votes)
+        split = decision.action != Action.BLOCK and any(v.vote == Action.BLOCK and decision.weights.get(v.voter, 1.0) > 0
+                                                        for v in decision.votes)  # a voter sitting out doesn't count
         if not (split or self.pipeline.orchestrator.is_close_call(decision.weighted_score, tx.amount_cents)):
             return False
         return not self.investigator.memory.familiar(features, decision.action != Action.ALLOW)

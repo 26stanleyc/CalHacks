@@ -90,6 +90,7 @@ settled dollars minus the cost of identities, blocked attempts and failed challe
 - params: a value for every number in realism_limits, each inside its limits.
 - param_bounds: optional narrower [low, high] ranges, inside realism_limits.
 - free_text_payloads: memos to send if memo_rate > 0.
+- reasoning: one line on what went wrong and why this should work better.
 Change something meaningful; don't repeat a strategy from history that also failed."""
 
 # What the mock outsider tries after a bad wave, in order: (strategy, {param: (op, amount)}).
