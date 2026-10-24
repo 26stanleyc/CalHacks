@@ -509,7 +509,7 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
   - the same seed produces identical traffic (same hash of transactions)
 - *Not blocking:* the Apify catalog swap.
 
-**M2 — Defense skeleton.** Feature service (primitives), DSL evaluator, 4 specialists with seed rulebooks, orchestrator with fixed weights and the cost matrix, plus the `check_payment` and `explain` entry points.
+**M2 — Defense skeleton.** Feature service (primitives), DSL evaluator, 4 specialists with seed rulebooks (timing, entity graph, identity, velocity; the fifth, mandate, joins in M9, after which every "4" below becomes 5), orchestrator with fixed weights and the cost matrix, plus the `check_payment` and `explain` entry points.
 - *Verify:*
   - on the M1 legitimate traffic, the false-positive rate (block or step-up) is at most 2%
   - a scripted-fraud suite (50 transactions per persona) is caught (block or step-up) at least 70% of the time
@@ -519,8 +519,8 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
   - the DSL evaluator rejects a rule that uses a feature outside its lane, or an unknown feature
 
 **M3 — Outsider personas and waves.** The named outsider lineages (formerly the persona swarm): fixed playbooks first, then Bitdeer-written playbooks from outcome-only feedback, plus step-up pass rates. Rounds run in 3 waves, with outsiders re-tuning between waves. Until the archive exists (M7), they run on their own.
-- *Verify:* over 3 rounds:
-  - each of the 4 personas emits at least 100 transactions per round
+- *Verify:* over 3 rounds of the standard 400-payment precompute size (4.1):
+  - each of the 4 personas built so far emits at least 25 transactions per round (about 100 attack payments in total, leaving the majority of the 400 for legitimate traffic); the hijacker and malicious merchant join in M9 and M10
   - personas receive only outcomes (allowed / step-up / blocked), never rule ids or which specialist objected (assert)
   - extraction is logged per persona per round
   - at least 95% of Bitdeer-written playbooks pass JSON-schema validation; invalid ones fall back to the previous playbook and are logged
@@ -549,9 +549,9 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
   - numbers shown match `get_metrics`
 - *Verify (manual):* a screenshot of each panel.
 
-**M6 — Escalation with the investigator.** The tool-using investigator (3.3) with its 5 tools, hold with timeout, quarantined free text, injection feature, distillation into reflection, escalation budget (10%, hard cap 100).
+**M6 — Escalation with the investigator.** The tool-using investigator (3.3) with its 5 tools, hold with timeout, quarantined free text, injection feature, distillation into reflection, escalation budget (10%, hard cap 100 in live and dev rounds, 40 in precompute rounds).
 - *Verify:*
-  - 5–10% of transactions escalate, never more than 100 per round
+  - 5–10% of transactions escalate, never more than the round's cap (40 in precompute rounds, 100 otherwise)
   - p95 decision time for escalated transactions is at most 5 s, with at most 4 tool calls per case
   - a forced LLM timeout falls back to the code decision
   - on a fixture case whose signal is a poisoned merchant page, the investigator calls `scan_page` and cites it in its reasons
