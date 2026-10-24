@@ -1,0 +1,81 @@
+import os
+import re
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
+
+from contracts import config, conformance, schemas, stubs
+from contracts.llm import LLMClient, Message, MockLLM, mock_instance
+
+DB_SQL = Path(__file__).resolve().parent.parent / "db.sql"
+
+
+def test_stubs_pass_conformance():
+    conformance.check_voter(stubs.StubVoter())
+    conformance.check_attacker(stubs.StubAttacker())
+    conformance.check_page_scanner(stubs.StubPageScanner())
+    conformance.check_threat_intel(stubs.StubThreatIntel())
+    conformance.check_settlement(stubs.StubSettlement())
+    conformance.check_engine(stubs.StubEngine(allowlist={"team"}), team_sender="team")
+
+
+def test_mock_llm_returns_valid_instances_for_every_schema():
+    llm = MockLLM()
+    assert isinstance(llm, LLMClient)
+    models = [obj for obj in vars(schemas).values()
+              if isinstance(obj, type) and issubclass(obj, schemas.BaseModel) and obj.__module__ == schemas.__name__]
+    for model in models:
+        response = llm.complete([Message(role="user", content="hi")], role="critic", response_schema=model)
+        assert isinstance(response.parsed, model)
+
+
+def test_mock_llm_uses_canned_factories():
+    canned = {schemas.Vote: lambda _: schemas.Vote(tx_id="t", voter="timing", score=0.7, vote=schemas.Action.BLOCK)}
+    response = MockLLM(canned).complete([], role="timing", response_schema=schemas.Vote)
+    assert response.parsed.score == 0.7
+
+
+def test_schema_bounds_are_enforced():
+    with pytest.raises(ValidationError):
+        schemas.Vote(tx_id="t", voter="timing", score=1.5, vote=schemas.Action.ALLOW)
+    with pytest.raises(ValidationError):
+        schemas.ShelfState(key=mock_instance(schemas.ShelfKey), attacker_ids=["a", "b", "c", "d"])
+
+
+def test_shelf_smoothing_matches_spec():
+    shelf = schemas.ShelfState(key=mock_instance(schemas.ShelfKey), attempts=8, caught=4)
+    assert shelf.catch_rate == pytest.approx(5 / 10)
+    assert shelf.learnability == pytest.approx(0.25)
+
+
+def test_attacker_model_is_from_the_other_family():
+    for parent in (*config.GLM_MODELS, *config.DEEPSEEK_MODELS):
+        child = config.attacker_model_for(parent)
+        assert config.family(child) != config.family(parent)
+    assert config.MODEL_ROLES["held_out"] not in {m for r, m in config.MODEL_ROLES.items() if r != "held_out"}
+
+
+def test_db_sql_defines_every_logged_table():
+    sql = DB_SQL.read_text()
+    tables = set(re.findall(r"create table if not exists (\w+)", sql))
+    expected = {
+        "runs", "transactions", "ground_truth", "features", "votes", "decisions", "escalations", "settlements",
+        "rulebook_versions", "reflections", "features_added", "attackers", "playbook_waves", "archive_snapshots",
+        "archive_events", "defender_actions", "critic_checks", "threat_reports", "mandates", "merchant_pages",
+        "shopper_sessions", "round_metrics", "llm_spend", "chat_requests",
+    }
+    assert expected <= tables
+
+
+@pytest.mark.skipif(os.environ.get("CONTRACTS_DB_TEST") != "1", reason="set CONTRACTS_DB_TEST=1 to apply db.sql to a throwaway schema")
+def test_db_sql_applies_cleanly():
+    psycopg = pytest.importorskip("psycopg")
+    with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as conn:
+        conn.execute("drop schema if exists contracts_check cascade")
+        conn.execute("create schema contracts_check")
+        try:
+            conn.execute("set search_path to contracts_check")
+            conn.execute(DB_SQL.read_text())
+        finally:
+            conn.execute("drop schema if exists contracts_check cascade")

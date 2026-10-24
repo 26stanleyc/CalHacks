@@ -4,5 +4,15 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "apify-client>=3.3.0",
+    "pydantic>=2.7",
     "python-dotenv>=1.2.4",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["contracts/tests"]
+pythonpath = ["."]
