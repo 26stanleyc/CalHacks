@@ -335,9 +335,9 @@ To fit, each precomputed round uses 400 payments and at most 40 close calls. Fix
 **If time runs out:** stop after step 6 (solid project), step 8 (the main pitch), step 10 (strong pitch), or after whichever of steps 11/12 you picked. If it isn't working by Saturday afternoon, cut it rather than finish half of it. **Steps 9, 13 and 14 are never skipped.**
 
 **Who does what (25% / 25% / 50%):**
-- **Person 1, data, dashboard and benchmarks (25%):** database, the marketplace (catalog, honest shoppers, mandates), the dashboard, the XGBoost voter, the comparison runs, the 6 hand-written held-out attackers, the demo recording. Steps 2, 6, 13, 14.
-- **Person 2, integrations and Apify (25%):** connecting Bitdeer, x402 payments, the ASI:One chat agents, store-page scanning, the threat-intel watchlist and its new attackers, and CRS if we get it. Steps 9, 11/12, and the payment part of 14.
-- **Person 3, the core engine (50%):** the agents and specialists, the investigator, the learning loop and critic, the attackers and waves, the arena, mandates and the hijacker. Steps 1, 3, 4, 5, 7, 8, 10.
+- **Person 1, Ryan: data, dashboard and benchmarks (25%):** database, the marketplace (catalog, honest shoppers, mandates), the dashboard, the XGBoost voter, the comparison runs, the 6 hand-written held-out attackers, the demo recording. Steps 2, 6, 13, 14.
+- **Person 2, Eric: integrations and Apify (25%):** connecting Bitdeer, x402 payments, the ASI:One chat agents, store-page scanning, the threat-intel watchlist and its new attackers, and CRS if we get it. Steps 9, 11/12, and the payment part of 14.
+- **Person 3, Stanley: the core engine (50%):** the agents and specialists, the investigator, the learning loop and critic, the attackers and waves, the arena, mandates and the hijacker. Steps 1, 3, 4, 5, 7, 8, 10.
 
 **Building separately, combining later:** each person works in their own folder and can run their part **alone**, using stand-ins for the other two:
 - the engine runs on a fake AI model
@@ -348,6 +348,8 @@ In the first 1–2 hours, the team agrees on a small set of shared "contracts" (
 1. **End of the first build block:** the engine's real data shows up on the dashboard.
 2. **Saturday afternoon:** the chat agents use the real engine; real AI models and the XGBoost voter plug in.
 3. **Saturday night:** the Apify attackers and page scanner join the arena, and the precompute runs start.
+
+**Git branches:** Ryan works on `ryan/data-dashboard`, Eric on `eric/integrations`, Stanley on `stanley/core-engine`. Merge to `main` at each checkpoint.
 
 Full details, including the folder layout, are in section 8.4 of the technical spec.
 
