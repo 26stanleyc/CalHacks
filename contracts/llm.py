@@ -48,8 +48,13 @@ class LLMClient(Protocol):
         role: str,  # a key of config.MODEL_ROLES; the client picks the model
         response_schema: type[BaseModel] | None = None,
         tools: list[ToolSpec] | None = None,
-        max_tokens: int = 1024,
+        max_tokens: int = 1024,  # the ANSWER budget; clients add their own headroom for hidden reasoning
     ) -> LLMResponse: ...
+
+    def usage(self) -> dict[str, Any]:
+        """Running totals for spend tracking (spec 4.1): at least calls, input_tokens, output_tokens and
+        cost_usd. Clients may add more (by_model, by_role, ...)."""
+        ...
 
 
 def mock_instance(schema: type[BaseModel]) -> BaseModel:
@@ -107,6 +112,9 @@ class MockLLM:
     def __init__(self, canned: dict[type[BaseModel], typing.Callable[[list[Message]], BaseModel]] | None = None):
         self.canned = canned or {}
         self.calls: list[tuple[str, list[Message]]] = []
+
+    def usage(self) -> dict[str, Any]:
+        return {"calls": len(self.calls), "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
 
     def complete(
         self,

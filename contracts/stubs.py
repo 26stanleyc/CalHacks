@@ -45,7 +45,7 @@ class StubEngine:
     """Canned but schema-valid answers for every entry point."""
 
     def __init__(self, allowlist: set[str] | None = None):
-        self.allowlist = allowlist or {"stub-team"}
+        self.allowlist = allowlist if allowlist is not None else {"stub-team"}  # set() means nobody
         self.frozen = False
         self.round = 0
         self.decisions: dict[str, Decision] = {}
@@ -179,7 +179,8 @@ class StubThreatIntel:
 
 class StubSettlement:
     def settle(self, tx: Transaction, decision: Decision) -> SettlementResult:
-        return SettlementResult(tx_id=tx.tx_id, settled=decision.action == Action.ALLOW)
+        allowed = decision.action == Action.ALLOW
+        return SettlementResult(tx_id=tx.tx_id, settled=allowed, reason="" if allowed else f"decision was {decision.action.value}")
 
 
 class StubDefense:

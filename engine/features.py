@@ -159,6 +159,8 @@ class FeatureService:
         self.agents_of_principal: dict[str, set] = defaultdict(set)
         self.principals_of_agent: dict[str, set] = defaultdict(set)
         self.spend_principal: dict[str, deque] = defaultdict(deque)
+        self.clock = 0.0  # latest committed transaction time
+
 
     def _max_window(self, entity: str) -> int:
         windows = [p.window_s for p in self.catalog.primitives.values() if p.entity == entity]
@@ -176,7 +178,7 @@ class FeatureService:
         }
 
     def _aggregate(self, p: Primitive, key: str, current: dict, now: float) -> float:
-        rows = [r for r in self.events[p.entity].get(key, ()) if now - r["ts"] < p.window_s]
+        rows = [r for r in self.events[p.entity].get(key, ()) if 0 <= now - r["ts"] < p.window_s]
         rows.append(current)
         if p.aggregate == "count":
             return float(len(rows))
@@ -198,7 +200,7 @@ class FeatureService:
             values[name] = self._aggregate(p, record[p.entity], record, now)
 
         last = self.last_ts_agent.get(tx.agent_id)
-        gap = now - last if last is not None else None
+        gap = now - last if last is not None and now >= last else None
         gaps = list(self.gaps_agent.get(tx.agent_id, ())) + ([gap] if gap is not None else [])
         values["t_gap_prev_s"] = gap if gap is not None else NO_HISTORY
         values["t_gap_cv_agent"] = _coefficient_of_variation(gaps) if len(gaps) >= 3 else 1.0
@@ -219,7 +221,7 @@ class FeatureService:
         first_principal = self.first_seen_principal.get(tx.principal_id)
         values["i_principal_age_s"] = now - first_principal if first_principal is not None else 0.0
 
-        spent_today = sum(a for ts, a in self.spend_principal.get(tx.principal_id, ()) if now - ts < DAY_SECONDS)
+        spent_today = sum(a for ts, a in self.spend_principal.get(tx.principal_id, ()) if 0 <= now - ts < DAY_SECONDS)
         m = tx.mandate
         values["m_over_cap_ratio"] = _cap_ratio(tx.amount_cents, m.per_payment_cap_cents) if m else 0.0
         values["m_daily_spend_ratio"] = _cap_ratio(spent_today + tx.amount_cents, m.daily_cap_cents) if m else 0.0
@@ -232,6 +234,7 @@ class FeatureService:
 
     def _commit(self, tx: Transaction, record: dict, gap: float | None) -> None:
         now = tx.ts
+        self.clock = max(self.clock, now)
         for entity in ENTITIES:
             window = self._max_window(entity)
             rows = self.events[entity][record[entity]]

@@ -53,7 +53,10 @@ def create_app(engine: Engine) -> FastAPI:
 
     @app.get("/explain/{tx_id}", response_model=Decision)
     def explain(tx_id: str) -> Decision:
-        return engine.explain(tx_id)
+        try:
+            return engine.explain(tx_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"no decision logged for {tx_id!r}") from exc
 
     @app.get("/scan_page", response_model=PageScan)
     def scan_page(url: str) -> PageScan:
@@ -110,7 +113,12 @@ class HttpEngine:
         return Decision.model_validate(self._request("POST", "/check_payment", json=body).json())
 
     def explain(self, tx_id: str) -> Decision:
-        return Decision.model_validate(self._request("GET", f"/explain/{tx_id}").json())
+        """Raises KeyError for an unknown tx id, like an in-process engine."""
+        response = self.client.request("GET", f"/explain/{tx_id}")
+        if response.status_code == 404:
+            raise KeyError(tx_id)
+        response.raise_for_status()
+        return Decision.model_validate(response.json())
 
     def scan_page(self, url: str) -> PageScan:
         return PageScan.model_validate(self._request("GET", "/scan_page", params={"url": url}).json())

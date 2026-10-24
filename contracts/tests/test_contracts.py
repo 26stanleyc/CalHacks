@@ -102,3 +102,38 @@ def test_db_sql_applies_cleanly():
             conn.execute(DB_SQL.read_text())
         finally:
             conn.execute("drop schema if exists contracts_check cascade")
+
+
+def test_stub_engine_with_an_empty_allowlist_refuses_everyone():
+    from contracts.entrypoints import NotAllowed
+
+    with pytest.raises(NotAllowed):
+        stubs.StubEngine(allowlist=set()).run_round(requested_by="stub-team")
+
+
+def test_mock_llm_reports_usage():
+    usage = MockLLM().usage()
+    assert {"calls", "input_tokens", "output_tokens", "cost_usd"} <= set(usage)
+
+
+def test_stub_settlement_says_why_it_did_not_settle():
+    tx = conformance.sample_tx()
+    allowed = schemas.Decision(tx_id=tx.tx_id, action=schemas.Action.ALLOW, weighted_score=0.0, votes=[])
+    blocked = allowed.model_copy(update={"action": schemas.Action.BLOCK})
+    assert stubs.StubSettlement().settle(tx, allowed).reason == ""
+    assert stubs.StubSettlement().settle(tx, blocked).reason
+
+
+def test_http_explain_of_an_unknown_tx_is_a_404_and_a_key_error_for_the_client():
+    from fastapi.testclient import TestClient
+
+    from contracts.api import HttpEngine, create_app
+
+    class Missing(stubs.StubEngine):
+        def explain(self, tx_id):
+            raise KeyError(tx_id)
+
+    client = TestClient(create_app(Missing()))
+    assert client.get("/explain/nope").status_code == 404
+    with pytest.raises(KeyError):
+        HttpEngine(client=client).explain("nope")

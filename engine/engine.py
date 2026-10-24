@@ -24,10 +24,10 @@ from dataclasses import dataclass
 
 from contracts.api import team_allowlist
 from contracts.entrypoints import NotAllowed
-from contracts.interfaces import PageScanner
+from contracts.interfaces import PageScanner, Settlement
 from contracts.schemas import (Action, Decision, FeatureVector, GroundTruth, Mandate, PageScan, RoundMetrics,
                                ThreatIntelItem, Transaction)
-from contracts.stubs import StubPageScanner
+from contracts.stubs import StubPageScanner, StubSettlement
 from engine.pipeline import DefensePipeline
 from engine.sim.world import World
 from engine.store import LogStore, MemoryStore, log_bundle
@@ -66,7 +66,8 @@ def with_tx_id(decision: Decision, tx_id: str) -> Decision:
 class FraudEngine:
     def __init__(self, store: LogStore | None = None, pipeline: DefensePipeline | None = None, run_id: str | None = None,
                  seed: int = 42, allowlist: set[str] | None = None, scanner: PageScanner | None = None,
-                 transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
+                 settlement: Settlement | None = None, live_settlement: Settlement | None = None,
+                 live_per_round: int = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
                  fraud_per_persona: int = 25):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
@@ -78,6 +79,11 @@ class FraudEngine:
         self.pipeline = pipeline or DefensePipeline(identities=self.world.identities)
         self.allowlist = allowlist if allowlist is not None else team_allowlist()
         self.scanner = scanner or StubPageScanner()
+        self.settlement = settlement or StubSettlement()  # every allowed round payment; must be a stub
+        # The demo's live tail: at most `live_per_round` honest allowed payments per round also go
+        # through real x402, at a token amount within the testnet cap (spec M13).
+        self.live_settlement = live_settlement
+        self.live_per_round = live_per_round
         self.transport = transport
         self.n_legit = n_legit
         self.fraud_per_persona = fraud_per_persona
@@ -131,6 +137,9 @@ class FraudEngine:
         if mandate is not None:  # an explicit mandate wins, e.g. a what-if with a tighter cap
             tx = tx.model_copy(update={"mandate": mandate})
         with self._lock:
+            clock = self.pipeline.features.clock
+            if tx.ts < clock:  # an outside check happens "now" (chat sends ts=0)
+                tx = tx.model_copy(update={"ts": clock})
             decision, features = self._decide(tx, commit=False)
             stored_id = self._stored_check_id(tx.tx_id)
             stored_tx = tx.model_copy(update={"tx_id": stored_id, "run_id": self.checks_run_id})
@@ -166,12 +175,18 @@ class FraudEngine:
             round_no = self.round
             traffic = self.world.round_traffic(self.run_id, round_no, self.n_legit, self.fraud_per_persona)
             costs = self.pipeline.orchestrator.costs
-            loss = legit_n = legit_flagged = 0
+            loss = legit_n = legit_flagged = live_sent = 0
             with self.store.batch():
                 for tx, truth in traffic:
                     decision, features = self._decide(tx, commit=True)
                     log_bundle(self.store, tx, features, decision, truth)
                     outcome = resolve(tx, truth, decision, costs.fraud_step_up_pass, costs.legit_step_up_abandon)
+                    if decision.action == Action.ALLOW:  # the gate: only allowed payments reach x402
+                        if self.live_settlement is not None and not truth.is_fraud and live_sent < self.live_per_round:
+                            live_sent += 1
+                            self.store.log_settlement(self._settle_live(tx, decision))
+                        else:
+                            self.store.log_settlement(self.settlement.settle(tx, decision))
                     if outcome.settled:
                         self.pipeline.features.record_spend(tx)
                     if truth.is_fraud and outcome.settled:
@@ -186,6 +201,12 @@ class FraudEngine:
                 )
                 self.store.log_round_metrics(metrics)
         return metrics
+
+    def _settle_live(self, tx: Transaction, decision: Decision):
+        """One real testnet payment for the demo, at a token amount within the settlement's cap."""
+        cap = getattr(self.live_settlement, "max_cents", 100)
+        token = tx.model_copy(update={"amount_cents": max(1, min(tx.amount_cents, cap))})
+        return self.live_settlement.settle(token, decision)
 
     def set_freeze(self, on: bool, requested_by: str) -> bool:
         self._require_team(requested_by)

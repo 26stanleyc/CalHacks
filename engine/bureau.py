@@ -32,10 +32,11 @@ DEFAULT_BUREAU_PORT = 8100  # contracts/api.py uses 8000
 log = logging.getLogger(__name__)
 
 
-def _agent(name: str, seed_prefix: str) -> Agent:
+def _agent(name: str, seed_prefix: str, loop: asyncio.AbstractEventLoop) -> Agent:
     return Agent(
         name=name,
         seed=f"{seed_prefix}:{name}",
+        loop=loop,  # Python 3.14 has no implicit event loop, so Agent() must be given one
         enable_agent_inspector=False,
         publish_agent_details=False,
         report_events=False,
@@ -56,9 +57,10 @@ class EngineBureau:
         self.lanes: tuple[Lane, ...] = pipeline.lanes
         self.port = port or int(os.environ.get("ENGINE_BUREAU_PORT", DEFAULT_BUREAU_PORT))
         prefix = seed_prefix or os.environ.get("ENGINE_AGENT_SEED_PREFIX") or secrets.token_hex(16)
-        self.ingress = _agent("ingress", prefix)
-        self.orchestrator = _agent("orchestrator", prefix)
-        self.specialists = {lane: _agent(f"specialist-{lane.value}", prefix) for lane in self.lanes}
+        self._loop: asyncio.AbstractEventLoop | None = asyncio.new_event_loop()
+        self.ingress = _agent("ingress", prefix, self._loop)
+        self.orchestrator = _agent("orchestrator", prefix, self._loop)
+        self.specialists = {lane: _agent(f"specialist-{lane.value}", prefix, self._loop) for lane in self.lanes}
         self._lane_of = {agent.address: lane for lane, agent in self.specialists.items()}
         self._waiting: dict[str, concurrent.futures.Future[tuple[Decision, FeatureVector]]] = {}
         self._pending: dict[str, tuple[Transaction, FeatureVector, dict[str, Vote]]] = {}
@@ -66,7 +68,6 @@ class EngineBureau:
         self._ingress_ctx: Context | None = None
         self._ready = threading.Event()
         self._bureau: Bureau | None = None
-        self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
         self._task: asyncio.Task | None = None
         self._wire()
@@ -138,7 +139,8 @@ class EngineBureau:
         """Run the Bureau on its own event loop in a background thread. On shutdown the Bureau
         cancels every task on its loop, so it must not share a loop with the caller."""
         uagents.asgi.HOST = "127.0.0.1"  # read when the server starts; never listen off-host
-        self._loop = asyncio.new_event_loop()
+        if self._loop is None or self._loop.is_closed():
+            raise RuntimeError("an EngineBureau can only be started once; create a new one")
         agents = [self.ingress, self.orchestrator, *self.specialists.values()]
         self._bureau = Bureau(agents=agents, port=self.port, loop=self._loop, log_level=logging.ERROR, shutdown_timeout=2)
 

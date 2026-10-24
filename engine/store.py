@@ -15,7 +15,7 @@ import psycopg
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from contracts.schemas import Decision, FeatureVector, GroundTruth, RoundMetrics, Transaction, Vote
+from contracts.schemas import Decision, FeatureVector, GroundTruth, RoundMetrics, SettlementResult, Transaction, Vote
 
 
 class LogStore(Protocol):
@@ -30,6 +30,8 @@ class LogStore(Protocol):
     def log_decision(self, decision: Decision) -> None: ...
 
     def log_round_metrics(self, metrics: RoundMetrics) -> None: ...
+
+    def log_settlement(self, result: SettlementResult) -> None: ...
 
     def get_decision(self, tx_id: str) -> Decision | None: ...
 
@@ -59,6 +61,7 @@ class MemoryStore:
         self.votes: list[Vote] = []
         self.decisions: list[Decision] = []
         self.metrics: list[RoundMetrics] = []
+        self.settlements: list[SettlementResult] = []
 
     def start_run(self, run_id: str, seed: int, defense: str = "full", config: dict | None = None) -> None:
         self.runs.setdefault(run_id, {"seed": seed, "defense": defense, "config": config or {}})
@@ -79,6 +82,9 @@ class MemoryStore:
 
     def log_round_metrics(self, metrics: RoundMetrics) -> None:
         self.metrics.append(metrics.model_copy(deep=True))
+
+    def log_settlement(self, result: SettlementResult) -> None:
+        self.settlements.append(result.model_copy(deep=True))
 
     def get_decision(self, tx_id: str) -> Decision | None:
         found = next((d for d in reversed(self.decisions) if d.tx_id == tx_id), None)
@@ -101,6 +107,7 @@ _INSERTS = {
     "features": "insert into features (tx_id, feature_values) values (%s, %s)",
     "votes": "insert into votes (tx_id, voter, payload) values (%s, %s, %s)",
     "decisions": "insert into decisions (tx_id, action, escalated, payload) values (%s, %s, %s, %s)",
+    "settlements": "insert into settlements (tx_id, settled, tx_hash, network, reason) values (%s, %s, %s, %s, %s)",
     "round_metrics": "insert into round_metrics (run_id, round, payload) values (%s, %s, %s)",
 }
 _ORDER = list(_INSERTS)  # foreign-key order for flushing
@@ -160,6 +167,9 @@ class PostgresStore:
     def log_decision(self, decision: Decision) -> None:
         self._insert("decisions", [(decision.tx_id, decision.action.value, decision.escalated,
                                     Jsonb(decision.model_dump(mode="json")))])
+
+    def log_settlement(self, result: SettlementResult) -> None:
+        self._insert("settlements", [(result.tx_id, result.settled, result.tx_hash, result.network, result.reason)])
 
     def log_round_metrics(self, metrics: RoundMetrics) -> None:
         self._insert("round_metrics", [(metrics.run_id, metrics.round, Jsonb(metrics.model_dump(mode="json")))])

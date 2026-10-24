@@ -181,6 +181,7 @@ class SettlementResult(BaseModel):
     settled: bool
     tx_hash: str | None = None  # set only for real testnet settlement
     network: str = "eip155:84532"  # Base Sepolia
+    reason: str = ""  # why it didn't settle, e.g. "decision was block", "facilitator rejected", "out of test USDC"
 
 
 # --- Attackers and the arena -------------------------------------------------------
