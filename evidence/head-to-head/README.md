@@ -106,6 +106,23 @@ seeds on mock models.
   breach the later guard version targets.
 - 3 seeds with big seed-to-seed variance: a strong first reading, not a final result.
 
+## 5. Recorded demo run: merged design on real models (seed 42, 4 rounds)
+
+In the team database as **`h2h-real-42-202610241623`**; pick it in the dashboard. It took 300 model
+calls, 2.0M tokens, 1 answer that didn't parse, and 7.6 minutes a round with parallel calls (about 11
+before). See [bitdeer-recorded.md](bitdeer-recorded.md).
+
+| contender | total cost | mean FP | max FP |
+|---|---|---|---|
+| full (merged design) | $47.0k | **1.67%** | **2.33%** |
+| xgboost_retrained | $44.7k | 3.93% | 7.05% |
+| rules_plus_xgboost | **$36.6k** | 4.69% | 7.38% |
+| static_rules | $78.2k | 0.75% | 2.35% |
+
+The run is short: the learned combiner skips 2 warm-up rounds, and only round 4 has new attackers
+(4 of them, so that column isn't meaningful). It's for showing the system at work, not for the
+headline numbers; section 4 is the better measurement.
+
 ## What this means for the pitch
 
 - Supported: "it adapts to new attacks faster than a model trained on yesterday's fraud," and "real
