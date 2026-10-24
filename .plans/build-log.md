@@ -293,6 +293,32 @@ The dashboard's drift query runs against real rows in Postgres.
 
 **Demo angle:** ⭐ the loss curve falling round over round, and the freeze beat. Freeze, losses climb while attackers keep adapting, unfreeze, and they come back down. A learned rule is readable JSON: "velocity: amount ≤ $1.35, rarer than 0.1% of honest payments".
 
+### Sat Oct 24, 07:30 · S5 Investigator · Stanley
+**Did:**
+- Close calls now go to a **tool-using investigator** instead of a five-way vote. A close call is one where two actions cost about the same, or a specialist wanted a block that the combined decision overrode.
+- It picks from 5 tools: account graph, merchant page scan, identity check, similar past cases, and one specialist's detail. It can make at most 4 calls and must decide within 5 s.
+- Escalations are budgeted at 10% of a round, capped at 100 (40 in precompute).
+- Its overrides feed reflection (distillation), so specialists learn those cases and the escalation rate falls over the run.
+- Safety, enforced in code:
+  - the model only sees pseudonyms (simulator ids would name the attacker);
+  - it can't scan URLs it makes up;
+  - it can never allow a payment whose memo or page reads as an injection;
+  - it can't turn a code block straight into an allow;
+  - a hung model call times out without holding up later cases.
+- Decided Q1 in CONTRACT_NOTES: a blocked mandate breach isn't a false positive. Ryan's bench metrics still count it.
+
+**Proof:** `engine/tests/test_m06_investigator.py` (12 tests), with the full system on mock brains:
+- 5-10% of payments escalate early, never above the cap, and the rate falls by round 10 (3 seeds);
+- at most 4 tool calls and p95 decision time of a few milliseconds on mock brains;
+- the timeout falls back to the code decision;
+- a poisoned page is scanned and cited;
+- an injected memo is never allowed;
+- the model never sees simulator ids.
+
+FP stays under 2% every round across 3 seeds.
+
+**Demo angle:** ⭐ open one escalated payment in the stream. Its case file shows which tools the investigator called, what each returned, and why it decided. This is the "real tool use" moment.
+
 ---
 
 ## Entry template

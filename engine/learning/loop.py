@@ -36,8 +36,8 @@ from engine.specialists import Specialist
 from engine.store import LogStore
 
 RETIRE_AFTER = 3  # rounds without a true hit
-GUARD_AT = 0.6  # of the FP cap: above this, the rules causing false alarms come out (headroom for drift)
-VOTER_AT = 0.4  # of the FP cap: what a retrained voter is calibrated to, out of sample
+GUARD_AT = 0.5  # of the FP cap: above this, the rules causing false alarms come out (headroom for drift)
+VOTER_AT = 0.3  # of the FP cap: what a retrained voter is calibrated to, out of sample
 REVET_HONEST_SHARE = 0.003  # a learned rule firing on more of the growing honest record than this retires
 REPLAY_ROUNDS = 3  # rounds of fraud a proposed rule is replayed on (what it would catch)
 HONEST_ROUNDS = 10  # rounds of honest traffic it's replayed on (false alarms need far more data than catches)
@@ -105,7 +105,7 @@ class LearningLoop:
         out = RoundLearning()
         self.critic.start_round()
 
-        misses = [r for r in records if r.missed]
+        misses = [r for r in records if r.missed or r.code_missed]
         out.assignments = self.critic.assign(misses, lane_features, reference)
         out.uncovered = sum(lane == UNCOVERED for lane in out.assignments.values())
         # Misses that fit no lane go to the closest specialist anyway, as a prompt to find a signal (spec 4.5).
@@ -250,7 +250,7 @@ class LearningLoop:
     def _reflect(self, round_no: int, lane: Lane, records: list[Record], replayed: list[Record],
                  reference: LegitReference, out: RoundLearning, stats: dict) -> None:
         names = self.pipeline.catalog.lane_features(lane)
-        mine = [r for r in records if r.missed and (out.assignments.get(r.tx.tx_id) == lane.value
+        mine = [r for r in records if (r.missed or r.code_missed) and (out.assignments.get(r.tx.tx_id) == lane.value
                                                      or self._closest.get(r.tx.tx_id) == lane.value)]
         false_alarms = [r for r in records if r.false_positive
                         and any(v.voter == lane.value and v.rule_ids for v in r.decision.votes)]

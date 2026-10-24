@@ -95,7 +95,7 @@ def test_get_metrics_matches_the_logged_rows(ten_rounds):
     decided = {d.tx_id: d for d in engine.store.decisions}
     for m in metrics:  # recompute from the logged transactions, decisions and ground truth
         txs = [t for t in engine.store.transactions if t.round == m.round and t.run_id == engine.run_id]
-        legit = [t for t in txs if not truth[t.tx_id].is_fraud]
+        legit = [t for t in txs if not truth[t.tx_id].is_fraud and not truth[t.tx_id].breaches_mandate]
         flagged = sum(decided[t.tx_id].action.value != "allow" for t in legit)
         assert m.false_positive_rate == pytest.approx(flagged / len(legit))
         settled_fraud = sum(t.amount_cents for t in txs if truth[t.tx_id].is_fraud

@@ -164,7 +164,8 @@ def test_at_least_95_percent_of_model_playbooks_are_valid(run):
 
 
 def test_the_engine_resolves_each_personas_step_ups_at_its_own_pass_rate():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, n_legit=20, fraud_per_persona=150)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, n_legit=20, fraud_per_persona=150,
+                         escalation_cap=0)  # no investigator: every fraud payment really is stepped up
     decide = engine.pipeline.orchestrator.decide
 
     def always_step_up(tx, votes, features):

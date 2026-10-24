@@ -23,7 +23,10 @@ Locking: `_round_lock` lets one round run at a time; `_lock` guards the defense'
 only while a wave's payments are decided or the defense changes, so model calls (attackers between
 waves, reflection, the critic) never block check_payment or explain.
 
-The investigator (S5), the arena (S6) and mandate scoring (S7) plug in later.
+Close calls go to the investigator (spec 3.4 point 4, M6) within an escalation budget: at most 10% of
+a round's payments, and at most `escalation_cap` (100 in live and dev rounds, 40 in precompute).
+
+The arena (S6) and mandate scoring (S7) plug in later.
 """
 
 import hashlib
@@ -41,6 +44,7 @@ from contracts.stubs import StubPageScanner, StubSettlement
 from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain
+from engine.investigator import Investigator
 from engine.learning.labels import Record, realized_cost
 from engine.learning.loop import LearningLoop
 from engine.pipeline import DefensePipeline
@@ -50,6 +54,8 @@ from engine.store import LogStore, MemoryStore, log_bundle
 CHECK_PREFIX = "check:"
 ROUND_BUDGET_USD = 0.60  # spec 4.1's per-round estimate; a round over twice this pauses the run
 FP_CAP = 0.02
+ESCALATION_SHARE = 0.10  # of a round's payments
+ESCALATION_CAP = 100  # per round in live and dev rounds; precompute runs pass 40
 
 
 class LLMBudgetExceeded(RuntimeError):
@@ -90,7 +96,8 @@ class FraudEngine:
                  settlement: Settlement | None = None, live_settlement: Settlement | None = None,
                  live_per_round: int = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
                  fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
-                 voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD):
+                 voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
+                 escalation_cap: int = ESCALATION_CAP):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -121,6 +128,10 @@ class FraudEngine:
         self._lock = threading.RLock()
         self._round_lock = threading.Lock()
         self.learning = LearningLoop(self.pipeline, self.brain, self.store, self.run_id, FP_CAP, lock=self._lock)
+        self.escalation_cap = escalation_cap
+        self.investigator = Investigator(self.brain, self.pipeline, self.scanner,
+                                         page_url_for=getattr(self.world, "page_url_for", lambda tx: None))
+        self.escalation_seconds: list[float] = []  # every escalated case's decision time
         self.last_learning = None
         self._latest_check: dict[str, str] = {}  # caller tx_id -> stored id of its latest check
         self._round_decisions: dict[str, Decision] = {}  # this round's, until its batch reaches the database
@@ -254,6 +265,9 @@ class FraudEngine:
             spend_before = self.brain.spend()
             records: list[Record] = []
             self._live_sent = 0
+            expected = self.n_legit + self.fraud_per_persona * len(self.attackers)
+            budget = min(self.escalation_cap, int(ESCALATION_SHARE * expected))
+            escalated = 0
             with self.store.batch():
                 for wave, legit in enumerate(self._legit_by_wave(round_no)):
                     traffic = list(legit)
@@ -261,26 +275,38 @@ class FraudEngine:
                         n = self.fraud_per_persona // WAVES + (wave < self.fraud_per_persona % WAVES)
                         traffic += [(tx, attacker.truth(tx)) for tx in attacker.generate(self.run_id, round_no, wave, n, self.seed)]
                     feedback: dict[str, list[AttackFeedback]] = defaultdict(list)
-                    with self._lock:  # the defense is fixed within the wave (and the round)
-                        for tx, truth in sorted(traffic, key=lambda pair: (pair[0].ts, pair[0].tx_id)):
-                            record = self._process(tx, truth, pass_rate.get(tx.attacker_id, costs.fraud_step_up_pass))
-                            records.append(record)
-                            if truth.is_fraud:
-                                feedback[tx.attacker_id].append(AttackFeedback(tx_id=tx.tx_id, outcome=record.decision.action,
-                                                                               settled=record.settled))
+                    wave_budget = (budget * (wave + 1)) // WAVES  # unspent escalations carry into later waves
+                    for tx, truth in sorted(traffic, key=lambda pair: (pair[0].ts, pair[0].tx_id)):
+                        with self._lock:  # the defense is fixed within the round
+                            decision, features = self._decide(tx, commit=True)
+                        code_action = decision.action
+                        if escalated < wave_budget and self._escalates(tx, decision):
+                            escalated += 1  # the investigator runs outside the lock: checks can interleave
+                            decision, seconds = self.investigator.investigate(tx, features, decision)
+                            self.escalation_seconds.append(seconds)
+                        with self._lock:
+                            record = self._finish(tx, truth, features, decision,
+                                                  pass_rate.get(tx.attacker_id, costs.fraud_step_up_pass), code_action)
+                        records.append(record)
+                        if truth.is_fraud:
+                            feedback[tx.attacker_id].append(AttackFeedback(tx_id=tx.tx_id, outcome=record.decision.action,
+                                                                           settled=record.settled))
                     for attacker in self.attackers:  # outcomes only: outsiders never learn who objected
                         attacker.observe(feedback[attacker.attacker_id])
                         self._log_wave(attacker, round_no)
+                if not frozen:  # labeled cases for the investigator's similar_cases (a frozen defense keeps no labels)
+                    for r in records:
+                        self.investigator.remember(r.tx, r.features, r.decision, r.truth.is_fraud)
                 self.last_learning = None if frozen else self.learning.learn(round_no, records)
                 self.store.log_rows("attackers", [self._attacker_row(a, round_no) for a in self.attackers])
                 spend = self._log_spend(round_no, spend_before, self.brain.spend())
-                legit = [r for r in records if not r.truth.is_fraud]
+                legit = [r for r in records if not r.truth.is_fraud and not r.truth.breaches_mandate]  # see CONTRACT_NOTES
                 learned = self.last_learning
                 metrics = RoundMetrics(
                     run_id=self.run_id, seed=self.seed, round=round_no, defense="full",
                     loss_merchant_side_cents=sum(r.tx.amount_cents for r in records if r.truth.is_fraud and r.settled),
                     false_positive_rate=sum(r.decision.action != Action.ALLOW for r in legit) / max(1, len(legit)),
-                    escalation_rate=0.0, frozen=frozen,
+                    escalation_rate=escalated / max(1, len(records)), frozen=frozen,
                     total_attacker_profit_cents=sum(getattr(a, "round_stats", {}).get("profit", 0) for a in self.attackers),
                     total_cost_cents=int(sum(realized_cost(r, costs) for r in records)),
                     uncovered_misses=learned.uncovered if learned else 0,
@@ -331,11 +357,30 @@ class FraudEngine:
             waves[wave].append((tx if tx.wave == wave else tx.model_copy(update={"wave": wave}), truth))
         return waves
 
+    def _escalates(self, tx: Transaction, decision: Decision) -> bool:
+        """Close calls go to the investigator (spec 3.4 point 4): the best and second-best actions cost
+        about the same, or a specialist wanted a block the combined decision didn't give. Hard vetoes
+        never escalate."""
+        if decision.vetoed_by:
+            return False
+        split = decision.action != Action.BLOCK and any(v.vote == Action.BLOCK for v in decision.votes)
+        return split or self.pipeline.orchestrator.is_close_call(decision.weighted_score, tx.amount_cents)
+
     def _process(self, tx: Transaction, truth: GroundTruth, fraud_step_up_pass: float) -> Record:
-        """Decide one round payment, log it, settle it if allowed, and update the daily spend."""
-        costs = self.pipeline.orchestrator.costs
+        """Decide one payment without escalation (used where no investigator is wanted)."""
         decision, features = self._decide(tx, commit=True)
+        return self._finish(tx, truth, features, decision, fraud_step_up_pass, decision.action)
+
+    def _finish(self, tx: Transaction, truth: GroundTruth, features: FeatureVector, decision: Decision,
+                fraud_step_up_pass: float, code_action: Action) -> Record:
+        """Log one round payment, settle it if allowed, and update the daily spend."""
+        costs = self.pipeline.orchestrator.costs
         log_bundle(self.store, tx, features, decision, truth)
+        if decision.escalated and decision.investigator is not None:
+            report = decision.investigator
+            self.store.log_rows("escalations", [{
+                "tx_id": tx.tx_id, "tool_calls": [c.model_dump(mode="json") for c in report.tool_calls],
+                "decision": report.decision.value, "reasons": report.reasons, "timed_out": report.timed_out}])
         self._round_decisions[tx.tx_id] = decision
         outcome = resolve(tx, truth, decision, fraud_step_up_pass, costs.legit_step_up_abandon)
         if decision.action == Action.ALLOW:  # the gate: only allowed payments reach x402
@@ -346,7 +391,7 @@ class FraudEngine:
                 self.store.log_settlement(self.settlement.settle(tx, decision))
         if outcome.settled:
             self.pipeline.features.record_spend(tx)
-        return Record(tx, features, decision, truth, outcome.settled)
+        return Record(tx, features, decision, truth, outcome.settled, code_action)
 
     def _log_wave(self, attacker, round_no: int) -> None:
         logs = getattr(attacker, "wave_logs", None)

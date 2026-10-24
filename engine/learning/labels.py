@@ -22,11 +22,18 @@ class Record:
     decision: Decision
     truth: GroundTruth
     settled: bool
+    code_action: Action | None = None  # what the rules and voters decided before an escalation
 
     @property
     def missed(self) -> bool:
         """Fraud the defense didn't object to."""
         return self.truth.is_fraud and self.decision.action == Action.ALLOW
+
+    @property
+    def code_missed(self) -> bool:
+        """Fraud the code let through, whether or not the investigator then caught it: what the
+        specialists should learn, so the case needn't escalate next time (distillation, spec 4.6)."""
+        return self.truth.is_fraud and (self.code_action or self.decision.action) == Action.ALLOW
 
     @property
     def false_positive(self) -> bool:

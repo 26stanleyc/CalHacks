@@ -29,7 +29,7 @@ ROUNDS_BELOW_FLOOR = 2
 MISSES_PER_CALL = 25
 MAX_MISSES_FOR_CRITIC = 100  # beyond this, the rest take the automated answer (cost cap)
 DEGENERATE_FIRE_SHARE = 0.30  # a rule firing on this share of all traffic is "block everything"
-VET_HEADROOM = 0.6  # a new rule must keep the replayed FP rate under this share of the cap
+VET_HEADROOM = 0.5  # a new rule must keep the replayed FP rate under this share of the cap
 
 
 class MissAssignment(BaseModel):
@@ -175,12 +175,15 @@ class Critic:
         second = self.routed_to_second_opinion("miss_assignment")
         for start in range(0, len(critic_misses), MISSES_PER_CALL):
             chunk = critic_misses[start:start + MISSES_PER_CALL]
+            alias = {f"miss-{start + i}": m.tx.tx_id for i, m in enumerate(chunk)}  # simulator ids name the attacker
             data = {"reference": reference_stats, "misses": [
-                {"tx_id": m.tx.tx_id, "lanes": {lane.value: {n: m.features.values[n] for n in feats if n in m.features.values}
-                                                 for lane, feats in lane_features.items()}} for m in chunk]}
+                {"tx_id": a, "lanes": {lane.value: {n: m.features.values[n] for n in feats if n in m.features.values}
+                                       for lane, feats in lane_features.items()}} for a, m in zip(alias, chunk)]}
             answer = self.brain.ask("critic", MissAssignments, ASSIGN_RUBRIC.format(lanes=names), data)
-            given = self._valid_assignments(answer)
-            other = self._valid_assignments(self.brain.ask("critic_second", MissAssignments, ASSIGN_RUBRIC.format(lanes=names), data)) if second else {}
+            given = {alias[k]: v for k, v in self._valid_assignments(answer).items() if k in alias}
+            other = ({alias[k]: v for k, v in self._valid_assignments(self.brain.ask(
+                "critic_second", MissAssignments, ASSIGN_RUBRIC.format(lanes=names), data)).items() if k in alias}
+                if second else {})
             for m in chunk:
                 tx_id = m.tx.tx_id
                 if tx_id not in given:  # no usable critic answer: the automated one stands, and nothing is spot-checked

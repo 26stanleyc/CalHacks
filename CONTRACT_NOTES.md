@@ -224,7 +224,10 @@ Per the folder rules, for the record:
 
 ### Questions for the team
 
-1. **Should a blocked legit mandate breach count as a false positive?** Ryan's shoppers go over
+1. **Should a blocked legit mandate breach count as a false positive?** *Decided in S5: no.* The
+   engine's `RoundMetrics.false_positive_rate` now covers honest payments inside their mandate;
+   blocked breaches are correct blocks. `bench/metrics.py` still counts them; Ryan, please align.
+   Original question: Ryan's shoppers go over
    their per-payment cap on purpose about 1% of the time (`GroundTruth.breaches_mandate`). Spec 3.3
    says a clear mandate breach is hard-vetoed, so the engine blocks them. Both the engine's
    `RoundMetrics.false_positive_rate` and `bench/metrics.py` count those blocks as false
