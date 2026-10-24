@@ -26,7 +26,9 @@ waves, reflection, the critic) never block check_payment or explain.
 Close calls go to the investigator (spec 3.4 point 4, M6) within an escalation budget: at most 10% of
 a round's payments, and at most `escalation_cap` (100 in live and dev rounds, 40 in precompute).
 
-The arena (S6) and mandate scoring (S7) plug in later.
+The Tag-Team Arena (spec 3.9, M7) adds spawned insiders and archive attackers to each round, keeps the
+attack archive, re-scores it after learning, lets the specialists choose actions, and runs the
+exploitability exam (engine/arena/arena.py). Mandate scoring (S7) plugs in later.
 """
 
 import hashlib
@@ -37,11 +39,14 @@ from dataclasses import dataclass
 from contracts.api import team_allowlist
 from contracts.entrypoints import NotAllowed
 from contracts.interfaces import PageScanner, Settlement
-from contracts.schemas import (Action, AttackerRecord, AttackFeedback, Decision, FeatureVector, GroundTruth, Mandate,
+from contracts.schemas import (Action, AttackerRecord, AttackFeedback, Decision, FeatureVector, GroundTruth, Lane, Mandate,
                                PageScan, RoundMetrics,
                                ThreatIntelItem, Transaction)
 from contracts.stubs import StubPageScanner, StubSettlement
+from engine.arena.archive import Archive
+from engine.arena.arena import Arena
 from engine.arena.outsiders import PERSONAS, OutsiderAttacker
+from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain
 from engine.investigator import Investigator
@@ -97,7 +102,8 @@ class FraudEngine:
                  live_per_round: int = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
                  fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
-                 escalation_cap: int = ESCALATION_CAP):
+                 escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
+                 arena: bool = True):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -132,6 +138,11 @@ class FraudEngine:
         self.investigator = Investigator(self.brain, self.pipeline, self.scanner,
                                          page_url_for=getattr(self.world, "page_url_for", lambda tx: None))
         self.escalation_seconds: list[float] = []  # every escalated case's decision time
+        self.archive = Archive()
+        # Without the arena (M3 alone: "until the archive exists, outsiders run on their own") no
+        # attackers are spawned or replayed and there's no exam.
+        self.arena = Arena(self.brain, self.archive, self.world, self.run_id, seed, self.pipeline.lanes,
+                           held_out=held_out, tuning_tries=tuning_tries or arena_sandbox.TUNING_TRIES) if arena else None
         self.last_learning = None
         self._latest_check: dict[str, str] = {}  # caller tx_id -> stored id of its latest check
         self._round_decisions: dict[str, Decision] = {}  # this round's, until its batch reaches the database
@@ -142,6 +153,10 @@ class FraudEngine:
         if self.round:
             self._resume_attackers()
             self._resume_rulebooks()
+            if self.arena:
+                self.arena.restore(self.store.get_rows("archive_snapshots", self.run_id),
+                                   self.store.get_rows("attackers", self.run_id),
+                                   self.store.get_rows("defender_actions", self.run_id))
             controls = [r for r in self.store.get_rows("defender_actions", self.run_id) if r["action"] in ("pause", "resume")]
             if controls and controls[-1]["action"] == "pause":
                 self.paused = controls[-1]["reason"]  # a pause survives a restart
@@ -260,27 +275,31 @@ class FraudEngine:
                 round_no = self.round
                 frozen = self.frozen
             costs = self.pipeline.orchestrator.costs
-            pass_rate = {a.attacker_id: getattr(getattr(a, "persona", None), "step_up_pass", costs.fraud_step_up_pass)
-                         for a in self.attackers}
+            extras = self.arena.attackers_for_round(round_no, self.pipeline) if self.arena else []  # spawned and archive
+            running = [(a, self.fraud_per_persona) for a in self.attackers] + extras
+            pass_rate = {a.attacker_id: getattr(getattr(a, "persona", None), "step_up_pass",
+                                                getattr(a, "step_up_pass", costs.fraud_step_up_pass)) for a, _ in running}
+            lane_names = {lane.value for lane in self.pipeline.lanes}
             spend_before = self.brain.spend()
             records: list[Record] = []
             self._live_sent = 0
-            expected = self.n_legit + self.fraud_per_persona * len(self.attackers)
+            expected = self.n_legit + sum(n for _, n in running)
             budget = min(self.escalation_cap, int(ESCALATION_SHARE * expected))
             escalated = 0
             with self.store.batch():
                 for wave, legit in enumerate(self._legit_by_wave(round_no)):
                     traffic = list(legit)
-                    for attacker in self.attackers:
-                        n = self.fraud_per_persona // WAVES + (wave < self.fraud_per_persona % WAVES)
+                    for attacker, per_round in running:
+                        n = per_round // WAVES + (wave < per_round % WAVES)
                         traffic += [(tx, attacker.truth(tx)) for tx in attacker.generate(self.run_id, round_no, wave, n, self.seed)]
+                    insiders = {a.attacker_id for a, _ in extras if hasattr(a, "sandbox")}
                     feedback: dict[str, list[AttackFeedback]] = defaultdict(list)
                     wave_budget = (budget * (wave + 1)) // WAVES  # unspent escalations carry into later waves
                     for tx, truth in sorted(traffic, key=lambda pair: (pair[0].ts, pair[0].tx_id)):
                         with self._lock:  # the defense is fixed within the round
                             decision, features = self._decide(tx, commit=True)
                         code_action = decision.action
-                        if escalated < wave_budget and self._escalates(tx, decision):
+                        if escalated < wave_budget and self._escalates(tx, decision, features):
                             escalated += 1  # the investigator runs outside the lock: checks can interleave
                             decision, seconds = self.investigator.investigate(tx, features, decision)
                             self.escalation_seconds.append(seconds)
@@ -289,16 +308,26 @@ class FraudEngine:
                                                   pass_rate.get(tx.attacker_id, costs.fraud_step_up_pass), code_action)
                         records.append(record)
                         if truth.is_fraud:
+                            objected = ([Lane(v.voter) for v in record.decision.votes
+                                         if v.voter in lane_names and v.vote != Action.ALLOW]
+                                        if tx.attacker_id in insiders else None)  # insiders learn who objected
                             feedback[tx.attacker_id].append(AttackFeedback(tx_id=tx.tx_id, outcome=record.decision.action,
-                                                                           settled=record.settled))
-                    for attacker in self.attackers:  # outcomes only: outsiders never learn who objected
+                                                                           settled=record.settled, objected_by=objected))
+                    for attacker, _ in running:  # outsiders get outcomes only
                         attacker.observe(feedback[attacker.attacker_id])
                         self._log_wave(attacker, round_no)
+                if self.arena:
+                    self.arena.after_waves(round_no, records, self.attackers)
                 if not frozen:  # labeled cases for the investigator's similar_cases (a frozen defense keeps no labels)
                     for r in records:
                         self.investigator.remember(r.tx, r.features, r.decision, r.truth.is_fraud)
                 self.last_learning = None if frozen else self.learning.learn(round_no, records)
-                self.store.log_rows("attackers", [self._attacker_row(a, round_no) for a in self.attackers])
+                if self.arena:
+                    self.store.log_rows("defender_actions", self.arena.after_learning(round_no, self.pipeline, records, frozen))
+                    self.store.log_rows("archive_events", self.archive.event_rows(self.run_id, round_no))
+                    self.store.log_rows("archive_snapshots", self.archive.snapshot_rows(self.run_id, round_no))
+                self.store.log_rows("attackers", [self._attacker_row(a, round_no) for a, _ in running]
+                                    + self._exam_rows(round_no))
                 spend = self._log_spend(round_no, spend_before, self.brain.spend())
                 legit = [r for r in records if not r.truth.is_fraud and not r.truth.breaches_mandate]  # see CONTRACT_NOTES
                 learned = self.last_learning
@@ -307,7 +336,10 @@ class FraudEngine:
                     loss_merchant_side_cents=sum(r.tx.amount_cents for r in records if r.truth.is_fraud and r.settled),
                     false_positive_rate=sum(r.decision.action != Action.ALLOW for r in legit) / max(1, len(legit)),
                     escalation_rate=escalated / max(1, len(records)), frozen=frozen,
-                    total_attacker_profit_cents=sum(getattr(a, "round_stats", {}).get("profit", 0) for a in self.attackers),
+                    total_attacker_profit_cents=self.archive.total_profit(),
+                    exploitability_cents=self.arena.exam.exploitability_cents if self.arena and self.arena.exam else 0,
+                    shelves_defended=round(self.archive.defended_share(round_no), 4),
+                    archive_coverage=round(self.archive.coverage(), 4),
                     total_cost_cents=int(sum(realized_cost(r, costs) for r in records)),
                     uncovered_misses=learned.uncovered if learned else 0,
                     critic_agreement=learned.critic_agreement if learned else None,
@@ -357,14 +389,17 @@ class FraudEngine:
             waves[wave].append((tx if tx.wave == wave else tx.model_copy(update={"wave": wave}), truth))
         return waves
 
-    def _escalates(self, tx: Transaction, decision: Decision) -> bool:
+    def _escalates(self, tx: Transaction, decision: Decision, features: FeatureVector) -> bool:
         """Close calls go to the investigator (spec 3.4 point 4): the best and second-best actions cost
-        about the same, or a specialist wanted a block the combined decision didn't give. Hard vetoes
-        never escalate."""
+        about the same, or a specialist wanted a block the combined decision didn't give, unless the
+        pattern is a familiar one the code already handles the way past cases went. Hard vetoes never
+        escalate."""
         if decision.vetoed_by:
             return False
         split = decision.action != Action.BLOCK and any(v.vote == Action.BLOCK for v in decision.votes)
-        return split or self.pipeline.orchestrator.is_close_call(decision.weighted_score, tx.amount_cents)
+        if not (split or self.pipeline.orchestrator.is_close_call(decision.weighted_score, tx.amount_cents)):
+            return False
+        return not self.investigator.memory.familiar(features, decision.action != Action.ALLOW)
 
     def _process(self, tx: Transaction, truth: GroundTruth, fraud_step_up_pass: float) -> Record:
         """Decide one payment without escalation (used where no investigator is wanted)."""
@@ -403,12 +438,27 @@ class FraudEngine:
             "playbook": entry.playbook.model_dump(mode="json"), "strategy_changed": entry.strategy_changed,
             "trigger": entry.trigger}])
 
+    def _exam_rows(self, round_no: int) -> list[dict]:
+        """Held-out attackers' exam results (they never run in round traffic or enter the archive)."""
+        exam = self.arena.exam if self.arena else None
+        if exam is None:
+            return []
+        rows = []
+        for record in self.arena.held_out_records:
+            rows.append({"attacker_id": record.attacker_id, "run_id": self.run_id, "round": round_no, "source": "held_out",
+                         "payload": {**record.model_dump(mode="json"), "exam_extraction_cents": exam.held_out.get(record.attacker_id, 0)}})
+        for attacker in self.arena.held_out_attackers:
+            record = attacker.record()
+            rows.append({"attacker_id": record.attacker_id, "run_id": self.run_id, "round": round_no, "source": "held_out",
+                         "payload": {**record.model_dump(mode="json"), "exam_extraction_cents": exam.held_out.get(record.attacker_id, 0)}})
+        return rows
+
     def _attacker_row(self, attacker, round_no: int) -> dict:
         record = attacker.record()
         stats = getattr(attacker, "round_stats", {})
         payload = {**record.model_dump(mode="json"), "extraction_cents": stats.get("extraction", 0),
                    "attempts": stats.get("attempts", 0), "caught": stats.get("caught", 0),
-                   "rewrites": dict(getattr(attacker, "rewrites", {}))}
+                   "rewrites": dict(getattr(attacker, "rewrites", {})), "objections": dict(getattr(attacker, "objections", {}))}
         return {"attacker_id": record.attacker_id, "run_id": self.run_id, "round": round_no,
                 "source": record.source.value, "payload": payload}
 

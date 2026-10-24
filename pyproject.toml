@@ -34,6 +34,7 @@ markers = [
     "m03: M3 outsider personas and waves",
     "m04: M4 learning loop",
     "m06: M6 escalation with the investigator",
+    "m07: M7 Tag-Team Arena",
     "m07: M7 held-out attackers",
     "m12: M12 XGBoost voter, baselines and metrics",
 ]

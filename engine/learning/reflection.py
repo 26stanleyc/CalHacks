@@ -53,7 +53,7 @@ def _short(name: str) -> str:
 
 
 HONEST_SHARE_FOR_RULE = 0.001  # a learned single-feature rule may fire on at most 0.1% of honest payments
-HONEST_SHARE_FOR_PAIR = 0.05  # each half of a two-feature rule
+HONEST_SHARE_FOR_PAIR = 0.02  # each half of a two-feature rule
 
 
 def _threshold(misses: list[dict], name: str, high: bool, max_share: float) -> tuple[float, frozenset] | None:

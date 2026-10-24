@@ -319,6 +319,29 @@ FP stays under 2% every round across 3 seeds.
 
 **Demo angle:** ⭐ open one escalated payment in the stream. Its case file shows which tools the investigator called, what each returned, and why it decided. This is the "real tool use" moment.
 
+### Sat Oct 24, 09:30 · S6 Tag-Team Arena · Stanley
+**Did:**
+- **The attack archive.** 24 shelves (style × amount × side), each holding its top 3 attackers ranked by profit against the current defense. One spot per shelf is reserved for an outsider. Near-duplicates are rejected, and each shelf tracks its learnability and which specialists catch or miss it.
+- **Re-scored every round.** After learning, every archive attacker is re-run against the updated defense in a sandbox. Newcomers are scored on the same 50-payment terms before they compete for a spot.
+- **Defenders choose their own actions.** Each specialist picks spawn, request a feature, request page scans, or skip, from a shared 8-point budget. Guardrails: everyone spawns at least every 3 rounds, and no two attackers aim at the same shelf. The orchestrator spawns a gap attacker where the coverage map shows fraud getting past every specialist quietly.
+- **Spawned attackers.** Each is built on the other model family from its parent, seeded from a shelf's top attackers, and given its parent's rules gray-box. Its numbers are tuned against a frozen copy of the defense. In the next round it sees which specialist objected and re-tunes between waves.
+- **Exploitability exam.** Every round, fresh tuned attackers and the archive's top attackers run against a frozen copy. Twelve held-out attackers run too, never trained against: Ryan's 6 hand-written and 6 from the reserved Qwen model.
+- Seeded runs are reproducible across processes, and the arena survives a restart.
+
+**Proof:** `engine/tests/test_m07_arena.py` (25 tests), full system, 10 rounds:
+- archive coverage grows (17% to 50% of shelves);
+- exploitability falls from round 2 to round 10 on 3 seeds;
+- spawned attackers out-extract outsiders in most rounds;
+- the gap attacker gets payments past every specialist quietly;
+- outsiders make up at least 20% of attack traffic;
+- held-out attackers never enter the archive, labels, reflection or the critic's inputs.
+
+Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every round.
+
+**Not met:** the spec's "heatmap has no empty cells". On mock brains the graph specialist rarely objects to spawned attackers (marked xfail). Also, with the arena on, escalations sit at the 10% budget all run, so M6 is checked before the arena.
+
+**Demo angle:** ⭐⭐ talking point 3, "the defense attacks itself". Spawned attackers spike losses in rounds 2-3, then the arena grid goes from red to green while exploitability falls. Use the defender-decisions panel to show which specialist spawned against which shelf, and why.
+
 ---
 
 ## Entry template

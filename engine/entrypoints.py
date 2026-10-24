@@ -13,6 +13,7 @@ serve.py are the only places that wire in Eric's implementations:
 - models: Eric's Bitdeer client when BITDEER_API_KEY is set (and USE_MOCK_LLM isn't), falling back
   to the engine's mock brains; the mock brains alone otherwise
 - voters: Ryan's XGBoost voter (bench/xgb_voter.py) next to the specialists, retrained every round
+- held-out attackers: Ryan's six hand-written ones (bench/held_out), exam only
 
 `build_engine` is also the factory Eric's chat agents look for when ENGINE_SOURCE=inprocess
 (integrations/asi_one/engine_source.py).
@@ -80,6 +81,15 @@ def _voters() -> list:
     return [XGBoostVoter()]
 
 
+def _held_out() -> list:
+    try:
+        from bench.held_out import held_out_attackers
+    except ImportError:
+        log.warning("Ryan's hand-written held-out attackers are unavailable; the exam uses the reserved-model ones only")
+        return []
+    return held_out_attackers()
+
+
 def _world(seed: int):
     try:
         from engine.sim.marketplace import MarketplaceWorld
@@ -95,6 +105,6 @@ def build_engine() -> FraudEngine:
     seed = int(os.environ.get("ENGINE_SEED", 42))
     settlement, live = _settlements()
     engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(),
-                         settlement=settlement, live_settlement=live, world=_world(seed), brain=_brain(), voters=_voters(),
+                         settlement=settlement, live_settlement=live, world=_world(seed), brain=_brain(), voters=_voters(), held_out=_held_out(),
                          transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
     return engine.start()

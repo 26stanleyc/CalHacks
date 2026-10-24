@@ -58,3 +58,10 @@ def attacker_model_for(parent_model: str) -> str:
     """Spawned attackers use the other family than their parent, and the variant the parent doesn't use."""
     pool = DEEPSEEK_MODELS if family(parent_model) == family(GLM_MODELS[0]) else GLM_MODELS
     return next((m for m in pool if m != parent_model), pool[0])
+
+
+# Spawned attackers are built on the other family than their parent, with the variant the parent
+# doesn't use (spec 2.1); the orchestrator's gap attacker uses the cheapest model.
+for _lane in ("timing", "graph", "identity", "velocity", "mandate"):
+    MODEL_ROLES[f"spawn_{_lane}"] = attacker_model_for(MODEL_ROLES[_lane])
+MODEL_ROLES["spawn_orchestrator"] = "deepseek-ai/DeepSeek-V4-Flash"

@@ -19,7 +19,7 @@ TEAM = "agent1qteam"
 
 @pytest.fixture(scope="module")
 def run():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM})
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, arena=False)
     seen: list[tuple[str, int, list[AttackFeedback]]] = []
     fingerprints: list[tuple[int, str]] = []
     for attacker in engine.attackers:
@@ -139,7 +139,7 @@ def _validity(engine) -> tuple[int, int]:
 
 
 def test_invalid_model_playbooks_fall_back_to_the_previous_playbook_and_are_logged():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, brain=Brain(BrokenModel()))
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, arena=False, brain=Brain(BrokenModel()))
     for _ in range(3):
         engine.run_round(requested_by=TEAM)
     rejected = 0
@@ -164,7 +164,7 @@ def test_at_least_95_percent_of_model_playbooks_are_valid(run):
 
 
 def test_the_engine_resolves_each_personas_step_ups_at_its_own_pass_rate():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, n_legit=20, fraud_per_persona=150,
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, arena=False, n_legit=20, fraud_per_persona=150,
                          escalation_cap=0)  # no investigator: every fraud payment really is stepped up
     decide = engine.pipeline.orchestrator.decide
 
@@ -198,7 +198,7 @@ def test_step_up_pass_rates_match_the_configured_rates(persona):
 
 def test_rounds_are_deterministic_for_a_seed():
     def amounts():
-        engine = FraudEngine(world=MarketplaceWorld(seed=7), allowlist={TEAM})
+        engine = FraudEngine(world=MarketplaceWorld(seed=7), allowlist={TEAM}, arena=False)
         engine.run_round(requested_by=TEAM)
         engine.run_round(requested_by=TEAM)
         return [(t.tx_id, t.amount_cents, t.ts) for t in engine.store.transactions]
@@ -223,7 +223,7 @@ def test_outsider_logs_land_in_postgres_and_feed_the_dashboard_drift_query():
         admin.execute(f"set search_path to {schema}")
         admin.execute((Path(__file__).resolve().parents[2] / "contracts" / "db.sql").read_text())
         store = PostgresStore(schema=schema)
-        engine = FraudEngine(store=store, run_id="test-m03", world=MarketplaceWorld(seed=42), allowlist={TEAM})
+        engine = FraudEngine(store=store, run_id="test-m03", world=MarketplaceWorld(seed=42), allowlist={TEAM}, arena=False)
         engine.run_round(requested_by=TEAM)
         assert admin.execute("select count(*) from attackers").fetchone()[0] == 4
         assert admin.execute("select count(*) from playbook_waves").fetchone()[0] == 12
@@ -290,10 +290,10 @@ def test_resuming_a_run_picks_the_lineages_back_up():
     from engine.store import MemoryStore
 
     store = MemoryStore()
-    first = FraudEngine(store=store, run_id="resume", world=MarketplaceWorld(seed=42), allowlist={TEAM})
+    first = FraudEngine(store=store, run_id="resume", world=MarketplaceWorld(seed=42), allowlist={TEAM}, arena=False)
     for _ in range(2):
         first.run_round(requested_by=TEAM)
-    again = FraudEngine(store=store, run_id="resume", world=MarketplaceWorld(seed=42), allowlist={TEAM})
+    again = FraudEngine(store=store, run_id="resume", world=MarketplaceWorld(seed=42), allowlist={TEAM}, arena=False)
     assert again.round == 2
     for before, after in zip(first.attackers, again.attackers):
         assert after.playbook == before.playbook and after.generation == before.generation

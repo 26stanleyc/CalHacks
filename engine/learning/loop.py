@@ -37,8 +37,10 @@ from engine.store import LogStore
 
 RETIRE_AFTER = 3  # rounds without a true hit
 GUARD_AT = 0.5  # of the FP cap: above this, the rules causing false alarms come out (headroom for drift)
-VOTER_AT = 0.3  # of the FP cap: what a retrained voter is calibrated to, out of sample
+VOTER_AT = 0.2  # of the FP cap: what a retrained voter is calibrated to, out of sample
 REVET_HONEST_SHARE = 0.003  # a learned rule firing on more of the growing honest record than this retires
+HOLDOUT_HONEST_SHARE = 0.005  # a new rule may fire on at most this share of the newest (held-out) honest round
+MIN_HONEST_ROUNDS = 3  # rounds of honest history before a new rule can be judged rare enough to deploy
 REPLAY_ROUNDS = 3  # rounds of fraud a proposed rule is replayed on (what it would catch)
 HONEST_ROUNDS = 10  # rounds of honest traffic it's replayed on (false alarms need far more data than catches)
 MISSES_PER_REFLECTION = 30
@@ -81,6 +83,7 @@ class LearningLoop:
         self.hedge_weights: dict[str, float] = dict(pipeline.orchestrator.weights)  # Hedge's own state
         self.voter_caps: dict[str, float] = {}  # the most weight each extra voter has earned, out of sample
         self._closest: dict[str, str] = {}  # uncovered miss -> the lane whose features come closest
+        self._holdout: list[Record] = []  # the newest honest round, held out from threshold picking
 
     # --- the round ---------------------------------------------------------------------------
 
@@ -101,6 +104,11 @@ class LearningLoop:
         self.honest.append([r for r in records if not r.truth.is_fraud])
         replayed = [r for rnd in self.recent for r in rnd] + [r for rnd in self.honest for r in rnd]
         reference = LegitReference(replayed)
+        # Reflection picks thresholds from older honest rounds only; the newest round is held out to
+        # validate them, so an overfit threshold shows up before it's deployed.
+        older = [r for rnd in list(self.honest)[:-1] for r in rnd]
+        self._holdout = list(self.honest[-1]) if len(self.honest) > 1 else []
+        reflection_reference = LegitReference([r for rnd in self.recent for r in rnd] + older) if older else reference
         lane_features = {lane: self.pipeline.catalog.lane_features(lane) for lane in self.pipeline.lanes}
         out = RoundLearning()
         self.critic.start_round()
@@ -117,7 +125,7 @@ class LearningLoop:
         out.removed += self._revet(round_no)
         out.removed += self._guard(round_no, records, stats)
         for lane in self.pipeline.lanes:
-            self._reflect(round_no, lane, records, replayed, reference, out, stats)
+            self._reflect(round_no, lane, records, replayed, reflection_reference, out, stats)
 
         out.critic_agreement = self.critic.end_round()
         self.store.log_rows("critic_checks", [
@@ -143,14 +151,16 @@ class LearningLoop:
         largest weight (up to 1) that keeps the defense under VOTER_AT of the FP cap there. With no
         earlier round to train on, a voter is capped at the floor."""
         caps = {}
-        honest = [r for r in latest if not r.truth.is_fraud and not r.truth.breaches_mandate]
+        recent = [r for rnd in list(self.honest)[-2:] for r in rnd] if len(self.honest) > 1 else latest
+        honest = [r for r in recent if not r.truth.is_fraud and not r.truth.breaches_mandate]
         target = self.fp_cap * VOTER_AT
         for voter in self.pipeline.voters:
             if len(self.example_rounds) < 2 or not honest:
                 caps[voter.name] = hedge.FLOOR
                 continue
-            shadow = copy.deepcopy(voter)
-            shadow.retrain([e for rnd in self.example_rounds[:-1] for e in rnd])
+            shadow = copy.deepcopy(voter)  # trained without the rounds it's judged on
+            held = 2 if len(self.example_rounds) > 2 else 1
+            shadow.retrain([e for rnd in self.example_rounds[:-held] for e in rnd])
             cap = 1.0
             while cap > hedge.FLOOR and self._shadow_fp(shadow, {**weights, voter.name: cap}, honest) > target:
                 cap = max(hedge.FLOOR, cap * 0.7)
@@ -313,6 +323,16 @@ class LearningLoop:
             rule, problem = self._candidate(spec, lane)
             if problem is None and len(self.pipeline.specialists[lane].rulebook.rules) >= MAX_RULES:
                 problem = f"the {lane.value} rulebook is at its cap of {MAX_RULES}; merge or replace a rule first"
+            if problem is None and len(self.honest) < MIN_HONEST_ROUNDS:
+                problem = (f"too little honest history yet ({len(self.honest)} of {MIN_HONEST_ROUNDS} rounds) to judge "
+                           f"how often it would fire on honest payments")
+            if problem is None and self._holdout:
+                names = set(self.pipeline.catalog.lane_features(lane))
+                honest_new = [r for r in self._holdout if not r.truth.breaches_mandate]
+                fires = sum(holds(rule.when, {k: v for k, v in r.features.values.items() if k in names}) for r in honest_new)
+                if honest_new and fires / len(honest_new) > HOLDOUT_HONEST_SHARE:
+                    problem = (f"overfits: fires on {fires / len(honest_new):.1%} of the newest honest round, which it "
+                               f"wasn't learned from (limit {HOLDOUT_HONEST_SHARE:.1%})")
             if problem is None:
                 replay = replay_rule(rule, lane, self.pipeline, replayed, self.voter_votes)
                 directions = {n: self.pipeline.catalog.direction(n) for n in self.pipeline.catalog.lane_features(lane)}

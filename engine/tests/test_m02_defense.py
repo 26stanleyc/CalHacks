@@ -342,7 +342,7 @@ def test_concurrent_rounds_and_checks_do_not_corrupt_state():
     import threading
 
     store = MemoryStore()
-    engine = FraudEngine(store=store, allowlist={"team"})
+    engine = FraudEngine(store=store, allowlist={"team"}, arena=False)
     errors = []
     sample = [tx for tx, _ in legit(World(seed=7), 40)]
 

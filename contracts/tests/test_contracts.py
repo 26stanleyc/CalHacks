@@ -148,3 +148,9 @@ def test_round_metrics_carry_total_cost_and_default_it_to_zero():
     metrics = schemas.RoundMetrics(run_id="r", seed=1, round=1)
     assert metrics.total_cost_cents == 0
     assert schemas.RoundMetrics(run_id="r", seed=1, round=1, total_cost_cents=1234).total_cost_cents == 1234
+
+
+def test_spawned_attackers_have_roles_on_the_other_family():
+    for lane in ("timing", "graph", "identity", "velocity", "mandate"):
+        assert config.family(config.MODEL_ROLES[f"spawn_{lane}"]) != config.family(config.MODEL_ROLES[lane])
+    assert config.MODEL_ROLES["held_out"] not in {m for r, m in config.MODEL_ROLES.items() if r != "held_out"}

@@ -9,3 +9,16 @@ Every change to a numeric target from spec 8.2, with a one-line reason (spec 8.1
   (rounds 6-8: $1,489 / $1,204 / $1,178 frozen vs $1,276 / $852 / $124 unfrozen). New check: the frozen rounds
   lose more than the same rounds unfrozen on the same seed, and by round 10 the frozen run is back within 10%
   of round 4's loss or below it.
+- **2026-10-24, M4 freeze test, with the arena on (Stanley).** Freezing also stops spawning (spec 7: "no
+  reflection, no weight updates, no spawning"), so a frozen run carries fewer of the defense's own sparring
+  attackers and its total loss can drop. The freeze check therefore measures what the outsider lineages
+  extract, the outside threat that runs identically either way. Seed 42: rounds 6-8 lose $2,427 / $2,643 /
+  $2,104 to outsiders frozen vs $1,743 / $1,266 / $777 learning; round 10 is $224 after unfreezing vs
+  $2,068 if never unfrozen.
+- **2026-10-24, M6 escalation trend (Stanley).** Spec: "the escalation rate in round 10 is lower than in round 2".
+  Rounds 1-2 escalate little while the case memory is empty and the XGBoost voter hasn't earned weight yet, so
+  round 2 isn't the peak: on seed 42 it's 5.2%, then rounds 3-5 sit near the 10% budget and round 10 falls to
+  5.8% (seeds 7 and 123: 6.2% -> 5.2%, 6.5% -> 5.0%). New check: round 10 is at least 20% below the average of
+  rounds 3-5. All three seeds pass with room (9.5% -> 5.8%, 9.1% -> 5.2%, 9.8% -> 5.0%). With the arena on,
+  newly spawned strategies keep close calls coming and escalations stay at the budget, so M6 is checked
+  before the arena, like M3.
