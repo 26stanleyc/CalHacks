@@ -51,12 +51,13 @@ class DefensePipeline:
         votes = [*votes, *(voter.score(tx, features) for voter in self.voters if voter.name not in present)]
         order = {lane.value: i for i, lane in enumerate(self.lanes)}
         decision = self.orchestrator.decide(tx, sorted(votes, key=lambda v: order.get(v.voter, 99)), features)
-        if decision.action == Action.BLOCK and not decision.vetoed_by:  # a watch rule never blocks on its own
-            fired = {rid for v in decision.votes for rid in v.rule_ids}
-            watch = {r.id for s in self.specialists.values() for r in s.rulebook.rules if r.watch}
-            lanes = {lane.value for lane in self.lanes}
-            if fired and fired <= watch and not any(v.voter not in lanes and v.vote == Action.BLOCK for v in decision.votes):
-                decision = decision.model_copy(update={"action": Action.STEP_UP})
+        if decision.action == Action.BLOCK and not decision.vetoed_by:  # a watch rule never blocks on its own:
+            watch = {r.id for s in self.specialists.values() for r in s.rulebook.rules if r.watch}  # drop the lanes
+            if any(set(v.rule_ids) & watch for v in decision.votes):  # that fired only watch rules and decide again
+                without = [v.model_copy(update={"score": 0.0, "vote": Action.ALLOW, "rule_ids": []})
+                           if v.rule_ids and set(v.rule_ids) <= watch else v for v in decision.votes]
+                if self.orchestrator.decide(tx, without, features).action != Action.BLOCK:
+                    decision = decision.model_copy(update={"action": Action.STEP_UP})
         return decision
 
     def fingerprint(self) -> str:

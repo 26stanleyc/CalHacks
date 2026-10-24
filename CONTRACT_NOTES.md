@@ -296,3 +296,17 @@ same commits.
 - `RoundMetrics.total_cost_cents: int = 0` (Ryan 1, partly): total cost under the cost matrix
   (missed fraud, false blocks, step-up friction and abandoned purchases). `recall_at_1pct_fpr` and
   `pr_auc` stay in `bench/metrics.py` for now.
+
+### S8 and M11 (Stanley)
+
+No schema changes. M11 uses the existing `ThreatReport`, `ThreatPattern`, `ThreatIntelItem` and
+`ThreatIntelSource`; `FraudEngine.latest_threat_intel()` serves the dashboard.
+- **For Eric:** a live scraper plugs in as `FraudEngine(threat_source=...)`. It must implement
+  `fetch_new()` and return unseen reports. If it has a `seen` set of report ids, a restarted run
+  marks old reports as read.
+- **For Ryan:** two new row kinds, both allowed by the current db.sql.
+  - `defender_actions` rows with `action = 'threat_report'` and `actor = 'watchlist'`, one per
+    report read. A restart uses them to pick the watchlist back up.
+  - `rulebook_versions` rows with `deployed = false` and no veto when reflection writes a draft
+    (drafts are on only with `drafts=True`). The `draft` column is the draft's stable id within
+    its lane.

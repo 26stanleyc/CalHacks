@@ -7,12 +7,13 @@ from contracts.conformance import sample_tx
 from contracts.schemas import Action, AttackerSource, FeatureVector, Lane, Vote
 from engine.arena.outsiders import OutsiderAttacker
 from engine.brains import Brain
-from engine.dsl import Rule
+from engine.dsl import MAX_RULES, Rule
 from engine.engine import FraudEngine
 from engine.intel.corpus import REPORTS, WITHHELD, CorpusSource
 from engine.intel.watchlist import BOOSTED_ROUNDS, EXTRACT_INSTRUCTIONS, MAX_WATCH_RULES, Extraction
 from engine.arena.playbooks import REALISM
 from engine.sim.marketplace import MarketplaceWorld
+from engine.store import MemoryStore
 
 pytestmark = pytest.mark.m11
 
@@ -80,12 +81,47 @@ def test_a_watch_rule_never_hard_blocks_on_its_own():
     pipeline.specialists[Lane.VELOCITY].rulebook = book.model_copy(update={"rules": [*book.rules, watch]})
     tx = sample_tx("tx-watch", amount_cents=50_000)
     features = FeatureVector(tx_id=tx.tx_id, values={"b_memo_injection": 0.0})
-    only_watch = [Vote(tx_id=tx.tx_id, voter=lane.value, score=1.0, vote=Action.BLOCK,
-                       rule_ids=[watch.id] if lane == Lane.VELOCITY else []) for lane in pipeline.lanes]
-    assert pipeline.combine(tx, only_watch, features).action == Action.STEP_UP
-    with_regular = [v.model_copy(update={"rule_ids": [*v.rule_ids, "timing.regular"]}) if v.voter == "timing" else v
+    pipeline.orchestrator.weights = {k: (1.0 if k == Lane.VELOCITY.value else 0.0) for k in pipeline.orchestrator.weights}
+    only_watch = [Vote(tx_id=tx.tx_id, voter=lane.value, score=1.0, vote=Action.BLOCK, rule_ids=[watch.id])
+                  if lane == Lane.VELOCITY else Vote(tx_id=tx.tx_id, voter=lane.value, score=0.0, vote=Action.ALLOW)
+                  for lane in pipeline.lanes]
+    assert pipeline.orchestrator.decide(tx, only_watch, features).action == Action.BLOCK  # would block...
+    assert pipeline.combine(tx, only_watch, features).action == Action.STEP_UP  # ...but a watch rule alone doesn't
+    with_regular = [v.model_copy(update={"rule_ids": [*v.rule_ids, "velocity.regular"]}) if v.voter == "velocity" else v
                     for v in only_watch]
     assert pipeline.combine(tx, with_regular, features).action == Action.BLOCK
+
+
+def test_a_watch_rule_never_relaxes_a_block_that_holds_without_it():
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[])
+    pipeline = engine.pipeline
+    watch = Rule(id="velocity.watch_test", when={"feature": "v_count_agent_600s", "op": ">=", "value": 0}, score=0.5,
+                 watch=True, description="test")
+    book = pipeline.specialists[Lane.VELOCITY].rulebook
+    pipeline.specialists[Lane.VELOCITY].rulebook = book.model_copy(update={"rules": [*book.rules, watch]})
+    tx = sample_tx("tx-watch2", amount_cents=50_000)
+    features = FeatureVector(tx_id=tx.tx_id, values={"b_memo_injection": 0.0})
+    # an extra voter scores high enough to block but its own vote is only a step-up
+    extra = Vote(tx_id=tx.tx_id, voter="xgboost", score=0.9, vote=Action.STEP_UP)
+    lanes = [Vote(tx_id=tx.tx_id, voter=lane.value, score=0.0, vote=Action.ALLOW) for lane in pipeline.lanes]
+    pipeline.orchestrator.weights = {**pipeline.orchestrator.weights, "xgboost": 1.0}
+    assert pipeline.combine(tx, [*lanes, extra], features).action == Action.BLOCK
+    lanes[0] = Vote(tx_id=tx.tx_id, voter=Lane.VELOCITY.value, score=0.5, vote=Action.STEP_UP, rule_ids=[watch.id])
+    assert pipeline.combine(tx, [*lanes, extra], features).action == Action.BLOCK
+
+
+def test_promotion_waits_for_room_under_the_rule_cap():
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, threat_intel=True)
+    loop, wl = engine.learning, engine.watchlist
+    filler = [Rule(id=f"velocity.fill_{i}", when={"feature": "v_count_agent_600s", "op": ">=", "value": 100 + i},
+                   score=0.1, description="filler") for i in range(MAX_RULES)]
+    watch = Rule(id="velocity.watch_x", when={"feature": "v_count_agent_600s", "op": ">=", "value": 50}, score=0.5,
+                 watch=True, description="watch")
+    book = loop.pipeline.specialists[Lane.VELOCITY].rulebook
+    loop.pipeline.specialists[Lane.VELOCITY].rulebook = book.model_copy(update={"rules": [*filler, watch]})
+    loop.watch_true_hits = {watch.id: 3}
+    wl._lifecycle(loop, 5)
+    assert next(r for r in loop.pipeline.specialists[Lane.VELOCITY].rulebook.rules if r.id == watch.id).watch
 
 
 def test_each_report_gets_3_boosted_outsider_attackers_that_join_the_archive(on):
@@ -101,19 +137,46 @@ def test_each_report_gets_3_boosted_outsider_attackers_that_join_the_archive(on)
     assert archived & {a.attacker_id for a in wl.attackers}
 
 
-def test_duplicate_reports_are_skipped(on):
-    engine, _ = on
-    ids = [i.report.report_id for i in engine.watchlist.items]
-    assert "intel-micro-probe" in ids and "intel-card-cycling" not in ids
+def test_duplicate_reports_are_skipped_with_intel_on_and_off(on, off):
+    for engine, _ in (on, off):
+        ids = [i.report.report_id for i in engine.watchlist.items]
+        assert "intel-micro-probe" in ids and "intel-card-cycling" not in ids
 
 
 def test_watch_rules_stay_within_their_cap_and_vetting(on):
     engine, metrics = on
     for specialist in engine.pipeline.specialists.values():
         assert sum(r.watch for r in specialist.rulebook.rules) <= MAX_WATCH_RULES
-    deployed = [i for i in engine.watchlist.items if i.watch_rule_id]
-    assert deployed
+    items = [i for i in engine.watchlist.items if i.legit_rate is not None]
+    deployed = [i for i in items if i.watch_rule_id]
+    assert deployed and all(i.legit_rate <= 0.005 for i in deployed)
+    assert all(i.watch_rule_id is None for i in items if i.legit_rate > 0.005)
+    assert any(i.legit_rate > 0.005 for i in items), "the honest-traffic veto should be exercised in the run"
     assert sum(m.false_positive_rate for m in metrics) / len(metrics) <= engine.learning.fp_cap
+
+
+def test_watch_rules_catch_fraud_and_one_is_promoted(on):
+    engine, _ = on
+    assert any(i.catches for i in engine.watchlist.items)
+    promoted = [r for r in engine.store.rows["rulebook_versions"] if "watch_promoted" in (r["diff"] or {})]
+    assert promoted
+
+
+def test_a_restarted_run_picks_the_watchlist_back_up():
+    store = MemoryStore()
+    make = lambda: FraudEngine(store=store, world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False,
+                               threat_intel=True, run_id="intel-resume", tuning_tries=5)
+    first = make()
+    for _ in range(3):
+        first.run_round(requested_by=TEAM)
+    before = [i.report.report_id for i in first.watchlist.items]
+    second = make()
+    assert [i.report.report_id for i in second.watchlist.items] == before
+    assert {a.attacker_id for a in second.watchlist.attackers} == {a.attacker_id for a in first.watchlist.attackers}
+    for _ in range(3):
+        second.run_round(requested_by=TEAM)
+    ids = [r["report_id"] for r in store.rows["threat_reports"]]
+    assert len(ids) == len(set(ids))
 
 
 def test_first_contact_is_logged_in_each_round_new_attackers_arrive(on):

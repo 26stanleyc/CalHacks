@@ -166,6 +166,9 @@ class FraudEngine:
         if self.round:
             self._resume_attackers()
             self._resume_rulebooks()
+            if self.watchlist:
+                self.watchlist.restore(self.store.get_rows("defender_actions", self.run_id),
+                                       [r for s in self.pipeline.specialists.values() for r in s.rulebook.rules], self.round)
             if self.arena:
                 self.arena.restore(self.store.get_rows("archive_snapshots", self.run_id),
                                    self.store.get_rows("attackers", self.run_id),

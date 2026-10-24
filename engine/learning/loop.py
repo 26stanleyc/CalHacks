@@ -299,7 +299,12 @@ class LearningLoop:
             for rule in book.rules:  # a rule going live gets its full grace period before retirement
                 if rule.id not in live:
                     self.last_true_hit[rule.id] = round_no
-            self._deploy(round_no, lane, list(book.rules), {"draft_switch": index, "overall": round(draft.overall, 4),
+            # watch rules (and promoted ones) belong to the watchlist's lifecycle: a switch keeps the live ones
+            watchlisted = [r for r in self.pipeline.specialists[lane].rulebook.rules if ".watch_" in r.id]
+            rules = [r for r in book.rules if ".watch_" not in r.id] + watchlisted
+            if sum(not r.watch for r in rules) > MAX_RULES:
+                continue
+            self._deploy(round_no, lane, rules, {"draft_switch": index, "overall": round(draft.overall, 4),
                                                           "fp": round(draft.fp, 4), "shelf_scores": draft.shelf_scores},
                          None, draft=index)
             out.draft_switches[lane.value] = index

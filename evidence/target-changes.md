@@ -23,7 +23,8 @@ Every change to a numeric target from spec 8.2, with a one-line reason (spec 8.1
   newly spawned strategies keep close calls coming and escalations stay at the budget, so M6 is checked
   before the arena, like M3.
 - **2026-10-24, M11 intel on vs off (Stanley).** Spec: "intel on loses at least 50% less to new attackers in
-  their first round than intel off". Not met on mock brains, so the check is xfail rather than changed. Seed 42,
-  first-round extraction: about $971 with intel on vs $895 off; seed 7: $663 vs $664. The keyword extractor's
-  watch rules help on some patterns (gift card: $0 vs $183) and the vetting keeps them quiet on honest traffic,
-  but they don't add enough catches overall. A real extractor model is the expected fix.
+  their first round than intel off". Not met on mock brains, so the check is xfail rather than changed. First-round
+  extraction by all 3 attackers of each report, 8 rounds: seed 42 $12,279 with intel on vs $12,335 off; seed 7
+  $12,259 vs $12,502. The keyword extractor's watch rules help on some patterns (gift card: $0 vs $183 for its
+  test persona), but they don't add enough catches overall. They also cost some false positives: round 4 reaches
+  2.3% FP with intel on vs 0.3% off on seed 42 (3.3% vs 2.7% on seed 7). A real extractor model is the expected fix.

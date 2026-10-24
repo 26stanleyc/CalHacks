@@ -409,7 +409,14 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 - watch rules stay within their cap;
 - first contact is logged.
 
-**Not met:** "intel on loses at least 50% less on first contact than intel off" (xfail). On seed 42, the first-round loss is about the same either way:
+- **Review fixes:**
+  - a watch rule can no longer relax a block that holds without it;
+  - promotion counts catches across rounds and waits for room under the 15-rule cap (it crashed the round before);
+  - a restarted run picks the watchlist back up instead of re-reading old reports;
+  - duplicates are checked against every pattern seen, in both the on and off runs;
+  - a draft switch keeps the watchlist's rules.
+
+**Not met:** "intel on loses at least 50% less on first contact than intel off" (xfail). The first-round loss is about the same either way: $12,279 with intel on vs $12,335 off on seed 42, and $12,259 vs $12,502 on seed 7. By pattern:
 - the gift-card and mule patterns are caught much better with intel on;
 - midnight-drain and threshold-split are caught worse with intel on, because the mock extractor's signals are coarse.
 

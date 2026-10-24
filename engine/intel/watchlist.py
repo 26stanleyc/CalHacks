@@ -15,6 +15,7 @@
 With intel off (a benchmark ablation), the new attackers still arrive but no watch rule is made.
 """
 
+import json
 import random
 import re
 from dataclasses import dataclass, field
@@ -26,7 +27,7 @@ from engine.arena import playbooks
 from engine.arena.outsiders import OutsiderAttacker, Persona, shelf_for
 from engine.arena.playbooks import REALISM
 from engine.brains import Brain, mock_answer
-from engine.dsl import Rule, condition_features, validate_rule
+from engine.dsl import MAX_RULES, Rule, condition_features, regular_rules, validate_rule
 
 WATCH_SCORE = 0.5
 MAX_WATCH_RULES = 3
@@ -79,7 +80,7 @@ def _number(text: str, pattern: str, default: float) -> float:
 @mock_answer(Extraction)
 def _mock_extract(data: dict) -> Extraction:
     text = data["report"]["text"].lower()
-    lane, signals = "velocity", [{"feature": "v_sum_agent_3600s", "op": ">=", "value": 50_000}]
+    lane, signals = "velocity", []  # a report it doesn't recognize yields no signals
     for keywords, lane_name, sigs in MOCK_PATTERNS:
         if any(k in text for k in keywords):
             lane, signals = lane_name, sigs
@@ -120,6 +121,10 @@ class IntelItem:
     attacker_ids: list[str] = field(default_factory=list)
     catches: int = 0
     first_contact: dict[str, float] = field(default_factory=dict)
+    legit_rate: float | None = None  # the watch rule's replayed share of honest payments it fires on
+    when: dict | None = None  # the pattern's condition, and its attackers' playbook and memos
+    params: dict | None = None
+    payloads: list[str] = field(default_factory=list)
 
 
 class Watchlist:
@@ -133,7 +138,9 @@ class Watchlist:
         self.items: list[IntelItem] = []
         self.attackers: list[IntelAttacker] = []
         self.watch_hits: dict[str, int] = {}  # watch rule id -> last round it caught fraud
+        self.watch_catches: dict[str, int] = {}  # watch rule id -> fraud caught since it was deployed
         self.watch_born: dict[str, int] = {}
+        self.patterns: set[str] = set()  # every pattern ingested, watched or not (duplicates are skipped)
 
     # --- each round -------------------------------------------------------------------------------
 
@@ -164,6 +171,12 @@ class Watchlist:
         rows = []
         for report in self.source.fetch_new()[:1]:
             item = self._ingest(loop, round_no, report, replayed)
+            loop.store.log_rows("defender_actions", [{  # what a restarted run needs to pick the watchlist back up
+                "run_id": self.run_id, "round": round_no, "actor": "watchlist", "action": "threat_report", "cost": 0,
+                "granted": item is not None, "reason": report.report_id,
+                "detail": {"report": report.model_dump(mode="json"), "when": item.when if item else None,
+                           "params": item.params if item else None, "payloads": item.payloads if item else [],
+                           "watch_rule_id": item.watch_rule_id if item else None}}])
             if item is not None:
                 rows.append({"report_id": f"{self.run_id}/{report.report_id}", "source_url": report.source_url,
                              "payload": report.model_dump(mode="json"),
@@ -189,8 +202,10 @@ class Watchlist:
             self.items.append(item)
             return item
         when = {"all": signals} if len(signals) > 1 else signals[0]
-        if any(r.when == when for s in loop.pipeline.specialists.values() for r in s.rulebook.rules if r.watch):
-            return None  # the same pattern is already watched: skip the duplicate report
+        key = json.dumps(when, sort_keys=True)
+        if key in self.patterns or any(r.when == when for s in loop.pipeline.specialists.values() for r in s.rulebook.rules):
+            return None  # the same pattern was already seen (watched, promoted or not): skip the duplicate report
+        self.patterns.add(key)
         params = playbooks.clamp({k: float(v) for k, v in extraction.playbook.items() if k in REALISM}, REALISM)
         if not extraction.free_text_payloads:
             params["memo_rate"] = 0.0
@@ -200,6 +215,7 @@ class Watchlist:
         if self.intel_on:
             self._watch(loop, round_no, lane, report, when, item, replayed)
         self._spawn(round_no, report, params, extraction.free_text_payloads, item)
+        item.when, item.params, item.payloads = when, params, list(extraction.free_text_payloads)
         self.items.append(item)
         return item
 
@@ -219,6 +235,7 @@ class Watchlist:
             item.critic_verdict = f"the {lane.value} specialist already has {MAX_WATCH_RULES} watch rules"
             return
         replay = replay_rule(rule, lane, loop.pipeline, replayed, loop.voter_votes)
+        item.legit_rate = replay.legit_rate
         directions = {n: loop.pipeline.catalog.direction(n) for n in loop.pipeline.catalog.lane_features(lane)}
         # A watch rule can't catch anything yet (nothing like it has run), so it's vetted on honest
         # traffic only: it may fire on at most 0.5% of honest payments, and the defense's replayed
@@ -234,6 +251,7 @@ class Watchlist:
             item.watch_rule_id = rule.id
             self.watch_born[rule.id] = round_no
             self.watch_hits[rule.id] = round_no
+            self.watch_catches[rule.id] = 0
 
     def _spawn(self, round_no: int, report: ThreatReport, params: dict, payloads: list[str], item: IntelItem) -> None:
         rng = random.Random(f"intel:{self.seed}:{report.report_id}")
@@ -251,9 +269,11 @@ class Watchlist:
             item.attacker_ids.append(aid)
 
     def _lifecycle(self, loop, round_no: int) -> None:
-        """Promote watch rules that keep catching fraud; expire ones that catch nothing for 5 rounds."""
+        """Promote watch rules that have caught real fraud 3 times (when the lane has room under its rule
+        cap); expire ones that catch nothing for 5 rounds."""
         for lane, specialist in list(loop.pipeline.specialists.items()):
             rules, changed = [], {}
+            room = MAX_RULES - regular_rules(specialist.rulebook)
             for rule in specialist.rulebook.rules:
                 if not rule.watch:
                     rules.append(rule)
@@ -261,10 +281,12 @@ class Watchlist:
                 hits = loop.watch_true_hits.get(rule.id, 0)
                 if hits:
                     self.watch_hits[rule.id] = round_no
+                    self.watch_catches[rule.id] = self.watch_catches.get(rule.id, 0) + hits
                     for item in self.items:
                         if item.watch_rule_id == rule.id:
                             item.catches += hits
-                if hits >= PROMOTE_AFTER_HITS:
+                if self.watch_catches.get(rule.id, 0) >= PROMOTE_AFTER_HITS and room > 0:
+                    room -= 1
                     rules.append(rule.model_copy(update={"watch": False}))
                     changed.setdefault("watch_promoted", []).append(rule.id)
                 elif round_no - self.watch_hits.get(rule.id, round_no) >= EXPIRE_AFTER:
@@ -273,6 +295,29 @@ class Watchlist:
                     rules.append(rule)
             if changed:
                 loop._deploy(round_no, lane, rules, changed, None)
+
+    def restore(self, rows: list[dict], live_rules: list[Rule], round_no: int) -> None:
+        """Pick the watchlist back up on a restarted run from its logged threat_report actions: reports
+        already read aren't read again, their attackers come back, and live watch rules restart their
+        expiry clock from now."""
+        for row in rows:
+            if row["action"] != "threat_report":
+                continue
+            detail = row["detail"]
+            report = ThreatReport.model_validate(detail["report"])
+            if hasattr(self.source, "seen"):
+                self.source.seen.add(report.report_id)
+            if not row["granted"] or detail.get("when") is None:
+                continue
+            self.patterns.add(json.dumps(detail["when"], sort_keys=True))
+            item = IntelItem(report, watch_rule_id=detail.get("watch_rule_id"), when=detail["when"],
+                             params=detail["params"], payloads=detail.get("payloads") or [])
+            self._spawn(row["round"], report, item.params, item.payloads, item)
+            self.items.append(item)
+        for rule in live_rules:
+            if rule.watch:
+                self.watch_hits[rule.id] = round_no
+                self.watch_born.setdefault(rule.id, round_no)
 
     # --- the entry point ---------------------------------------------------------------------------
 
