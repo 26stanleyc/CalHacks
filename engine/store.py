@@ -79,6 +79,28 @@ def log_bundle(store: LogStore, tx: Transaction, features: FeatureVector, decisi
     store.log_decision(decision)
 
 
+def copy_run(src: "MemoryStore", dst: LogStore) -> None:
+    """Write everything a memory store holds into another store (e.g. Postgres, so the dashboard can
+    show a run that was benchmarked in memory), in foreign-key order."""
+    with dst.batch():
+        for run_id, run in src.runs.items():
+            dst.start_run(run_id, run["seed"], run["defense"], run["config"])
+        truth = {g.tx_id: g for g in src.ground_truth}
+        for tx in src.transactions:
+            dst.log_transaction(tx, truth.get(tx.tx_id))
+        for features in src.features:
+            dst.log_features(features)
+        dst.log_votes(src.votes)
+        for decision in src.decisions:
+            dst.log_decision(decision)
+        for result in src.settlements:
+            dst.log_settlement(result)
+        for metrics in src.metrics:
+            dst.log_round_metrics(metrics)
+        for table in ROW_TABLES:
+            dst.log_rows(table, src.rows[table])
+
+
 class MemoryStore:
     """Keeps deep copies, so callers can't change logged records and reads never return the
     caller's own object (tests compare against what was really logged)."""

@@ -17,11 +17,16 @@ system, which favors the baselines, if anything.
 
     uv run python -m engine.head_to_head --seeds 42 43 44 --rounds 10 --out evidence/head-to-head/mock
     uv run python -m engine.head_to_head --real --seeds 42 --rounds 6 --out evidence/head-to-head/bitdeer
+
+--record also writes the full system's run (every decision, rule change, reflection, critic check and
+attacker) to the team database afterwards, so the dashboard can show it; its run id is printed.
 """
 
 import argparse
 import json
 import statistics
+import time
+from datetime import datetime
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -54,7 +59,7 @@ class RulesPlusXGBoost:
         self.xgb.freeze(on)
 
 
-def run_one(seed: int, rounds: int, real: bool) -> dict:
+def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
     from bench.baselines import StaticRulesDefense, XGBoostDefense, trainable
     from bench.metrics import cost_cents
     from bench.xgb_voter import XGBoostVoter
@@ -64,13 +69,22 @@ def run_one(seed: int, rounds: int, real: bool) -> dict:
     from engine.sim.marketplace import MarketplaceWorld
     from engine.store import MemoryStore
 
+    run_id = f"h2h-{'real' if real else 'mock'}-{seed}" + (f"-{record}" if record else "")
     engine = FraudEngine(store=MemoryStore(), world=MarketplaceWorld(seed=seed), allowlist={"h2h"}, seed=seed,
-                         run_id=f"h2h-{'real' if real else 'mock'}-{seed}", voters=[XGBoostVoter()], threat_intel=True,
+                         run_id=run_id, voters=[XGBoostVoter()], threat_intel=True,
                          **({"brain": _brain()} if real else {}))
+    started = time.monotonic()
     for _ in range(rounds):
         engine.run_round(requested_by="h2h")
+    seconds = time.monotonic() - started
 
     store = engine.store
+    if record:
+        from engine.store import PostgresStore, copy_run
+
+        database = PostgresStore()
+        copy_run(store, database)
+        database.close()
     features = {f.tx_id: f for f in store.features}
     truth = {g.tx_id: g for g in store.ground_truth}
     full = {d.tx_id: d.action for d in store.decisions}  # the last decision per payment (after any escalation)
@@ -109,7 +123,8 @@ def run_one(seed: int, rounds: int, real: bool) -> dict:
     failures: dict[str, int] = defaultdict(int)
     for f in engine.brain.failures:  # model calls that errored or didn't parse (the code fallback decided)
         failures[f"{f['role']}:{f['kind']}"] += 1
-    out = {"seed": seed, "rounds": rounds, "real": real, "new_attackers": len(new),
+    out = {"seed": seed, "rounds": rounds, "real": real, "run_id": run_id if record else None,
+           "seconds_per_round": seconds / rounds, "new_attackers": len(new),
            "llm_spend_usd": spend.get("cost_usd", 0.0), "llm_calls": spend.get("calls", 0),
            "llm_tokens": spend.get("input_tokens", 0) + spend.get("output_tokens", 0),
            "llm_failures": dict(failures), "by_contender": {}}
@@ -136,7 +151,8 @@ def markdown(runs: list[dict]) -> str:
     lines = [f"Seeds {seeds}; {runs[0]['rounds']} rounds; {'Bitdeer models' if runs[0]['real'] else 'mock models'}; "
              f"new attackers after round {FREEZE_AFTER}: {sum(r['new_attackers'] for r in runs)}; "
              f"LLM calls {sum(r.get('llm_calls', 0) for r in runs):,}, tokens {sum(r.get('llm_tokens', 0) for r in runs):,}, "
-             f"failed calls {sum(sum(r.get('llm_failures', {}).values()) for r in runs):,}. "
+             f"failed calls {sum(sum(r.get('llm_failures', {}).values()) for r in runs):,}; "
+             f"{statistics.mean(r.get('seconds_per_round', 0) for r in runs) / 60:.1f} min per round. "
              f"Mean ± standard deviation across seeds.", "",
              "| contender | new attacks, first round | new attacks, first 3 rounds | all fraud | honest shoppers | total cost | mean FP | max FP |",
              "|---|---|---|---|---|---|---|---|"]
@@ -156,14 +172,20 @@ def main() -> None:
     parser.add_argument("--rounds", type=int, default=10)
     parser.add_argument("--real", action="store_true", help="use the Bitdeer models (mock fallback per call)")
     parser.add_argument("--workers", type=int, default=3)
+    parser.add_argument("--record", action="store_true", help="write the full system's runs to the team database")
     parser.add_argument("--out", type=Path, required=True, help="output path without extension")
     args = parser.parse_args()
 
     with ProcessPoolExecutor(args.workers) as pool:
-        runs = list(pool.map(run_one, args.seeds, [args.rounds] * len(args.seeds), [args.real] * len(args.seeds)))
+        stamp = datetime.now().strftime("%Y%m%d%H%M") if args.record else ""
+        runs = list(pool.map(run_one, args.seeds, [args.rounds] * len(args.seeds), [args.real] * len(args.seeds),
+                             [stamp] * len(args.seeds)))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.with_suffix(".json").write_text(json.dumps(runs, indent=1))
     table = markdown(runs)
+    recorded = [r["run_id"] for r in runs if r.get("run_id")]
+    if recorded:
+        table += f"\nRecorded in the team database (pick these in the dashboard): {', '.join(recorded)}\n"
     args.out.with_suffix(".md").write_text(table)
     print(table)
 
