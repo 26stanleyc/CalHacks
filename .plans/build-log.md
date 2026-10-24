@@ -244,6 +244,28 @@ The engine suite passed: 58 passed, 3 skipped.
 
 **Demo angle:** ⭐ **talking point 1.** This is the on-screen proof that the agents talk to each other. Run it right after the problem slide.
 
+### Sat Oct 24, 03:27 · Arena replay (3D battle view) · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- New standalone app in `arena/` (Vite, React Three Fiber). It's separate from Ryan's `dashboard/`, so neither steps on the other.
+- The layout puts the x402 gate at the centre with the 5 specialists and the orchestrator as angels around it. The 24 arena shelves are the outer ring of hex tiles: attacks on stores on one half, attacks on shoppers on the other.
+- Devils throw payment coins at the gate. Angels zap the ones they block, and stolen coins flash in the vault.
+- Each round plays as spawn beams (a defender building an attacker), then 3 waves with devils rethinking between them, then learning, when the shelf tiles recolour.
+- Clicking anything opens a card: an attacker's origin, model, plan, tuned numbers and wave-by-wave results; a defender's question, rulebook, this round's move and next move; a shelf's catch rate and top attackers; the gate's round metrics.
+- The timeline doubles as the exploitability chart.
+- It plays a deterministic mock run until the engine exports a run. The replay format (`arena/src/data/types.ts`) maps field by field onto `contracts/db.sql` tables, and `arena/README.md` lists the mapping.
+
+- The mock draws a fixed attack budget each round, like the spec: every outsider, the new attackers, 6 from the shakiest shelves and 2 at random. Archived attackers that weren't drawn wait on their shelves. An earlier version ran every archived attacker, so traffic grew 10× and losses rose even as the catch rate improved.
+- The mock run (seed 7) now tells the spec's story:
+  - losses fall from $1,744 in round 1 to $383 in round 20, under the M5 target of 60%
+  - the catch rate climbs from 29% to the low 80s
+  - the round 13 news scam spikes losses
+  - the freeze drops the catch rate to 39% by round 17, and it recovers after
+- The mock's payment shuffle is now deterministic across JS engines; it used `sort()` with a random comparator before.
+
+**Proof:** `npm run build` passes. Checked in the browser at 1280×800, 1000×700 and on a phone: 120 fps, every card type opens, and the HUD doesn't overlap. Node and Chrome produce identical per-round losses from the same seed. Screenshots are in `evidence/arena/` (round 16 frozen mid-wave; round 13 Velocity angel card).
+
+**Demo angle:** ⭐ the 40 s "arms race" beat. Play rounds 1→20 at 4–8×: shelves go red to green, the timeline bars fall, a news scam drops at round 6, and the freeze at 15–16 makes them jump while the scoreboard's catch rate drops. Then pause and click a devil to show its plan, and an angel to show its rules. 🔜 Needs an exporter from the real run tables to `arena/public/replay.json`.
+
 ---
 
 ## Entry template

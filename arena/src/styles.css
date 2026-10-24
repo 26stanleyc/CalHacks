@@ -1,0 +1,226 @@
+:root {
+  --sky: #c7d3f4;
+  --ink: #23233a;
+  --ink-soft: #5b5b78;
+  --paper: #fbfaff;
+  --seraph: #3d6be0;
+  --imp: #e5383b;
+  --imp-dark: #8e1b22;
+  --halo: #f5c443;
+  --news: #f29e38;
+  --held: #7fd18b;
+  --shaky: #ef7d73;
+  --pebble: #cfc8ba;
+  --edge: rgba(35, 35, 58, 0.14);
+  --lift: 0 5px 0 rgba(35, 35, 58, 0.13);
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --text: "Atkinson Hyperlegible", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+body {
+  background: var(--sky);
+  color: var(--ink);
+  font: 15px/1.45 var(--text);
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
+
+.loading { display: grid; place-items: center; height: 100%; font: 600 20px var(--display); }
+
+.arena { position: fixed; inset: 0; }
+.arena > canvas, .arena > div:first-child { position: absolute !important; inset: 0; }
+
+/* Round title: the one place the display face gets big. */
+.hud-left, .feed, .legend, .timeline, .card { z-index: 40; }
+/* Title and scoreboard share one column, so they can't collide at any width. */
+.hud-left {
+  position: absolute; top: 20px; left: 24px; width: min(340px, calc(100vw - 48px));
+  display: flex; flex-direction: column; gap: 14px; pointer-events: none;
+}
+.round-title h1 { margin: 0; font: 800 44px/1 var(--display); letter-spacing: -0.02em; }
+.round-title h1 span { font-weight: 600; font-size: 22px; color: var(--ink-soft); letter-spacing: 0; }
+.round-title p { margin: 8px 0 0; font-size: 15px; }
+.round-title .frozen {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  background: #e3f0ff; color: #24518f; font-weight: 700;
+}
+
+/* Scoreboard: angels on the left, devils on the right, like a match. */
+.scoreboard {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  background: var(--paper); border: 2px solid var(--edge); border-radius: 20px; box-shadow: var(--lift);
+  overflow: hidden;
+}
+.scoreboard .side { padding: 10px 18px 8px; text-align: center; }
+.scoreboard .angels { background: #e8eeff; }
+.scoreboard .devils { background: #ffe9e7; }
+.scoreboard .label { display: block; font-size: 13px; font-weight: 700; }
+.scoreboard .angels .label { color: var(--seraph); }
+.scoreboard .devils .label { color: var(--imp-dark); }
+.scoreboard strong { font: 800 32px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.scoreboard .angels strong { color: var(--seraph); }
+.scoreboard .devils strong { color: var(--imp); }
+.scoreboard .fine { grid-column: 1 / -1; margin: 0; padding: 6px 14px 8px; font-size: 13px; text-align: center; color: var(--ink-soft); }
+
+/* Event feed, newest on top. */
+.feed {
+  position: absolute; left: 24px; bottom: 118px; margin: 0; padding: 0; list-style: none;
+  width: min(400px, calc(100vw - 48px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+}
+.feed li {
+  background: var(--paper); border: 2px solid var(--edge); border-radius: 14px;
+  padding: 7px 12px 7px 30px; font-size: 14px; position: relative; box-shadow: var(--lift);
+  animation: pop 0.25s ease-out;
+}
+.feed li::before {
+  content: ""; position: absolute; left: 11px; top: 12px; width: 10px; height: 10px; border-radius: 50%;
+}
+.feed li.angel::before { background: var(--seraph); box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--halo); top: 13px; width: 8px; height: 8px; }
+.feed li.devil::before { background: var(--imp); }
+.feed li.news::before { background: var(--news); border-radius: 2px; }
+.feed li:nth-child(n + 3) { opacity: 0.7; }
+.feed li:nth-child(n + 4) { opacity: 0.45; }
+@keyframes pop { from { transform: translateY(6px); opacity: 0; } }
+
+.card + .legend { display: none; }
+.legend {
+  position: absolute; right: 24px; bottom: 118px; background: rgba(251, 250, 255, 0.85);
+  border-radius: 14px; padding: 8px 12px; font-size: 12.5px; display: grid; grid-template-columns: auto auto; gap: 2px 14px;
+}
+.legend p { margin: 0; display: flex; align-items: center; gap: 7px; }
+.legend i { display: inline-block; width: 12px; height: 12px; flex: none; }
+.legend .dot { border-radius: 50%; }
+.legend .dot.angel { background: #fff; box-shadow: inset 0 0 0 2px var(--seraph); }
+.legend .dot.devil { background: var(--imp); }
+.legend .dot.shopper { background: var(--pebble); }
+.legend .ring { border-radius: 50%; border: 3px solid; }
+.legend .ring.spawned { border-color: var(--seraph); }
+.legend .ring.outsider { border-color: var(--ink); }
+.legend .ring.news { border-color: var(--news); }
+.legend .tile { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.legend .tile.shaky { background: var(--shaky); }
+.legend .tile.held { background: var(--held); }
+
+/* Timeline: the scrubber is also the arms-race chart. */
+.timeline {
+  position: absolute; left: 24px; right: 24px; bottom: 18px; height: 86px;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
+  background: var(--paper); border: 2px solid var(--edge); border-radius: 22px; box-shadow: var(--lift); padding: 10px 16px;
+}
+.play {
+  width: 48px; height: 48px; border-radius: 50%; border: none; background: var(--ink); display: grid; place-items: center;
+}
+.play svg { width: 20px; height: 20px; fill: var(--paper); }
+.track { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 44px; }
+.bar {
+  flex: 1; height: 100%; padding: 0; border: none; background: rgba(35, 35, 58, 0.05); border-radius: 6px;
+  position: relative; display: flex; align-items: flex-end; overflow: hidden;
+}
+.bar .fill { width: 100%; border-radius: 6px 6px 3px 3px; opacity: 0.45; transition: opacity 0.2s; }
+.bar.past .fill, .bar.current .fill { opacity: 1; }
+.bar.current { outline: 2px solid var(--ink); outline-offset: 1px; }
+.bar.frozen { background: repeating-linear-gradient(135deg, rgba(61, 107, 224, 0.12) 0 4px, transparent 4px 8px); }
+.bar .progress { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--ink); }
+.bar:hover .fill { opacity: 0.9; }
+.caption { margin: 0; font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.speeds { display: flex; background: rgba(35, 35, 58, 0.06); border-radius: 999px; padding: 3px; }
+.speeds button { border: none; background: none; border-radius: 999px; padding: 6px 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.speeds button.on { background: var(--ink); color: var(--paper); }
+
+/* The unit card. */
+.card {
+  position: absolute; top: 18px; right: 24px; width: 340px; max-height: calc(100% - 140px); overflow-y: auto;
+  background: var(--paper); border: 2px solid var(--edge); border-radius: 22px; box-shadow: var(--lift);
+  padding: 18px 20px 20px; animation: slide 0.22s ease-out;
+}
+@keyframes slide { from { transform: translateX(16px); opacity: 0; } }
+.card h2 { margin: 0; font: 800 26px/1.1 var(--display); letter-spacing: -0.01em; }
+.card h3 { margin: 16px 0 6px; font: 600 15px var(--display); display: flex; gap: 8px; align-items: baseline; }
+.card h3 .count { font: 400 13px var(--text); color: var(--ink-soft); }
+.card p { margin: 6px 0; }
+.card .kind { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.card .origin { color: var(--ink-soft); }
+.card .muted { color: var(--ink-soft); font-size: 14px; }
+.close {
+  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: rgba(35, 35, 58, 0.06); display: grid; place-items: center;
+}
+.close svg { width: 14px; height: 14px; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
+.who { display: flex; gap: 12px; align-items: center; padding-right: 36px; }
+.token { width: 42px; height: 42px; border-radius: 50%; flex: none; position: relative; }
+.token.devil { background: var(--imp); box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink); }
+.token.devil.spawned { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--seraph); }
+.token.devil.threat_intel { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--news); }
+.token.devil::before, .token.devil::after {
+  content: ""; position: absolute; top: -7px; width: 0; height: 0;
+  border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 13px solid var(--imp-dark);
+}
+.token.devil::before { left: 6px; transform: rotate(-18deg); }
+.token.devil::after { right: 6px; transform: rotate(18deg); }
+.token.angel { background: #fff; box-shadow: inset 0 0 0 3px var(--seraph); }
+.token.angel::before {
+  content: ""; position: absolute; left: 9px; right: 9px; top: -9px; height: 7px; border-radius: 50%;
+  border: 3px solid var(--halo);
+}
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 12px 0 0; font-size: 14px; }
+.facts dt { color: var(--ink-soft); }
+.facts dd { margin: 0; }
+blockquote {
+  margin: 0; padding: 10px 12px; background: #fff1ef; border-radius: 12px; color: #5a1a1f; font-size: 14.5px;
+}
+.chips { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.chips li { background: rgba(35, 35, 58, 0.06); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 700; }
+.chips li span { font-weight: 400; color: var(--ink-soft); }
+.waves { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.waves li { display: grid; grid-template-columns: 56px auto 1fr; gap: 10px; align-items: center; }
+.waves li.pending { display: block; color: var(--ink-soft); }
+.wave-name { font-weight: 700; }
+.wave-note { color: var(--ink-soft); font-size: 13px; }
+.pips { display: flex; gap: 3px; }
+.pips i { width: 11px; height: 11px; border-radius: 50%; }
+.pips i.through { background: var(--imp); }
+.pips i.caught { border: 2.5px solid var(--seraph); }
+.pips i.open { background: rgba(35, 35, 58, 0.12); }
+.rules { margin: 0; padding-left: 18px; font-size: 14px; }
+.rules li { margin: 2px 0; }
+.rules li.watch { color: #8a4b05; }
+.rules li.watch .tag { margin: 0 4px 0 0; background: #fdebd0; }
+.meter { height: 10px; border-radius: 999px; background: var(--shaky); margin: 12px 0 4px; overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--held); }
+.roster { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.tag { margin-left: 8px; font-size: 12px; background: rgba(35, 35, 58, 0.08); border-radius: 999px; padding: 1px 8px; }
+.link { border: none; background: none; padding: 0; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: rgba(35, 35, 58, 0.25); text-align: left; }
+.link:hover { text-decoration-color: currentColor; }
+
+/* Labels drawn in the world. */
+.hover-label {
+  background: var(--ink); color: var(--paper); font: 700 13px var(--text); padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.plaque {
+  font: 600 15px var(--display); color: var(--ink); background: rgba(251, 250, 255, 0.8); padding: 4px 12px; border-radius: 10px; white-space: nowrap;
+}
+.headline {
+  background: #fffaf0; border: 2px solid var(--news); border-radius: 12px; padding: 6px 12px; font: 700 14px var(--text);
+  width: max-content; max-width: 240px; box-shadow: var(--lift); transition: opacity 0.4s;
+}
+.headline span { display: block; font-weight: 400; font-size: 12px; color: #8a4b05; }
+
+@media (max-width: 760px) {
+  .hud-left { top: 14px; left: 16px; width: calc(100vw - 32px); gap: 10px; }
+  .round-title h1 { font-size: 30px; }
+  .round-title p { font-size: 13px; }
+  .scoreboard strong { font-size: 24px; }
+  .feed, .legend { display: none; }
+  .timeline { left: 16px; right: 16px; grid-template-columns: auto 1fr; height: auto; }
+  .speeds { grid-column: 1 / -1; justify-self: center; }
+  .caption { display: none; }
+  .card { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; max-height: 60%; z-index: 45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed li, .card { animation: none; }
+}
