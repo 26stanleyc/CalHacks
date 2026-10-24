@@ -4,7 +4,7 @@ CalHacks · 3 people · ~36 hours
 
 ## 1. Summary
 
-A team of AI defense agents learns to stop fraud in agentic commerce on rails like Coinbase's x402, where the credential is used by the party it was issued to, so traditional card-fraud signals don't apply. The defense sits at the **x402 facilitator**, the checkpoint that verifies and settles payments for every merchant, so it protects both sides: merchants from bad buyer agents, and buyer agents from malicious merchants that hijack them with poisoned product pages. Five specialists (timing, entity graph, identity, velocity, mandate) score every payment with rules they wrote themselves, running as code. The mandate specialist asks the agent-era question: is this payment what the human authorized? An orchestrator combines their votes, decides whether the payment settles, and escalates borderline cases to the specialists' LLMs. The defense red-teams itself: each round every specialist spawns the attacker most likely to beat it, and the orchestrator spawns one aimed at the gaps between specialists. A persona swarm and a league of past attackers keep outside pressure on. All agents are Fetch.ai uAgents on different Bitdeer model families. Key metric: exploitability, the most a fresh attacker can still extract from the frozen defense.
+A team of AI defense agents learns to stop fraud in agentic commerce on rails like Coinbase's x402, where the credential is used by the party it was issued to, so traditional card-fraud signals don't apply. The defense sits at the **x402 facilitator**, the checkpoint that verifies and settles payments for every merchant, so it protects both sides: merchants from bad buyer agents, and buyer agents from malicious merchants that hijack them with poisoned product pages. Five specialists (timing, entity graph, identity, velocity, mandate) score every payment with rules they wrote themselves, running as code. The mandate specialist asks the agent-era question: is this payment what the human authorized? An orchestrator combines their votes, decides whether the payment settles, and escalates borderline cases to the specialists' LLMs. The defense red-teams itself: each round every specialist spawns the attacker most likely to beat it, and the orchestrator spawns one aimed at the gaps between specialists. A persona swarm and a league of past attackers keep outside pressure on. An Apify threat-intel feed scrapes public reports of new scams and puts them on the defense's watchlist before attackers can use them. All agents are Fetch.ai uAgents on open-weight models hosted by Bitdeer, with GLM-5.3 as the critic. Key metric: exploitability, the most a fresh attacker can still extract from the frozen defense.
 
 Pitch line: "Agents write and rewrite the defense; code runs it at machine speed; agents step back in for the hard cases. And our defenders red-team themselves."
 
@@ -13,13 +13,13 @@ Pitch line: "Agents write and rewrite the defense; code runs it at machine speed
 | Sponsor | Use |
 |---|---|
 | Fetch.ai uAgents + Agentverse + ASI:One | Every agent runs in one Bureau process; spawned attackers are created at runtime. 2 public agents (Fraud Desk, Merchant Scanner) are registered on Agentverse with the Chat Protocol and a mailbox, so judges and users can use the system by chatting in ASI:One (see 3.7). This is required for the Fetch track. |
-| Bitdeer Model Studio | Specialists, swarm and spawned attackers, and page-reading shoppers, each on a different open-source model family. No spawned attacker shares a model with its parent. |
+| Bitdeer Model Studio | Every LLM in the system runs on open-weight models hosted by Bitdeer: the critic (GLM-5.3), specialists, swarm and spawned attackers, page-reading shoppers and the threat-intel extractor. Specialists and attackers use different open-source model families. No spawned attacker shares a model with its parent. |
 | Coinbase x402 | The defense runs as a risk check inside our facilitator layer: every payment is verified by our orchestrator before it's forwarded to Coinbase's hosted facilitator for settlement. A stub during precompute; real Base Sepolia settlement during the live rounds. |
-| Apify | **Main use:** scanning merchant pages for hidden injected instructions, cached as a merchant-risk feature the gate uses (M10, `scan_page`). A one-off product catalog scrape also supplies marketplace data, but isn't presented as a sponsor use. |
+| Apify | Two main uses:<br>(1) **Threat-intel watchlist (M11):** scrape public reports of new agent-payment scams so the defense puts them on a watchlist before attackers use them against the system (3.8).<br>(2) **Merchant page scans (M10, `scan_page`):** check merchant pages for hidden injected instructions, cached as a merchant-risk feature the gate uses.<br>A one-off product catalog scrape also supplies marketplace data, but isn't presented as a sponsor use. |
 
-**On hold (see §11):** CRS, until sandbox access is confirmed at M0; Apify threat intel.
+**On hold (see §11):** CRS, until sandbox access is confirmed at M0.
 
-The critic runs on a stronger model (Claude) because its judgments (vetoes, miss assignment) steer all learning.
+The critic runs on **GLM-5.3 hosted by Bitdeer**, the strongest open model in the stack, because its judgments (vetoes, miss assignment, vetting watch rules) steer all learning. If Bitdeer doesn't host GLM-5.3, use the strongest GLM version it does host; M0 checks this. The whole system runs on open-weight models.
 
 ## 3. Architecture
 
@@ -53,7 +53,7 @@ The critic runs on a stronger model (Claude) because its judgments (vetoes, miss
   - a few-shot memory of confirmed cases
   - an LLM (distinct Bitdeer family) used only for escalation, reflection and spawning
 - **Orchestrator:** sits at the facilitator and sees every payment for every merchant. It fans out, combines votes, applies hard vetoes (a failed identity check, or a clear mandate breach such as over the cap or a forbidden merchant), picks the lowest expected-cost action under the cost matrix, and decides whether x402 settles. It also runs the round loop, builds the coverage map, and spawns the gap attacker.
-- **Critic (Claude):** vetoes rule changes and assigns misses to lanes.
+- **Critic (GLM-5.3 on Bitdeer):** vetoes rule changes, assigns misses to lanes, and vets threat-intel watch rules (3.8). Works from a fixed rubric with structured output (verdict, reason, lane), so its decisions can be checked and logged.
 
 ### 3.4 Decision path (per transaction)
 1. A payment (with its mandate) reaches the facilitator for verification. The feature service enriches it; the orchestrator fans it out to the specialists (uAgent messages within the Bureau).
@@ -74,6 +74,7 @@ The critic runs on a stronger model (Claude) because its judgments (vetoes, miss
 | Spawned (6/round) | 5 specialists + orchestrator (gap attacker) | Parent's rulebook, gray-box: rule names, noisy thresholds; the gap attacker gets weights, thresholds, step-up policy and the target coverage region | Outcome + which specialist objected | New every round; the best or most novel go to the league |
 | Persona swarm | Fixed at setup: card tester, structurer, account farmer, prompt-injection attacker, **hijacker**, **malicious merchant** | None | Outcome only | Persistent; rewrites its playbook from feedback |
 | League | Archive of past attackers | As created | As created | Sampled back in |
+| Threat-intel test personas | The threat-intel pipeline (3.8), at most 1 per round | The scraped report only | Outcome only | Tests whether the matching watch rule works; joins the swarm afterward |
 
 - Attackers' LLMs write playbooks (JSON: amounts, cadence, accounts, merchant mix, free-text payloads); a deterministic generator emits hundreds of transactions from each.
 - **The two new personas:**
@@ -112,12 +113,14 @@ Judge in ASI:One ──chat──▶ Agentverse (mailbox) ──▶ Public chat 
 | `scan_page(url)` | M10 | Apify scrape + injection detector + merchant-risk features for one page |
 | `get_metrics(round=latest)` | M4 | Loss, false-positive rate, exploitability, hijack rate, benchmark comparison |
 | `run_round()`, `set_freeze(on/off)` | M4/M5 | The demo controls; the dashboard buttons call the same functions |
+| `latest_threat_intel()` | M11 | Recent scraped reports, the watch rules made from them, and whether those rules have caught anything |
 
 **Public agents:**
 - **Fraud Desk** (the facilitator/orchestrator's public face). Handles messages like:
   - "Check this payment: agent X paying merchant Y $49 for a USB-C charger, mandate under $30" → `check_payment`
   - "Why was tx 1234 blocked?" → `explain`
   - "How is the defense doing?" → `get_metrics`
+  - "Any new scams on the watchlist?" → `latest_threat_intel`
   - "Run a round" / "freeze learning" → round controls (team only, see below)
 - **Merchant Scanner.** "Is this product page safe for my shopping agent?" → `scan_page`. Real tool use on a real URL.
 
@@ -128,6 +131,34 @@ Each chat agent uses an LLM with tool calling to map the message to one of these
 - **Round controls are restricted.** Only allowlisted team sender addresses can trigger `run_round` and `set_freeze`; everyone else gets read-only functions.
 - **Chat text is untrusted.** It reaches internal LLMs only as quoted data, like any attacker-controlled text.
 - **Only the public agents are registered on Agentverse.** Specialists, attackers and shoppers stay internal to the Bureau.
+
+### 3.8 Threat-intel watchlist (Apify)
+
+Goal: learn about new scams from the outside world and get ready for them **before** an attacker uses them against the system, instead of learning only after taking losses.
+
+**Pipeline (runs between rounds):**
+1. **Scrape.** Apify scrapes a fixed list of public sources:
+   - security and fraud blogs
+   - payment-company fraud reports
+   - FTC and consumer-protection alerts
+   - public forums like r/scams
+
+   Public sources only: no carding forums or stolen-data markets. A pre-scraped corpus is kept as a fallback for the live demo.
+2. **Extract.** A Bitdeer model reads each new report (as quoted data, never as instructions) and outputs a structured pattern:
+   - name and short description
+   - the signals it would show, mapped onto existing feature primitives (e.g. "many $0.50 payments to new merchants within 2 minutes")
+   - the specialist lane those signals belong to
+
+   Reports that match an existing watch rule, league attacker or swarm persona are skipped.
+3. **Watch rule.** The pattern becomes a **watch rule** in the matching specialist's rulebook. A watch rule **raises the score and can trigger escalation, but never hard-blocks on its own**, because rules written from an article can be vague.
+4. **Vet.** The critic replays the watch rule against the last round's legitimate traffic and vetoes it if it would push the false-positive rate over the cap.
+5. **Lifecycle:**
+   - at most 3 watch rules per specialist, separate from the 15-rule cap
+   - a watch rule that catches real fraud can be promoted by reflection into a normal rule
+   - one that catches nothing for 5 rounds expires
+6. **Test.** The same pattern becomes a **threat-intel test persona** (at most 1 per round) that tries the technique, so each watch rule is checked against a real attempt.
+
+**Intel on vs off** is a toggle and a benchmark ablation (5.1). With intel off, the test persona still arrives, but the defense gets no watch rule, so it has to learn after taking losses.
 
 ## 4. Learning loop (per round)
 1. Run all sources plus legitimate traffic.
@@ -143,7 +174,7 @@ Each chat agent uses an LLM with tool calling to map the message to one of these
 6. The critic vetoes rules that push the false-positive rate over the cap, or that are degenerate (e.g. block everything over $X).
 7. Orchestrator weights update by multiplicative weights (Hedge) on the cost each specialist's votes saved or caused.
 8. Attackers rewrite their playbooks; the winning and most novel spawned attackers enter the league.
-9. Specialists and the orchestrator spawn the next round's attackers.
+9. Specialists and the orchestrator spawn the next round's attackers. The threat-intel pipeline (3.8) adds any new vetted watch rules, and at most one test persona.
 10. Exploitability: freeze the defense, run a fresh set of spawned attackers, and log their best extraction rate. Held-out attackers that never train anyone measure generalization.
 11. Stretch: a sandbagging check (compare each spawned attacker's success against its parent with its success against the other specialists); the orchestrator rewrites its spawning prompt based on which attackers reduced later losses most.
 
@@ -161,13 +192,14 @@ Every defense runs against the same traffic from the same seed, with the same fe
 | Static rules (seed rulebooks, never updated) | Traditional rules-engine fraud systems |
 | XGBoost/LightGBM trained on the first rounds, retrained every N rounds on all labels so far | Industry standard for tabular fraud; the strongest baseline |
 | Single LLM judge per transaction (one model, all features, no specialists) | "Why not just ask an LLM?" |
-| Ablations of our system: no spawned attackers (swarm only), no escalation, no mandate specialist | What each piece contributes |
+| Ablations of our system: no spawned attackers (swarm only), no escalation, no mandate specialist, threat intel off | What each piece contributes |
 
 **Metrics, per defense per round:**
 - recall at a fixed false-positive rate (1%), and precision-recall AUC
 - total cost under the cost matrix (combines missed fraud, false blocks and step-up friction)
 - **exploitability:** freeze the defense and run the same fresh adaptive attackers against it. This is where static models are expected to fail and the headline comparison.
 - recovery time: rounds to return to the previous loss level after a new attack type appears (e.g. a persona introduced mid-run)
+- **threat-intel lead:** for each threat-intel test persona, the dollars it extracts before it's first caught, with intel on vs off. With intel on, the goal is that its first attempts are already escalated or blocked.
 - buyer-side hijack rate: share of page-reading shoppers whose mandate-breaking payment settles
 - latency per transaction and LLM spend per 1,000 transactions
 
@@ -194,6 +226,7 @@ Append-only Postgres tables:
 - features added
 - attackers: source, parent, model, intel, playbook, generation
 - coverage maps
+- threat intel: each scraped report (source URL, date), the extracted pattern, the watch rule made from it, the critic's verdict, the test persona, and every catch credited to the watch rule
 - mandates, and each payment's mandate check result
 - merchant pages, with their Apify scans and injection scores
 - page-reading shopper sessions: pages read, the purchase decision, whether the shopper was hijacked
@@ -216,6 +249,7 @@ The dashboard only reads these tables.
 - **Both-sides view:** losses split into "bad buyers vs merchants" and "bad merchants vs buyers"; merchant risk scores; a hijack replay showing the poisoned page, the shopper's decision, and the mandate block.
 - Coverage map: the gap attacker's target region lights up, gets through, then goes dark.
 - Attacker strategy drift and league view.
+- **Threat-intel panel:** the newest scraped reports, the watch rule each became, and the test persona's result. Includes an intel on/off comparison: dollars lost to a new scam before it's caught.
 - **Freeze toggle:** the defense stops (no reflection, no weight updates, no spawning) while swarm and league attackers keep adapting. Losses climb, then recover on unfreeze.
 
 **3-minute script:**
@@ -225,6 +259,7 @@ The dashboard only reads these tables.
 4. 60 s — live, driven from ASI:One chat, with the dashboard alongside:
    - ask the Merchant Scanner about a poisoned product page; it flags the hidden instructions
    - ask the Fraud Desk to check the purchase a hijacked shopper tried to make; it blocks it for mandate breach and lists which specialists objected and why
+   - Apify picks up a new scam report (live scrape, falling back to an unused report from the pre-scraped corpus); it becomes a watch rule; the matching test attacker's first attempt is escalated or blocked ("caught on day zero"). Show the intel-off comparison, where the same scam takes losses first.
    - "freeze learning" / "unfreeze" from chat, with losses climbing and recovering on the dashboard
    - a real x402 payment settles
 
@@ -248,7 +283,7 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
   - one hand-built transaction sent through the Bureau produces a row in `transactions`, `votes` and `decisions` within 5 s
   - the schemas validate an example message of each type and reject a malformed one
 - *Verify (integration probes, `scripts/probe_integrations.py`):* prints OK or MOCK for each integration.
-  - **Bitdeer:** lists at least 5 model families and completes one call on each. Six or more is better: the specialists need 5 different families, and every spawned attacker needs a different one from its parent.
+  - **Bitdeer:** lists at least 5 model families and completes one call on each. Six or more is better: the specialists need 5 different families, and every spawned attacker needs a different one from its parent. Confirms GLM-5.3 (or the newest hosted GLM) is available for the critic, and records which version.
   - **x402:** one testnet verify call succeeds.
   - **CRS:** one test identity is verified. If it can't be, write "on hold" in `evidence/m0/crs-decision.md`.
 - *Verify (manual):*
@@ -342,7 +377,15 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
   - buyer-side and merchant-side losses are logged separately
 - *Verify (manual):* a screenshot of the both-sides view, with a hijack replay.
 
-**M11 — On hold:** Apify threat intel (§11). The number is kept so references stay stable.
+**M11 — Threat-intel watchlist (Apify).** Scraper over the fixed public-source list, pre-scraped corpus, extraction into structured patterns, watch rules with critic vetting and lifecycle, test personas, intel on/off toggle, `latest_threat_intel`, dashboard panel. Needs M4 (rulebooks and critic) and M3 (swarm).
+- *Verify:*
+  - a live Apify scrape of at least one listed source succeeds, and the corpus holds at least 10 reports
+  - at least 80% of extracted patterns validate against the schema and map only to existing feature primitives
+  - duplicate reports (same pattern as an existing watch rule, persona or league attacker) are skipped
+  - watch rules never hard-block on their own (unit test), and none exceeds the false-positive cap on replayed legitimate traffic
+  - on seed 42 with 3 injected test personas, intel on loses at least 50% fewer dollars before first catch than intel off
+  - an extracted report containing "ignore previous instructions" text doesn't change the extractor's output format (injection fixture)
+- *Verify (manual):* a screenshot of the threat-intel panel showing report → watch rule → first catch.
 
 **M12 — Benchmark baselines.** A pluggable defense interface, static-rules and XGBoost (retrained) baselines, the swarm-only ablation, the metrics from 5.1. Can start after M4; comparing against the full system needs M7.
 - *Verify:*
@@ -359,16 +402,16 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
 
 **Stretch:** single-LLM-judge baseline, league sampling depth, sandbagging check, meta spawning prompt, per-agent trust score other merchants can look up. Each gets its own test file before it's counted as done.
 
-**Core scope:** M0–M10, M12 and M13. Everything in §11 waits until the core works end to end.
+**Core scope:** M0–M13. Everything in §11 waits until the core works end to end.
 
-**Main pitch:** a self-red-teaming defense at the x402 facilitator. The mandate specialist (M9) and protecting both sides (M10) support it.
+**Main pitch:** a self-red-teaming defense at the x402 facilitator. The mandate specialist (M9), protecting both sides (M10) and the threat-intel watchlist (M11) support it.
 
-**Fallback lines:** stop at M5 for the original plan, M7 for the self-red-teaming pitch, M9 for the mandate pitch, M10 for "protects both sides". **Required whatever you cut:** M8 (Fetch eligibility), M12's must-have baselines (static rules, XGBoost, swarm-only), and M13. If M10 isn't working by Saturday afternoon, cut it rather than finish half of it; Apify then appears only through the catalog scrape.
+**Fallback lines:** stop at M5 for the original plan, M7 for the self-red-teaming pitch, M9 for the mandate pitch, M10 for "protects both sides", M11 for "ready before the attack". **Required whatever you cut:** M8 (Fetch eligibility), M12's must-have baselines (static rules, XGBoost, swarm-only), and M13. M10 and M11 compete for time with 3 people. If one isn't working by Saturday afternoon, cut it rather than finish half of it; Apify still appears through whichever of the two survives.
 
 **Lanes (3 people):**
 - **A — Agents:** Bureau, feature service, DSL, specialists (including mandate), orchestrator as facilitator, entry-point functions, escalation, the CRS access check in M0, x402, the ASI:One agents, the pluggable defense interface (M0, M2, M6, M8, M9 defense side, M12 interface, x402 in M13).
-- **B — Attack + Learning:** swarm (including hijacker and malicious merchant), reflection loop, critic, spawning, coverage map (M3, M4, M7, M9 hijacker, M10 merchant persona).
-- **C — Dashboard + Data:** schema, Apify catalog and page scans, scripted and page-reading shoppers, mandates, Next.js dashboard, XGBoost and other baselines, benchmark metrics, precompute runs, submission links, backup recording (M1, M5, M10 shoppers and scans, M12 baselines, M13).
+- **B — Attack + Learning:** swarm (including hijacker and malicious merchant), reflection loop, critic, spawning, coverage map, threat-intel extraction, watch rules and test personas (M3, M4, M7, M9 hijacker, M10 merchant persona, M11 rules and personas).
+- **C — Dashboard + Data:** schema, all Apify scraping (catalog, page scans, threat-intel sources and corpus), scripted and page-reading shoppers, mandates, Next.js dashboard, XGBoost and other baselines, benchmark metrics, precompute runs, submission links, backup recording (M1, M5, M10 shoppers and scans, M11 scraper and panel, M12 baselines, M13).
 
 ## 9. Known limitations
 - Traffic is simulated (real catalog, scripted shoppers); labels come from the simulation; chargeback delay isn't modeled.
@@ -386,6 +429,8 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
 - Mandates are a simplified version of AP2's idea, not the real protocol. The purchase-vs-request match uses an LLM or embedding judgment and can be wrong.
 - Page-reading shoppers are a small LLM-driven share of traffic because of cost, so hijack statistics come from fewer sessions than the rest of the metrics.
 - Malicious-merchant pages are written by our own attackers; real-world injection techniques may be more varied.
+- Threat intel covers public sources only, which lag behind real fraud: it helps against scams spreading publicly, not ones invented privately. Watch rules are only as good as the model's reading of each report.
+- The critic runs on an open model (GLM-5.3) rather than a frontier closed model. Its rubric and structured output reduce, but don't remove, the risk of bad vetoes or wrong miss assignments.
 
 ## 10. Prior work
 - MART (NAACL 2024), Self-RedTeam (2025) and MAGIC (ICML 2026): attacker–defender co-evolution for LLM safety.
@@ -396,11 +441,11 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
 - Google's AP2 (Agent Payments Protocol): mandates as the record of what a human authorized an agent to do.
 - Gradient-boosted trees (XGBoost/LightGBM), the industry standard for tabular fraud.
 
-**New here:** applying this to agentic payment fraud at the facilitator, protecting both merchants and buyer agents, with mandate checks as the agent-era fraud signal, specialist defenders spawning attackers against themselves, and a gap attacker driven by a coverage map.
+**New here:** applying this to agentic payment fraud at the facilitator, protecting both merchants and buyer agents, with mandate checks as the agent-era fraud signal, specialist defenders spawning attackers against themselves, a gap attacker driven by a coverage map, and a threat-intel watchlist that prepares the defense before new scams arrive.
 
 ## 11. On hold / future directions
 
-Not part of the core build. Revisit only after M0–M10, M12 and M13 work end to end.
+Not part of the core build. Revisit only after M0–M13 work end to end.
 
 **Sponsor uses on hold**
 - **CRS identity verification.** Decided at the end of M0:
@@ -410,7 +455,6 @@ Not part of the core build. Revisit only after M0–M10, M12 and M13 work end to
     - A "verified principal" tier raises mandate caps.
   - **If not:** keep simulated identity profiles and don't submit to the CRS track.
   - CRS confirms a person exists, not that they authorized the payment; that remains the mandate specialist's job.
-- **Apify threat intel (old M11).** Scrape public fraud reports; an LLM turns new patterns into at most one new swarm persona per round. Public sources only, no carding forums or stolen-data markets. Includes `latest_threat_intel()`, a Threat Intel public agent on Agentverse, a dashboard feed, a demo beat where a live scrape adds an attacker, and a delayed intel feed to defenders as a toggle.
 - **Apify know-your-agent checks** on escalated transactions: check the business a paying agent claims to act for.
 
 **Benchmarks on hold**
