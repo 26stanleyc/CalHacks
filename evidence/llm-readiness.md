@@ -39,7 +39,10 @@ input; about 34k of it goes to GLM-5.3, mostly the critic. Assume:
 - GLM-5.3 at $0.60 in / $2.20 out per million tokens (the example in `model_prices.py`);
 - the Flash models at $0.15 / $0.50 (Z.ai's and DeepSeek's list prices).
 
-That is about **$0.04 a round**. Even with 5x longer answers, or a reasoning model's hidden tokens on
+That is about **$0.04 a round** by the mock-based estimate. **The first real run used far more:**
+about 513k tokens a round (3.1M over 6 rounds, hidden reasoning included), so expect roughly
+$0.10-0.60 a round at those assumed prices. A round also took about 11 minutes of wall time, so
+precompute demo runs rather than running them live. Even with 5x longer answers, or a reasoning model's hidden tokens on
 the investigator's 70 calls a round, it stays well under the $0.60 budget. The run pauses only above
 $1.20 a round. Set the real prices with `BITDEER_PRICE_IN_<MODEL>` / `BITDEER_PRICE_OUT_<MODEL>`, then
 re-run the tool.
@@ -58,11 +61,58 @@ The field check found 4 prompt templates that never named some of their answer f
 - outsider rewrites were missing `reasoning`;
 - reflection was missing `notes`.
 
-## First real run
+## First real run (2026-10-24, Bitdeer live)
 
-Once credits are live, send the saved prompts to the real models:
+The first replay of the 24 saved prompts failed on 6. The two critic miss-assignment calls and four
+of the five specialists' rule-writing calls each ran about 140 seconds and returned nothing: the
+models spent their whole token budget on hidden reasoning. A probe showed two different causes:
+- **GLM-5.3 and GLM-5.3-Flash** accept `reasoning_effort: "low"`. With it, their hidden reasoning
+  drops about 10x, and every long prompt answers in 2-22 seconds.
+- **DeepSeek-V4.1-Flash and DeepSeek-V4-Flash** ignore `reasoning_effort`. On the rule-writing and
+  miss-assignment prompts, they reason past 6,000-16,000 tokens without answering, even when told
+  to "think briefly".
+
+Fixes:
+- `integrations/bitdeer.py` sends `reasoning_effort: "low"` by default. Override it with
+  `BITDEER_REASONING_EFFORT`, or set it empty to send nothing.
+- The long analytical roles move to GLM: `graph` to GLM-5.3-Flash, `velocity` to GLM-5.3, and
+  `critic_second` to GLM-5.3-Flash. DeepSeek keeps the short tasks, where it answers fine: the
+  investigator, outsider rewrites, and attackers spawned for GLM-run specialists.
+- Spawned attackers still use the other model family from their parent.
+
+After the fixes, all 24 prompts parse:
+
+| fixture | parsed | input / output tokens | seconds | problem |
+|---|---|---|---|---|
+| critic__MissAssignments | yes | 12362 / 3211 | 21.8 |  |
+| critic__RuleVerdict | yes | 511 / 82 | 3.7 |  |
+| critic_second__MissAssignments | yes | 12010 / 820 | 3.4 |  |
+| graph__ActionChoice | yes | 393 / 88 | 1.0 |  |
+| graph__ReflectionProposal | yes | 7444 / 400 | 2.1 |  |
+| held_out__HeldOutDraft | yes | 322 / 3427 | 35.5 |  |
+| identity__ActionChoice | yes | 539 / 89 | 0.9 |  |
+| identity__ReflectionProposal | yes | 2014 / 240 | 2.5 |  |
+| investigator__InvestigatorStep | yes | 1583 / 1541 | 10.8 |  |
+| mandate__ActionChoice | yes | 402 / 66 | 0.7 |  |
+| mandate__ReflectionProposal | yes | 9733 / 585 | 3.2 |  |
+| outsider_a__PlaybookRewrite | yes | 1096 / 952 | 7.0 |  |
+| outsider_b__PlaybookRewrite | yes | 1149 / 65 | 0.8 |  |
+| spawn_graph__SpawnDraft | yes | 804 / 2947 | 17.0 |  |
+| spawn_identity__SpawnDraft | yes | 904 / 1786 | 10.3 |  |
+| spawn_mandate__SpawnDraft | yes | 897 / 3511 | 19.8 |  |
+| spawn_orchestrator__SpawnDraft | yes | 739 / 749 | 5.7 |  |
+| spawn_timing__SpawnDraft | yes | 830 / 4259 | 23.9 |  |
+| spawn_velocity__SpawnDraft | yes | 1430 / 6070 | 62.4 |  |
+| threat_extractor__Extraction | yes | 612 / 139 | 1.3 |  |
+| timing__ActionChoice | yes | 527 / 74 | 0.8 |  |
+| timing__ReflectionProposal | yes | 4758 / 725 | 3.6 |  |
+| velocity__ActionChoice | yes | 524 / 65 | 0.9 |  |
+| velocity__ReflectionProposal | yes | 12534 / 1288 | 10.5 |  |
+
+0 of 24 prompts failed to parse.
+
+Real input tokens ran about 1.5x the first estimate (number-heavy JSON), so the tool now uses 2.3
+characters a token. Output tokens include hidden reasoning, so they're much higher than the mock's:
+the spawn prompts use 750-6,000 tokens a call. Re-run the replay any time:
 
     uv run python -m engine.llm_readiness --replay engine/tests/fixtures/prompts
-
-It reports, per prompt, whether the answer parsed, the real token counts and the latency, so format
-problems show up before a full round runs.

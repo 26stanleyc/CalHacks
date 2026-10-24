@@ -39,6 +39,7 @@ DEFAULT_BASE_URL = "https://api-inference.bitdeer.ai/v1"
 # Reasoning tokens come out of the same completion budget as the answer, so ask for the
 # caller's answer budget plus room to think. Tunable with BITDEER_REASONING_HEADROOM.
 DEFAULT_REASONING_HEADROOM = 4_000
+DEFAULT_REASONING_EFFORT = "low"  # GLM honors it (about 10x less hidden reasoning); DeepSeek ignores it
 
 # Substrings that mark a refusal as "no credits" rather than a broken request.
 _BILLING_MARKERS = (
@@ -125,6 +126,7 @@ class BitdeerLLM:
             if reasoning_headroom is not None
             else int(os.environ.get("BITDEER_REASONING_HEADROOM", DEFAULT_REASONING_HEADROOM))
         )
+        self.reasoning_effort = os.environ.get("BITDEER_REASONING_EFFORT", DEFAULT_REASONING_EFFORT)
         self._client = client or httpx.Client(timeout=timeout)
 
     # -- public API ------------------------------------------------------------------
@@ -144,6 +146,8 @@ class BitdeerLLM:
             "messages": [m.model_dump() for m in messages],
             "max_tokens": max_tokens + self.reasoning_headroom,
         }
+        if self.reasoning_effort:
+            body["reasoning_effort"] = self.reasoning_effort
         if tools:
             body["tools"] = [_tool_to_openai(t) for t in tools]
             body["tool_choice"] = "auto"

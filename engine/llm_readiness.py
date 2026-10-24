@@ -10,8 +10,9 @@ prompts real models will see.
 --replay sends each saved prompt to the real model for its role (BitdeerLLM, no mock fallback) and
 reports whether the answer parses into its schema, with real token counts and latency.
 
-Token counts are estimates (about 3.5 characters a token for JSON-heavy text); output tokens are
-estimated from the mock's answers, which are shorter than a real model's, so treat the cost as a floor.
+Token counts are estimates (about 2.3 characters a token: what the Bitdeer replay measured on these
+number-heavy JSON prompts); output tokens are estimated from the mock's answers, which are far shorter
+than a reasoning model's (the replay saw 65 to 6,000 output tokens a call), so treat the cost as a floor.
 """
 
 import argparse
@@ -23,7 +24,7 @@ from pathlib import Path
 
 from engine.brains import _MOCKS, MockBrains
 
-CHARS_PER_TOKEN = 3.5
+CHARS_PER_TOKEN = 2.3
 CONTEXT_BUDGET_TOKENS = 24_000  # comfortably inside every assigned model's context window
 
 

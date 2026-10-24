@@ -313,3 +313,11 @@ No schema changes. M11 uses the existing `ThreatReport`, `ThreatPattern`, `Threa
 - **For Ryan:** a new mandate-lane feature, `m_day_spend_vs_agent`: today's attempted spend through the agent
   against its usual honest day. It's missing until the agent has 2 honest days. The XGBoost voter picks it
   up automatically.
+- **For Eric (`integrations/bitdeer.py`) and everyone (`contracts/config.py`), after the first live
+  Bitdeer run.** Bitdeer's GLM models honor `reasoning_effort` and DeepSeek ignores it, so on long
+  JSON prompts DeepSeek reasoned past any token budget and returned nothing (evidence/llm-readiness.md).
+  - `BitdeerLLM` now sends `reasoning_effort: "low"` by default. Override it with
+    `BITDEER_REASONING_EFFORT`, or set it empty to omit the field.
+  - `MODEL_ROLES`: `graph` moves to GLM-5.3-Flash, `velocity` to GLM-5.3 and `critic_second` to
+    GLM-5.3-Flash. The spawn roles still use the other family from their parent, and `held_out`
+    stays reserved.

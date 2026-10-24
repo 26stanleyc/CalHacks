@@ -1,0 +1,60 @@
+{
+ "sample_pct": 10,
+ "results": {
+  "ours": {
+   "recall": 0.007075471698113208,
+   "fp_rate": 9.952427397042139e-05,
+   "fraud_cost_usd": 583226738.49,
+   "honest_cost_usd": 15000015.0,
+   "total_cost_usd": 598226753.49,
+   "fraud": 424,
+   "honest": 50239,
+   "pr_auc": 0.07978119998202722,
+   "recall_at_1pct_fpr": 0.16745283018867924
+  },
+  "xgboost_trained": {
+   "recall": 0.0,
+   "fp_rate": 0.0,
+   "fraud_cost_usd": 611226738.49,
+   "honest_cost_usd": 0.0,
+   "total_cost_usd": 611226738.49,
+   "fraud": 424,
+   "honest": 50239,
+   "pr_auc": 0.044214045293712326,
+   "recall_at_1pct_fpr": 0.1320754716981132
+  },
+  "xgboost_retrained": {
+   "recall": 0.0,
+   "fp_rate": 0.0,
+   "fraud_cost_usd": 611226738.49,
+   "honest_cost_usd": 0.0,
+   "total_cost_usd": 611226738.49,
+   "fraud": 424,
+   "honest": 50239,
+   "pr_auc": 0.08492229043198096,
+   "recall_at_1pct_fpr": 0.16273584905660377
+  },
+  "static_rules": {
+   "recall": 0.0,
+   "fp_rate": 0.0,
+   "fraud_cost_usd": 611226738.49,
+   "honest_cost_usd": 0.0,
+   "total_cost_usd": 611226738.49,
+   "fraud": 424,
+   "honest": 50239,
+   "pr_auc": 0.008371009456871532,
+   "recall_at_1pct_fpr": 0.0
+  },
+  "rules_plus_xgboost": {
+   "recall": 0.0,
+   "fp_rate": 0.0,
+   "fraud_cost_usd": 611226738.49,
+   "honest_cost_usd": 0.0,
+   "total_cost_usd": 611226738.49,
+   "fraud": 424,
+   "honest": 50239,
+   "pr_auc": 0.08492229043198096,
+   "recall_at_1pct_fpr": 0.16273584905660377
+  }
+ }
+}

@@ -441,6 +441,31 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** none, behind the scenes. The FP fix keeps the demo's FP line under the cap.
 
+### Sat Oct 24, 14:30 · First real-model runs and baselines · Stanley
+**Did:**
+- **Bitdeer live.** The first replay of the 24 saved prompts failed on 6: the reasoning models thought until they ran out of tokens.
+  - GLM honors `reasoning_effort: "low"`, which is now the default.
+  - DeepSeek ignores it, so the long analytical roles (graph, velocity, second critic) moved to GLM.
+  - After that, all 24 parse.
+- **Head-to-head on new attack types** (`engine/head_to_head.py`) against XGBoost (retrained and frozen), static rules and rules + XGBoost, all on identical traffic.
+- **Public data:** PaySim, 10% sample, in a sandbox folder outside the repo (`engine/public_bench.py`).
+
+**Results:**
+- **Beats** a model trained on yesterday's fraud: about half the new-attack losses on mock.
+- **Level** with retrained XGBoost on PaySim: PR-AUC 0.080 vs 0.085; at 1% false positives it catches 16.7% vs 16.3%.
+- **Loses on total cost** to retrained XGBoost and to rules + XGBoost:
+  - mock: about 2x;
+  - real models, 1 seed: 1.65x and 2.1x.
+  - It holds a 2% FP cap; they reach 5-7%.
+- **Real models cut our system's new-attack losses about 4.6x** vs mock on the same seed.
+
+**Proof:**
+- `evidence/head-to-head/README.md`;
+- `evidence/public-data/paysim.md`;
+- `evidence/llm-readiness.md`.
+
+**Demo angle:** honest slide: "adapts faster than a model trained on yesterday's fraud, at a third of the false positives of ML-only stacks." Don't claim it beats retrained ML.
+
 ---
 
 ## Entry template

@@ -27,12 +27,14 @@ def use_stub_engine() -> bool:
 # Role -> Bitdeer model id (spec 2.1). Override any role with MODEL_<ROLE>, e.g. MODEL_INVESTIGATOR.
 MODEL_ROLES: dict[str, str] = {
     "critic": "zai-org/GLM-5.3",
-    "critic_second": "deepseek-ai/DeepSeek-V4.1-Flash",
+    # The long analytical roles run on GLM: on Bitdeer, DeepSeek reasons past any token budget on
+    # them and never answers (evidence/llm-readiness.md). DeepSeek keeps the short tasks.
+    "critic_second": "zai-org/GLM-5.3-Flash",
     "investigator": "deepseek-ai/DeepSeek-V4.1-Flash",
     "timing": "zai-org/GLM-5.3-Flash",
-    "graph": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "graph": "zai-org/GLM-5.3-Flash",
     "identity": "zai-org/GLM-5.3",
-    "velocity": "deepseek-ai/DeepSeek-V4-Flash",
+    "velocity": "zai-org/GLM-5.3",
     "mandate": "zai-org/GLM-5.3-Flash",
     "outsider_a": "deepseek-ai/DeepSeek-V4-Flash",
     "outsider_b": "zai-org/GLM-5.3-Flash",
