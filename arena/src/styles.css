@@ -67,7 +67,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 
 /* Event feed, newest on top. */
 .feed {
-  position: absolute; left: 24px; bottom: 118px; margin: 0; padding: 0; list-style: none;
+  position: absolute; left: 24px; bottom: 136px; margin: 0; padding: 0; list-style: none;
   width: min(400px, calc(100vw - 48px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none;
 }
 .feed li {
@@ -87,7 +87,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 
 .card + .legend { display: none; }
 .legend {
-  position: absolute; right: 24px; bottom: 118px; background: rgba(251, 250, 255, 0.85);
+  position: absolute; right: 24px; bottom: 136px; background: rgba(251, 250, 255, 0.85);
   border-radius: 14px; padding: 8px 12px; font-size: 12.5px; display: grid; grid-template-columns: auto auto; gap: 2px 14px;
 }
 .legend p { margin: 0; display: flex; align-items: center; gap: 7px; }
@@ -106,7 +106,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 
 /* Timeline: the scrubber is also the arms-race chart. */
 .timeline {
-  position: absolute; left: 24px; right: 24px; bottom: 18px; height: 86px;
+  position: absolute; left: 24px; right: 24px; bottom: 18px; min-height: 86px;
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
   background: var(--paper); border: 2px solid var(--edge); border-radius: 22px; box-shadow: var(--lift); padding: 10px 16px;
 }
@@ -124,6 +124,16 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 .bar.past .fill, .bar.current .fill { opacity: 1; }
 .bar.current { outline: 2px solid var(--ink); outline-offset: 1px; }
 .bar.frozen { background: repeating-linear-gradient(135deg, rgba(61, 107, 224, 0.12) 0 4px, transparent 4px 8px); }
+.marks { display: grid; gap: 4px; height: 18px; }
+.frozen-mark {
+  border-top: 2px solid #5b84d6; color: #24518f; font-size: 12px; font-weight: 700;
+  text-align: center; white-space: nowrap; line-height: 16px; position: relative;
+}
+.frozen-mark::before, .frozen-mark::after {
+  content: ""; position: absolute; top: -6px; width: 2px; height: 6px; background: #5b84d6;
+}
+.frozen-mark::before { left: 0; }
+.frozen-mark::after { right: 0; }
 .bar .progress { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--ink); }
 .bar:hover .fill { opacity: 0.9; }
 .caption { margin: 0; font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

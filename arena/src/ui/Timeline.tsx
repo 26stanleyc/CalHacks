@@ -14,6 +14,14 @@ export function Timeline() {
   const speed = useArena((s) => s.speed);
   const { jump, toggle, setSpeed } = useArena.getState();
   const max = Math.max(...replay.rounds.map((r) => r.metrics.exploitability_cents));
+  // Consecutive frozen rounds get one label underneath, so the spike they cause explains itself.
+  const frozenRuns: [number, number][] = [];
+  replay.rounds.forEach((r, i) => {
+    if (!r.metrics.frozen) return;
+    const last = frozenRuns[frozenRuns.length - 1];
+    if (last && last[1] === i - 1) last[1] = i;
+    else frozenRuns.push([i, i]);
+  });
 
   return (
     <footer className="timeline">
@@ -49,6 +57,15 @@ export function Timeline() {
             );
           })}
         </div>
+        {frozenRuns.length > 0 && (
+          <div className="marks" style={{ gridTemplateColumns: `repeat(${replay.rounds.length}, 1fr)` }}>
+            {frozenRuns.map(([a, b]) => (
+              <span key={a} className="frozen-mark" style={{ gridColumn: `${a + 1} / ${b + 2}` }}>
+                Learning frozen
+              </span>
+            ))}
+          </div>
+        )}
         <p className="caption">Bar height: how much a fresh attacker could still steal after each round</p>
       </div>
       <div className="speeds" role="group" aria-label="Playback speed">
