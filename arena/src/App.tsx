@@ -3,6 +3,7 @@ import { makeMockReplay } from "./data/mock";
 import type { Replay } from "./data/types";
 import { useArena } from "./store";
 import { Hud } from "./ui/Hud";
+import { ShelfMap } from "./ui/ShelfMap";
 import { Timeline } from "./ui/Timeline";
 import { UnitCard } from "./ui/UnitCard";
 import { Scene } from "./world/Scene";
@@ -27,8 +28,6 @@ function Legend() {
       <p><i className="ring spawned" /> Built by an angel</p>
       <p><i className="ring outsider" /> Outsider</p>
       <p><i className="ring news" /> From the news</p>
-      <p><i className="tile shaky" /> Shelf leaking</p>
-      <p><i className="tile held" /> Shelf held</p>
     </aside>
   );
 }
@@ -59,7 +58,10 @@ export default function App() {
     <main className="arena">
       <Scene />
       <Hud />
-      <UnitCard />
+      <div className="hud-right">
+        <ShelfMap />
+        <UnitCard />
+      </div>
       <Legend />
       <Timeline />
     </main>

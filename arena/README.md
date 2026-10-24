@@ -14,13 +14,15 @@ npm run dev   # http://localhost:5174
 | Centre tile with the gold arch | The x402 facilitator, where every payment is decided |
 | Inner ring of angels | The 5 specialists, plus the orchestrator (bigger, holding a gold ring) |
 | Outer ring of 24 raised tiles | The arena shelves: attacks on stores on one half, attacks on shoppers on the other |
-| Shelf colour | Catch rate over the last 2 rounds: red under 60%, amber under 80%, green at 80% or more, sand for too few attempts to trust, grey for empty |
+| Shelf colour | Catch rate over the last 3 rounds: red under 60%, amber under 80%, green at 80% or more, sand for too few attempts to trust, grey for empty |
 | Devil's foot ring | Blue: built by one of our angels (insider). Black with a top hat: outsider persona. Orange with a paper hat: from a news report |
 | Grey blobs | Honest shoppers. Their coins are gold; attack coins are crimson |
 | Blue beam at round start | A defender building an attacker aimed at that shelf |
 | Newspaper falling | A threat-intel report turning into new attackers |
 | "!" bubble over a devil | It got caught a lot and is rethinking its plan between waves; dots mean it's only re-tuning its numbers |
 | Gold ring rising off an angel | It added a rule while learning |
+
+The panel at the top right is the same 24 shelves flattened into a grid, the figure from the Rainbow Teaming paper. Rows are attack styles; columns are amount bands, split into attacks on stores and attacks on shoppers. Cells use the tile colours and recolour with them during learning. A gold halo marks each shelf a defender built an attacker for this round; an orange one marks a news scam. Click a cell to open that shelf. The panel is hidden on phones.
 
 Each round plays in 27 s at 1×: 3 s of spawning, three 7 s waves, then 3 s of learning. The timeline bars are the arms-race chart: each bar's height is that round's exploitability. Click a bar to jump to that round. Click any creature, shelf or the gate to open its card.
 

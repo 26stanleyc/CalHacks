@@ -3,8 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { ALL_SHELVES } from "../data/mock";
-import type { ShelfState } from "../data/types";
-import { C, M } from "../palette";
+import { C, M, shelfColor } from "../palette";
 import { LEARN_START, ROUND_LEN, useArena } from "../store";
 import { shelfName } from "../ui/words";
 import { Pickable } from "./creatures";
@@ -13,13 +12,6 @@ import { HEX, SHELF_TILE, TILE_TOP, ring } from "./layout";
 const TILE_R = HEX * 0.95;
 const hexGeo = new THREE.CylinderGeometry(TILE_R, TILE_R, 1, 6);
 const soil = new THREE.MeshStandardMaterial({ color: C.soil, roughness: 0.9 });
-
-export function shelfColor(s: ShelfState | undefined): string {
-  if (!s || (s.attempts === 0 && !s.attacker_ids.length && !s.outsider_slot)) return C.stone;
-  if (s.unknown) return C.unknown;
-  const rate = s.caught / s.attempts;
-  return rate >= 0.8 ? C.held : rate >= 0.6 ? C.wobbly : C.shaky;
-}
 
 function HexTile({ x, z, top, color, material }: { x: number; z: number; top: number; color?: string; material?: THREE.Material }) {
   const depth = top + 0.8;

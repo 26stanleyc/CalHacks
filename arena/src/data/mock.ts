@@ -55,6 +55,8 @@ const NEWS: { round: number; title: string; shelf: ShelfId; name: string }[] = [
 const FROZEN_ROUNDS = new Set([15, 16]);
 const ARCHIVE_SHAKY = 6;
 const ARCHIVE_RANDOM = 2;
+// "Recent attempts" for a shelf's catch rate (spec: at least 20 before it's trusted).
+const RECENT_ROUNDS = 3;
 
 const RULE_BANK: Record<Lane, string[]> = {
   timing: [
@@ -186,7 +188,7 @@ export function makeMockReplay(seed = 7, roundCount = 20): Replay {
   }
 
   const catchRate = (id: ShelfId) => {
-    const r = recent[id].slice(-2);
+    const r = recent[id].slice(-RECENT_ROUNDS);
     const attempts = r.reduce((s, x) => s + x.attempts, 0);
     return attempts < 20 ? null : r.reduce((s, x) => s + x.caught, 0) / attempts;
   };
@@ -277,8 +279,9 @@ export function makeMockReplay(seed = 7, roundCount = 20): Replay {
     const rest = archive.slice(ARCHIVE_SHAKY);
     for (let i = 0; i < ARCHIVE_RANDOM && rest.length; i++) active.add(rest.splice(Math.floor(rand() * rest.length), 1)[0].a);
     const attackers = [...active].map((id) => ({ ...roster.get(id)! }));
-    // While learning is frozen the rules go stale and attackers keep adapting to them.
-    if (frozen) for (const id of ALL_SHELVES) skill[id] = Math.max(0.15, skill[id] - 0.2);
+    // While learning is frozen the rules go stale and attackers keep adapting to them. The
+    // defense falls behind but keeps what it learned, so it stays well above round 1.
+    if (frozen) for (const id of ALL_SHELVES) skill[id] = Math.max(0.15, skill[id] - 0.1);
 
     const waves: Wave[] = [];
     const tally: Record<ShelfId, { attempts: number; caught: number }> = Object.fromEntries(
@@ -416,7 +419,7 @@ export function makeMockReplay(seed = 7, roundCount = 20): Replay {
     });
 
     const shelves: ShelfState[] = ALL_SHELVES.map((id) => {
-      const r = recent[id].slice(-2);
+      const r = recent[id].slice(-RECENT_ROUNDS);
       const attempts = r.reduce((s, x) => s + x.attempts, 0);
       return {
         shelf: id,

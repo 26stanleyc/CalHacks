@@ -256,15 +256,33 @@ The engine suite passed: 58 passed, 3 skipped.
 
 - The mock draws a fixed attack budget each round, like the spec: every outsider, the new attackers, 6 from the shakiest shelves and 2 at random. Archived attackers that weren't drawn wait on their shelves. An earlier version ran every archived attacker, so traffic grew 10× and losses rose even as the catch rate improved.
 - The mock run (seed 7) now tells the spec's story:
-  - losses fall from $1,744 in round 1 to $383 in round 20, under the M5 target of 60%
+  - losses fall from $1,744 in round 1 to $695 in round 20, under the M5 target of 60% (numbers updated in the shelf map entry below)
   - the catch rate climbs from 29% to the low 80s
   - the round 13 news scam spikes losses
-  - the freeze drops the catch rate to 39% by round 17, and it recovers after
+  - the freeze lifts exploitability from $163 to $457 by round 16, and it recovers after
 - The mock's payment shuffle is now deterministic across JS engines; it used `sort()` with a random comparator before.
 
 **Proof:** `npm run build` passes. Checked in the browser at 1280×800, 1000×700 and on a phone: 120 fps, every card type opens, and the HUD doesn't overlap. Node and Chrome produce identical per-round losses from the same seed. Screenshots are in `evidence/arena/` (round 16 frozen mid-wave; round 13 Velocity angel card).
 
 **Demo angle:** ⭐ the 40 s "arms race" beat. Play rounds 1→20 at 4–8×: shelves go red to green, the timeline bars fall, a news scam drops at round 6, and the freeze at 15–16 makes them jump while the scoreboard's catch rate drops. Then pause and click a devil to show its plan, and an angel to show its rules. 🔜 Needs an exporter from the real run tables to `arena/public/replay.json`.
+
+### Sat Oct 24, ~04:30 · Arena shelf map · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- Added a flat 4×6 shelf grid at the top right of the arena, the Rainbow Teaming figure. Rows are attack styles; columns are amount bands, split into attacks on stores and attacks on shoppers.
+- Cells share the 3D tiles' colours and recolour with them during learning. A gold halo marks each shelf a defender built an attacker for that round (orange for a news scam). Clicking a cell opens the shelf card.
+- The first version drew arrows from 7 badges to the cells, which was too cluttered. The 3D beams already show who aimed where.
+- Mock tweaks:
+  - a shelf's catch rate now uses the last 3 rounds, so more shelves pass the 20-attempt bar
+  - a freeze is gentler (the defense falls behind but keeps what it learned)
+- The mock run now goes:
+  - round 1: $1,744 stolen, $501 still stealable
+  - round 14: $163 still stealable
+  - freeze peak in round 16: $457
+  - round 20: $695 stolen, $182 still stealable
+
+**Proof:** `npm run build` passes. Checked in the browser at the pane's own size, at 1280×800 and on a phone (map hidden, card fits, no sideways scroll).
+
+**Demo angle:** ⭐ the "arena grid" beat from the demo script. Pause during learning and point at cells turning green; the halos show where the defenders aimed this round.
 
 ---
 

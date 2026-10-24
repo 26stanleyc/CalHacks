@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { ShelfState } from "./data/types";
 
 export const C = {
   sky: "#C7D3F4",
@@ -45,3 +46,11 @@ export const M = {
   outsiderHat: mat("#2C2C3E", { roughness: 0.5 }),
   gold: mat(C.halo, { metalness: 0.5, roughness: 0.3 }),
 };
+
+// One colour per shelf state, shared by the 3D tiles and the shelf map.
+export function shelfColor(s: ShelfState | undefined): string {
+  if (!s || (s.attempts === 0 && !s.attacker_ids.length && !s.outsider_slot)) return C.stone;
+  if (s.unknown) return C.unknown;
+  const rate = s.caught / s.attempts;
+  return rate >= 0.8 ? C.held : rate >= 0.6 ? C.wobbly : C.shaky;
+}
