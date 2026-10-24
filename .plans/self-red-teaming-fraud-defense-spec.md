@@ -13,13 +13,42 @@ Pitch line: "Agents write and rewrite the defense; code runs it at machine speed
 | Sponsor | Use |
 |---|---|
 | Fetch.ai uAgents + Agentverse + ASI:One | Every agent runs in one Bureau process; spawned attackers are created at runtime. 2 public agents (Fraud Desk, Merchant Scanner) are registered on Agentverse with the Chat Protocol and a mailbox, so judges and users can use the system by chatting in ASI:One (see 3.7). This is required for the Fetch track. |
-| Bitdeer Model Studio | Every LLM in the system runs on open-weight models hosted by Bitdeer: the critic (GLM-5.3), specialists, outsider and spawned attackers, page-reading shoppers and the threat-intel extractor. Specialists and attackers use different open-source model families. No spawned attacker shares a model with its parent. |
+| Bitdeer Model Studio | Every LLM in the system runs on open-weight models hosted by Bitdeer: the critic (GLM-5.3), specialists, outsider and spawned attackers, page-reading shoppers and the threat-intel extractor. Bitdeer offers 5 chat models from 3 families, so diversity is per model, and every spawned attacker uses a different family from its parent (see the model assignment below). |
 | Coinbase x402 | The defense runs as a risk check inside our facilitator layer: every payment is verified by our orchestrator before it's forwarded to Coinbase's hosted facilitator for settlement. A stub during precompute; real Base Sepolia settlement during the live rounds. |
 | Apify | Two main uses:<br>(1) **Threat-intel watchlist (M11):** scrape public reports of new agent-payment scams so the defense puts them on a watchlist before attackers use them against the system (3.8).<br>(2) **Merchant page scans (M10, `scan_page`):** check merchant pages for hidden injected instructions, cached as a merchant-risk feature the gate uses.<br>A one-off product catalog scrape also supplies marketplace data, but isn't presented as a sponsor use. |
 
 **On hold (see §11):** CRS, until sandbox access is confirmed at M0.
 
-The critic runs on **GLM-5.3 hosted by Bitdeer**, the strongest open model in the stack, because its judgments (vetoes, miss assignment, vetting watch rules) steer all learning. If Bitdeer doesn't host GLM-5.3, use the strongest GLM version it does host; M0 checks this. The whole system runs on open-weight models.
+The critic runs on **GLM-5.3 hosted by Bitdeer**, the strongest open model in the stack, because its judgments (vetoes, miss assignment, vetting watch rules) steer all learning. The whole system runs on open-weight models.
+
+### 2.1 Model assignment (Bitdeer's actual catalog)
+
+Bitdeer's model list (checked against the API) has **5 chat models from 3 families**:
+- GLM: `zai-org/GLM-5.3`, `zai-org/GLM-5.3-Flash`
+- DeepSeek: `deepseek-ai/DeepSeek-V4.1-Flash`, `deepseek-ai/DeepSeek-V4-Flash`
+- Qwen: `Qwen/Qwen3.8-27B`
+
+It also hosts `BAAI/bge-m3` (embeddings), a reranker and an image model. The earlier assumption of 6–7 families doesn't hold, so diversity is **per model**, with family differences used where they matter most.
+
+| Role | Model | Why |
+|---|---|---|
+| Critic | `zai-org/GLM-5.3` | Strongest model; its calls steer all learning |
+| Critic second opinion | `deepseek-ai/DeepSeek-V4.1-Flash` | Different family from the critic |
+| Investigator | `deepseek-ai/DeepSeek-V4.1-Flash` | Runs on every escalation, so a fast model fits the budget; switch to GLM-5.3 if tool use is weak |
+| Timing specialist | `zai-org/GLM-5.3-Flash` | |
+| Entity-graph specialist | `deepseek-ai/DeepSeek-V4.1-Flash` | |
+| Identity specialist | `zai-org/GLM-5.3` | Low call volume |
+| Velocity specialist | `deepseek-ai/DeepSeek-V4-Flash` | |
+| Mandate specialist | `zai-org/GLM-5.3-Flash` | Shares a model with timing; their lanes and prompts differ |
+| Spawned attackers | The **other family** from the parent (GLM parent → a DeepSeek model, DeepSeek parent → a GLM model), choosing the variant the parent doesn't use | Keeps the attacker from sharing its parent's blind spots |
+| Outsider personas | Alternate `deepseek-ai/DeepSeek-V4-Flash` and `zai-org/GLM-5.3-Flash` | Cheap; high call volume |
+| Page-reading shoppers | `deepseek-ai/DeepSeek-V4-Flash` | Cheapest; capped sessions |
+| Threat-intel extractor | `zai-org/GLM-5.3` | Accuracy matters; low volume |
+| ASI:One chat agents | `zai-org/GLM-5.3-Flash` | Fast replies |
+| **Held-out attackers only** | `Qwen/Qwen3.8-27B` | **Reserved:** the only family no defender or training attacker uses |
+
+- Assignments live in one config file, so they can change after M0 measures real prices and quality.
+- Mandate matching still uses a local embedding model (3.2), with `BAAI/bge-m3` on Bitdeer as a fallback if the local model is too slow.
 
 ## 3. Architecture
 
@@ -54,7 +83,7 @@ The critic runs on **GLM-5.3 hosted by Bitdeer**, the strongest open model in th
 - **Specialists (5):** timing/behavior, entity graph, identity, velocity/economics, and **mandate** (is this payment what the human authorized? It also uses the merchant-risk features). Each has:
   - a rulebook in a JSON DSL of predicates over its lane's features (score contribution plus a rule id)
   - a few-shot memory of confirmed cases
-  - an LLM (distinct Bitdeer family) used only for reflection, spawning and choosing its own actions each round (3.9, point 6)
+  - an LLM (assigned per 2.1) used only for reflection, spawning and choosing its own actions each round (3.9, point 6)
 - **XGBoost voter.** A small gradient-boosted model trained on the same features and labels, retrained between rounds on all labels so far. It casts one vote next to the specialists, and the orchestrator weighs it like any other voter (Hedge weights).
   - **Why:** it catches fine-grained combinations of many signals and exact thresholds that hand-written rules miss. Rules adapt fast and explain themselves but are blunt; XGBoost is precise on known patterns but slow to adapt and hard to explain. Together they cover each other.
   - It runs in milliseconds and retrains in seconds. It never writes rules and doesn't take part in spawning or reflection.
@@ -78,7 +107,7 @@ The critic runs on **GLM-5.3 hosted by Bitdeer**, the strongest open model in th
     - *Miss assignments:* compared with the lane whose features best separate that fraud from legitimate traffic, computed from the logged feature vectors.
     - *Vetoes and approvals:* the rule is replayed on the round's traffic, and its real false-positive rate and catches are compared with the critic's verdict.
   - Agreement is logged per round and shown on the dashboard.
-  - If agreement falls below 80% for 2 rounds in a row, that decision type goes to a **second opinion** from a different Bitdeer model family until agreement recovers. When the two disagree, the automated check decides.
+  - If agreement falls below 80% for 2 rounds in a row, that decision type goes to a **second opinion** from `deepseek-ai/DeepSeek-V4.1-Flash`, a different family (2.1), until agreement recovers. When the two disagree, the automated check decides.
 
 ### 3.4 Decision path (per transaction)
 1. A payment (with its mandate) reaches the facilitator for verification. The feature service enriches it; the orchestrator fans it out to the specialists (uAgent messages within the Bureau).
@@ -240,7 +269,7 @@ There's no shared lesson memory: raw memory shared between different model famil
 1. **Pick a target shelf** in its own area (shelves where its lane's signals matter): the highest-learnability one, or an empty shelf to explore. No two spawned attackers target the same shelf in one round.
 2. **Seed** from one of that shelf's top 3 attackers (from scratch for an empty shelf).
 3. **Intel:** the parent's rulebook, gray-box.
-4. **Build** the attacker on a model family different from the parent's, with the instruction to beat the parent's rules. It attacks the whole team, not just its parent.
+4. **Build** the attacker on a model from the other family than the parent's (2.1), with the instruction to beat the parent's rules. It attacks the whole team, not just its parent.
 5. **Tune** its numbers against a frozen sandbox copy of the defense (point 5), then commit the best playbook for the round.
 
 The orchestrator's gap attacker targets shelves where every specialist is only mildly suspicious (from the coverage map, 3.6).
@@ -248,7 +277,7 @@ The orchestrator's gap attacker targets shelves where every specialist is only m
 Spawned attackers differ even though they share one archive, because each has:
 - a different target shelf
 - a different parent rulebook to beat
-- a different model family
+- a different model (from the other family than its parent's)
 - a different seed attacker
 - different feedback on which specialist objected
 - sometimes an empty shelf to explore
@@ -340,7 +369,7 @@ The defense does **not** learn between waves: rulebooks, weights and the XGBoost
 
 **Held-out attackers (built once at M7, before training starts, and never trained against):**
 - **Hand-written (6):** one per attack style plus one buyer-side attack. They're written by a team member who doesn't write seed rules, from fraud patterns that aren't among the six outsider personas.
-- **Reserved-model attackers (6):** generated by a Bitdeer model family that's used nowhere else in the system, so their reasoning style is new to every defender.
+- **Reserved-model attackers (6):** generated by `Qwen/Qwen3.8-27B`, the one Bitdeer family used nowhere else in the system (2.1), so their reasoning style is new to every defender.
 - **Withheld threat intel (2):** two scraped scam reports kept out of the threat-intel pipeline and turned into attackers only for testing.
 
 They're stored with a `held_out` flag. They never enter the archive, reflection, labels used for learning, XGBoost training, or the critic's inputs. They run only in the frozen exam, and a query check enforces this.
@@ -359,7 +388,7 @@ Number tuning, re-scoring, XGBoost, the critic spot-check, mandate matching and 
 
 | Use | Allocation | Notes |
 |---|---|---|
-| Development and testing | $40 | M0–M11 debugging; use the cheapest model family for fixtures |
+| Development and testing | $40 | M0–M11 debugging; use the cheapest model (`deepseek-ai/DeepSeek-V4-Flash`) for fixtures, or the mock model while credits are pending |
 | Precompute runs | $110 | Full system + the 2 LLM-using must-run comparisons (outsiders-only, no XGBoost voter) × 3 seeds × 20 rounds = 180 rounds, about $0.60 per round. Static rules and XGBoost alone use no LLM calls. |
 | Live demo and rehearsals | $20 | About 2 live rounds × 5 rehearsals plus ASI:One chat |
 | Reserve | $30 | Re-runs after bugs, or optional comparison runs if everything else is done |
@@ -494,7 +523,7 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
   - one hand-built transaction sent through the Bureau produces a row in `transactions`, `votes` and `decisions` within 5 s
   - the schemas validate an example message of each type and reject a malformed one
 - *Verify (integration probes, `scripts/probe_integrations.py`):* prints OK or MOCK for each integration.
-  - **Bitdeer:** lists at least 5 model families and completes one call on each, and records each chosen model's price per million tokens in `evidence/m0/model-prices.md` for the budget estimate (4.1). One extra family is reserved for held-out attackers only. Six or more is better: the specialists need 5 different families, and every spawned attacker needs a different one from its parent. Confirms GLM-5.3 (or the newest hosted GLM) is available for the critic, and records which version.
+  - **Bitdeer:** completes one call on each of the 5 chat models in 2.1 and records each model's price per million tokens in `evidence/m0/model-prices.md` for the budget estimate (4.1). Already confirmed: the API lists GLM-5.3, GLM-5.3-Flash, DeepSeek-V4.1-Flash, DeepSeek-V4-Flash and Qwen3.8-27B. If credits haven't arrived, the probe reports MOCK and everything runs on the mock model.
   - **x402:** one testnet verify call succeeds.
   - **CRS:** one test identity is verified. If it can't be, write "on hold" in `evidence/m0/crs-decision.md`.
 - *Verify (manual):*
@@ -561,7 +590,7 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
 
 **M7 — Self-red-teaming (Tag-Team Arena).** The attack archive (24 shelves, top 3 per shelf, duplicate check, shelf tags), learnability weighting, number tuning, defender-chosen actions with the shared budget, and archive-aimed spawning: 2 specialist attackers, then all 4, then the gap attacker and coverage map. Exploitability, held-out attackers, heatmap, arena grid. **Main differentiator.**
 - *Verify:*
-  - every spawned attacker is logged with its parent, target shelf, seed attacker, and a model family different from its parent's (assert)
+  - every spawned attacker is logged with its parent, target shelf, seed attacker, and a model from the other family than its parent's (assert)
   - no two spawned attackers target the same shelf in one round
   - no shelf ever holds more than 3 attackers, and a near-duplicate of a shelf's attacker is rejected (unit test)
   - the reserved outsider spot can only be taken by an outsider, even when an insider scores higher (unit test)
@@ -573,7 +602,7 @@ If the Cal Hacks hackpack forbids a custom frontend as the main interface, the c
   - exploitability in round 10 is lower than in round 2
   - the gap attacker produces allowed attacks where every specialist scored below its own alarm level
   - the heatmap has no empty attacker × specialist cells
-  - the held-out set (6 hand-written, 6 reserved-model, 2 withheld-intel) exists before round 1, its reserved model family is used nowhere else, and held-out attackers never appear in the archive, reflection, learning labels, XGBoost training or critic inputs (query check)
+  - the held-out set (6 hand-written, 6 reserved-model, 2 withheld-intel) exists before round 1, its reserved model (`Qwen/Qwen3.8-27B`) is used nowhere else (config check), and held-out attackers never appear in the archive, reflection, learning labels, XGBoost training or critic inputs (query check)
   - after each round every archive attacker has a score from the current defense (no score older than the latest round)
   - shelves with fewer than 20 recent attempts are marked "unknown," and smoothed catch rates match the formula (unit test)
   - defender actions: every specialist logs a choice and reason each round; granted actions never exceed the budget; every specialist spawns at least once every 3 rounds; a specialist whose shelves are all green skips at least once in 10 rounds
@@ -679,6 +708,7 @@ Within core, cut in this order if time runs short: waves (fall back to 1 wave), 
 - Malicious-merchant pages are written by our own attackers; real-world injection techniques may be more varied.
 - Threat intel covers public sources only, which lag behind real fraud: it helps against scams spreading publicly, not ones invented privately. Watch rules are only as good as the model's reading of each report.
 - The critic runs on an open model (GLM-5.3) rather than a frontier closed model. Its rubric and structured output reduce, but don't remove, the risk of bad vetoes or wrong miss assignments.
+- Bitdeer offers only 3 model families, one reserved for held-out attackers. Training diversity therefore rests on 4 models from 2 families (GLM and DeepSeek): some specialists share a model, and "different family from the parent" means GLM vs DeepSeek only. That's less reasoning diversity than the design originally assumed.
 
 ## 10. Prior work
 - MART (NAACL 2024), Self-RedTeam (2025) and MAGIC (ICML 2026): attacker–defender co-evolution for LLM safety.
@@ -716,4 +746,4 @@ Not part of the core build. Revisit only after the core scope (8.3) works end to
 
 **Product extras on hold**
 - Fetch.ai Payment Protocol fee per `check_payment` or `scan_page`, as the monetization story.
-- Bitdeer model-diversity ablation: spawned attackers on the same model as their parent vs a different family, to show that mixing models finds more holes.
+- Bitdeer model-diversity ablation (limited): spawned attackers on the same model as their parent vs the other family. With only 3 families (one reserved), this compares GLM vs DeepSeek only, so treat the result as suggestive.

@@ -73,7 +73,7 @@ Each specialist keeps a **rulebook**: simple rules it wrote itself, like "more t
 
 ### The attackers: one arena, three ways in
 All attackers live in one shared **arena**, organized by type of attack (see the next section). Old tricks keep coming back, so the defense never forgets them. Attackers get into the arena three ways:
-1. **Self-made attackers (insiders).** Each round, specialists that choose to (see "Defenders decide for themselves" below) build an attacker designed to beat *itself*, using its own rulebook as intel. The orchestrator builds one more that targets the gaps *between* specialists. Each one runs on a different AI model than the defender that built it, so it thinks differently.
+1. **Self-made attackers (insiders).** Each round, specialists that choose to (see "Defenders decide for themselves" below) build an attacker designed to beat *itself*, using its own rulebook as intel. The orchestrator builds one more that targets the gaps *between* specialists. Each one runs on an AI model from a different family than the defender that built it (a GLM defender gets a DeepSeek attacker, and vice versa), so it thinks differently.
 2. **Outsider characters.** Six classic fraudsters who **can't see our rules**, only whether they got through, like real fraudsters:
    - card tester
    - structurer (splits payments to stay under limits)
@@ -126,7 +126,7 @@ When a specialist decides to build an attacker, it:
 1. **Picks a target shelf** in its own area: its shakiest one, or an empty shelf nobody has tried.
 2. **Starts from one of that shelf's top attackers.**
 3. **Hands over its own rulebook as intel** (slightly blurred).
-4. **A different AI model builds the attacker**, with the goal "beat these rules." It then attacks the **whole team**, not just its parent.
+4. **An AI model from the other family builds the attacker**, with the goal "beat these rules." It then attacks the **whole team**, not just its parent.
 5. **After the round,** the attacker takes a spot on its shelf if it beats the current top 3.
 
 No two defenders aim at the same shelf in one round.
@@ -214,7 +214,7 @@ The idea: **learn about new scams from the outside world and be ready before an 
 11. **Score:** we freeze the defense and send fresh attackers plus the arena's best at it. How much they can still steal is the **exploitability** score. Lower is better.
 12. **The honest test:** a separate set of **held-out attackers** that the defense never trains against:
     - 6 written by hand, by a teammate who doesn't write the defense's rules
-    - 6 built by an AI model used nowhere else in the system
+    - 6 built by Qwen, the one AI model family used nowhere else in the system
     - 2 made from news reports we deliberately kept out of the watchlist
 
     They only ever appear in this test, so they show whether the defense handles attacks it has truly never seen.
@@ -266,7 +266,7 @@ The dashboard's buttons call the same functions, so chat and dashboard always ag
 | Tool | Role |
 |---|---|
 | **Fetch.ai uAgents + Agentverse + ASI:One** | Every agent (defenders, attackers, shoppers) is a uAgent talking by message; the public chat agents are registered on Agentverse so anyone can use them in ASI:One |
-| **Bitdeer Model Studio** | Hosts every AI model, all open-weight. GLM-5.3 runs the critic; other open model families run the specialists and attackers, so they think differently |
+| **Bitdeer Model Studio** | Hosts every AI model, all open-weight. Bitdeer offers 5 chat models from 3 families (GLM, DeepSeek and Qwen). GLM-5.3 runs the critic; the GLM and DeepSeek models are spread across the specialists, attackers and investigator; Qwen is reserved for the held-out test attackers only |
 | **Coinbase x402** | The payment rail; our defense is the checkpoint before settlement |
 | **Apify** | Two main jobs: the **threat-intel watchlist** (scraping news of new scams) and **scanning merchant pages** for hidden instructions. It also scrapes a real product catalog as background data |
 
@@ -355,6 +355,7 @@ To fit, each precomputed round uses 400 payments and at most 40 close calls. Fix
 - The arena is only as good as how we define its shelves: too broad hides variety, too narrow leaves most shelves empty. We start with 24.
 - Each part of our training method is backed by published research, but nobody has tested this exact combination. That's also what makes it new.
 - The critic runs on an open model rather than a top closed model; a fixed rubric reduces, but doesn't remove, the risk of bad judgments.
+- Bitdeer only offers 3 AI model families, and we reserve one for the held-out test. So training uses just GLM and DeepSeek models, and some specialists share a model. That's less variety in how our agents think than we originally planned.
 - Real x402 payments run only in the live demo rounds. Identities are simulated unless we get CRS test access.
 - Payments checked through ASI:One chat get real decisions but aren't used for training.
 
@@ -404,4 +405,4 @@ Parked so we can build the core first. We come back to these only once the must-
 - **Apify business checks.** Checking the business an agent claims to work for, on close calls.
 - **Extra benchmarks.** A graph neural network baseline, public datasets (Elliptic, PaySim, IEEE-CIS, IBM AML) and prompt-injection benchmarks (AgentDojo, InjecAgent).
 - **Charging per check** with Fetch.ai's Payment Protocol.
-- **Model-mixing test.** Showing that attackers on a different AI model than their parent find more holes.
+- **Model-mixing test.** Showing that attackers on a different AI model than their parent find more holes. With only GLM vs DeepSeek to compare, the result would be suggestive at best.
