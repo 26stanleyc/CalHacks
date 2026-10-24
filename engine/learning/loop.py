@@ -24,9 +24,10 @@ from dataclasses import dataclass, field
 
 from contracts.schemas import Lane, TrafficSource
 from engine.brains import Brain
-from engine.dsl import MAX_RULES, Rule, condition_features, holds, validate_rule
+from engine.dsl import MAX_RULES, Rule, condition_features, holds, regular_rules, validate_rule
 from engine.learning import hedge
 from engine.learning.critic import Critic
+from engine.learning.drafts import DraftPool
 from engine.learning.labels import UNCOVERED, LegitReference, Record
 from engine.learning.reflection import INSTRUCTIONS, MAX_RULES_PER_REFLECTION, ReflectionProposal
 from engine.learning.replay import VoterVotes, fp_rate, replay_rule
@@ -63,12 +64,19 @@ class RoundLearning:
     removed: list[str] = field(default_factory=list)
     critic_agreement: float | None = None
     weights: dict[str, float] = field(default_factory=dict)
+    draft_switches: dict[str, int] = field(default_factory=dict)
+    drafted: list[str] = field(default_factory=list)  # with drafts on: rules reflection wrote into a new draft
 
 
 class LearningLoop:
     def __init__(self, pipeline: DefensePipeline, brain: Brain, store: LogStore, run_id: str, fp_cap: float = 0.02,
-                 lock: contextlib.AbstractContextManager | None = None):
+                 lock: contextlib.AbstractContextManager | None = None, drafts: bool = False):
         self.lock = lock or contextlib.nullcontext()  # held only while the live defense changes
+        self.drafts = DraftPool() if drafts else None  # rulebook drafts (stretch): off unless asked for
+        self._drafting = False
+        self.shelf_of: dict[str, str] = {}  # attacker -> archive shelf, set by the engine each round
+        self.watchlist = None  # the threat-intel watchlist (M11), when the engine runs one
+        self.watch_true_hits: dict[str, int] = {}
         self.live = pipeline
         self.pipeline = pipeline  # during learn(): the staging copy
         self.seed_ids = {r.id for s in pipeline.specialists.values() for r in s.rulebook.rules}
@@ -122,11 +130,19 @@ class LearningLoop:
                          for m in misses if out.assignments.get(m.tx.tx_id) == UNCOVERED}
 
         stats = self._rule_stats(round_no, records)
+        self.watch_true_hits = {rid: s["true_hits"] for rid, s in stats.items() if rid.split(".", 1)[-1].startswith("watch_")}
         out.retired = self._retire(round_no)
         out.removed += self._revet(round_no)
         out.removed += self._guard(round_no, records, stats)
+        start = {lane: s.rulebook for lane, s in self.pipeline.specialists.items()}
+        self._drafting = self.drafts is not None  # reflection's edits go into a draft, not live
         for lane in self.pipeline.lanes:
             self._reflect(round_no, lane, records, replayed, reflection_reference, out, stats)
+        self._drafting = False
+        if self.drafts is not None:
+            self._choose_drafts(round_no, start, replayed, out)
+        if self.watchlist is not None:
+            self.store.log_rows("threat_reports", self.watchlist.step(self, round_no, replayed))
 
         out.critic_agreement = self.critic.end_round()
         self.store.log_rows("critic_checks", [
@@ -221,7 +237,8 @@ class LearningLoop:
     def _retire(self, round_no: int) -> list[str]:
         retired = []
         for lane, specialist in self.pipeline.specialists.items():
-            keep = [r for r in specialist.rulebook.rules if round_no - self.last_true_hit.get(r.id, round_no) < RETIRE_AFTER]
+            keep = [r for r in specialist.rulebook.rules  # watch rules have their own lifecycle (spec 3.8)
+                    if r.watch or round_no - self.last_true_hit.get(r.id, round_no) < RETIRE_AFTER]
             gone = [r.id for r in specialist.rulebook.rules if r not in keep]
             if gone:
                 self._deploy(round_no, lane, keep, {"retired": gone}, None)
@@ -264,16 +281,43 @@ class LearningLoop:
             removed.append(rule_id)
         return removed
 
-    def _deploy(self, round_no: int, lane: Lane, rules: list[Rule], diff: dict, veto: str | None) -> None:
+    def _choose_drafts(self, round_no: int, start: dict, replayed: list[Record], out: RoundLearning) -> None:
+        """Rulebook drafts (spec 3.9 point 4): what reflection wrote this round becomes a new draft instead
+        of being deployed directly; then every draft is scored per shelf with the other lanes held
+        fixed, the Pareto front is kept, and at most MAX_SWITCHES lanes switch to their best draft."""
+        for lane, before in start.items():
+            written = self.pipeline.specialists[lane].rulebook
+            if written.rules != before.rules:
+                self.drafts.propose(lane, before, written)
+                self.pipeline.specialists[lane] = Specialist(lane, before, self.pipeline.catalog)
+        honest = [r for r in replayed if not r.truth.is_fraud]
+        switches = self.drafts.select(self.pipeline, replayed, honest, self.voter_votes, self.shelf_of,
+                                      self.fp_cap * GUARD_AT)
+        out.draft_switches = {}
+        for lane, (index, book, draft) in switches.items():
+            live = {r.id for r in self.pipeline.specialists[lane].rulebook.rules}
+            for rule in book.rules:  # a rule going live gets its full grace period before retirement
+                if rule.id not in live:
+                    self.last_true_hit[rule.id] = round_no
+            self._deploy(round_no, lane, list(book.rules), {"draft_switch": index, "overall": round(draft.overall, 4),
+                                                          "fp": round(draft.fp, 4), "shelf_scores": draft.shelf_scores},
+                         None, draft=index)
+            out.draft_switches[lane.value] = index
+
+    def _deploy(self, round_no: int, lane: Lane, rules: list[Rule], diff: dict, veto: str | None, draft: int = 0) -> None:
         """Change the staging copy (committed at the end of learn) and log the version."""
         book = self.pipeline.specialists[lane].rulebook
+        gone = [*diff.get("retired", []), *diff.get("revet_removed", []), *diff.get("fp_guard_removed", []),
+                *diff.get("watch_expired", [])]
+        if self.drafts is not None and gone:
+            self.drafts.forget(lane, gone)
         if veto is None:
             new = book.model_copy(update={"rules": rules, "version": book.version + 1})
             self.pipeline.specialists[lane] = Specialist(lane, new, self.pipeline.catalog)
             book = new
         self.store.log_rows("rulebook_versions", [{
-            "run_id": self.run_id, "round": round_no, "lane": lane.value, "draft": 0,
-            "rules": [r.model_dump(mode="json") for r in book.rules], "diff": diff, "deployed": veto is None,
+            "run_id": self.run_id, "round": round_no, "lane": lane.value, "draft": draft,
+            "rules": [r.model_dump(mode="json") for r in book.rules], "diff": diff, "deployed": veto is None and not self._drafting,
             "veto_reason": veto}])
 
     # --- reflection -----------------------------------------------------------------------------
@@ -286,7 +330,7 @@ class LearningLoop:
         false_alarms = [r for r in records if r.false_positive
                         and any(v.voter == lane.value and v.rule_ids for v in r.decision.votes)]
         book = self.pipeline.specialists[lane].rulebook
-        room = MAX_RULES - len(book.rules)
+        room = MAX_RULES - regular_rules(book)
 
         def slice_of(r: Record) -> dict:
             return {n: r.features.values[n] for n in names if n in r.features.values}
@@ -342,7 +386,7 @@ class LearningLoop:
             outcome["removed"] = removed
         for spec in proposal.add[:MAX_RULES_PER_REFLECTION]:
             rule, problem = self._candidate(spec, lane)
-            if problem is None and len(self.pipeline.specialists[lane].rulebook.rules) >= MAX_RULES:
+            if problem is None and regular_rules(self.pipeline.specialists[lane].rulebook) >= MAX_RULES:
                 problem = f"the {lane.value} rulebook is at its cap of {MAX_RULES}; merge or replace a rule first"
             if problem is None and len(self.honest) < MIN_HONEST_ROUNDS:
                 problem = (f"too little honest history yet ({len(self.honest)} of {MIN_HONEST_ROUNDS} rounds) to judge "
@@ -370,8 +414,11 @@ class LearningLoop:
             book_rules = list(self.pipeline.specialists[lane].rulebook.rules)
             if problem is None:
                 self._deploy(round_no, lane, [*book_rules, rule], {"added": [rule.id]}, None)
-                self.last_true_hit[rule.id] = round_no
-                out.deployed.append(rule.id)
+                if self._drafting:
+                    out.drafted.append(rule.id)
+                else:
+                    self.last_true_hit[rule.id] = round_no
+                    out.deployed.append(rule.id)
                 outcome["deployed"].append(rule.id)
             else:
                 self._deploy(round_no, lane, book_rules, {"proposed": [spec.model_dump(mode="json")]}, problem)

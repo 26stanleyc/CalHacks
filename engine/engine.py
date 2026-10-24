@@ -50,6 +50,8 @@ from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain
+from engine.intel.corpus import CorpusSource
+from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
 from engine.investigator import Investigator
 from engine.learning.labels import Record, realized_cost
 from engine.learning.loop import LearningLoop
@@ -104,7 +106,8 @@ class FraudEngine:
                  fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
-                 arena: bool = True, hijacker: bool = True):
+                 arena: bool = True, hijacker: bool = True, drafts: bool = False, threat_intel: bool = False,
+                 intel_watch: bool = True, threat_source=None):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -137,11 +140,17 @@ class FraudEngine:
         self.bureau = None
         self._lock = threading.RLock()
         self._round_lock = threading.Lock()
-        self.learning = LearningLoop(self.pipeline, self.brain, self.store, self.run_id, FP_CAP, lock=self._lock)
+        self.learning = LearningLoop(self.pipeline, self.brain, self.store, self.run_id, FP_CAP, lock=self._lock,
+                                     drafts=drafts)
         self.escalation_cap = escalation_cap
         self.investigator = Investigator(self.brain, self.pipeline, self.scanner,
                                          page_url_for=getattr(self.world, "page_url_for", lambda tx: None))
         self.escalation_seconds: list[float] = []  # every escalated case's decision time
+        # The threat-intel watchlist (M11, bonus): needs the arena (its attackers join the archive).
+        # intel_watch=False is the "intel off" ablation: the attackers still arrive, no watch rules.
+        self.watchlist = Watchlist(self.brain, threat_source or CorpusSource(), self.world, self.run_id,
+                                   intel_on=intel_watch, seed=seed) if threat_intel and arena else None
+        self.learning.watchlist = self.watchlist
         self.archive = Archive()
         # Without the arena (M3 alone: "until the archive exists, outsiders run on their own") no
         # attackers are spawned or replayed and there's no exam.
@@ -280,7 +289,8 @@ class FraudEngine:
                 frozen = self.frozen
             costs = self.pipeline.orchestrator.costs
             extras = self.arena.attackers_for_round(round_no, self.pipeline) if self.arena else []  # spawned and archive
-            running = [(a, self.fraud_per_persona) for a in self.attackers] + extras
+            intel = [(a, INTEL_PAYMENTS) for a in self.watchlist.running(round_no)] if self.watchlist else []
+            running = [(a, self.fraud_per_persona) for a in self.attackers] + intel + extras
             pass_rate = {a.attacker_id: getattr(getattr(a, "persona", None), "step_up_pass",
                                                 getattr(a, "step_up_pass", costs.fraud_step_up_pass)) for a, _ in running}
             lane_names = {lane.value for lane in self.pipeline.lanes}
@@ -321,10 +331,11 @@ class FraudEngine:
                         attacker.observe(feedback[attacker.attacker_id])
                         self._log_wave(attacker, round_no)
                 if self.arena:
-                    self.arena.after_waves(round_no, records, self.attackers)
+                    self.arena.after_waves(round_no, records, self.attackers + [a for a, _ in intel])
                 if not frozen:  # labeled cases for the investigator's similar_cases (a frozen defense keeps no labels)
                     for r in records:
                         self.investigator.remember(r.tx, r.features, r.decision, r.truth.is_fraud)
+                self.learning.shelf_of = {a.attacker_id: getattr(a, "shelf", a.playbook.shelf).id() for a, _ in running}
                 self.last_learning = None if frozen else self.learning.learn(round_no, records)
                 if self.arena:
                     self.store.log_rows("defender_actions", self.arena.after_learning(round_no, self.pipeline, records, frozen))
@@ -348,6 +359,7 @@ class FraudEngine:
                     uncovered_misses=learned.uncovered if learned else 0,
                     critic_agreement=learned.critic_agreement if learned else None,
                     llm_spend_usd=round(spend, 6),
+                    first_contact_catch_rate=self.watchlist.first_contact(round_no, records) if self.watchlist else None,
                 )
                 self.store.log_round_metrics(metrics)
                 if spend > 2 * self.round_budget_usd:
@@ -480,4 +492,7 @@ class FraudEngine:
             return self.frozen
 
     def latest_threat_intel(self, limit: int = 5) -> list[ThreatIntelItem]:
-        return []  # M11 (bonus) fills this in
+        if self.watchlist is None:
+            return []
+        with self._lock:
+            return self.watchlist.latest(limit)

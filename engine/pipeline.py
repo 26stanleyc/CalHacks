@@ -8,7 +8,7 @@ import hashlib
 import json
 
 from contracts.interfaces import Voter
-from contracts.schemas import Decision, FeatureVector, IdentityStatus, Lane, Transaction, TrafficSource, Vote
+from contracts.schemas import Action, Decision, FeatureVector, IdentityStatus, Lane, Transaction, TrafficSource, Vote
 from engine.dsl import Rulebook, load_seed_rulebooks
 from engine.features import FeatureCatalog, FeatureService
 from engine.orchestrator import Orchestrator
@@ -50,7 +50,14 @@ class DefensePipeline:
         present = {v.voter for v in votes}
         votes = [*votes, *(voter.score(tx, features) for voter in self.voters if voter.name not in present)]
         order = {lane.value: i for i, lane in enumerate(self.lanes)}
-        return self.orchestrator.decide(tx, sorted(votes, key=lambda v: order.get(v.voter, 99)), features)
+        decision = self.orchestrator.decide(tx, sorted(votes, key=lambda v: order.get(v.voter, 99)), features)
+        if decision.action == Action.BLOCK and not decision.vetoed_by:  # a watch rule never blocks on its own
+            fired = {rid for v in decision.votes for rid in v.rule_ids}
+            watch = {r.id for s in self.specialists.values() for r in s.rulebook.rules if r.watch}
+            lanes = {lane.value for lane in self.lanes}
+            if fired and fired <= watch and not any(v.voter not in lanes and v.vote == Action.BLOCK for v in decision.votes):
+                decision = decision.model_copy(update={"action": Action.STEP_UP})
+        return decision
 
     def fingerprint(self) -> str:
         """A hash of everything learning can change: rulebooks, weights and the feature catalog."""

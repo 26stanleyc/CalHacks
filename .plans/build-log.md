@@ -367,6 +367,54 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** ⭐ the Fraud Desk blocks a hijacked shopper's purchase for breaking the mandate, and names the mandate specialist and the rule.
 
+### Sat Oct 24, 13:00 · S8 Rulebook drafts (stretch) · Stanley
+**Did:** `FraudEngine(drafts=True)` (off by default, so nothing else changes).
+- Each specialist keeps up to 3 rulebook drafts. Reflection's edits become a new draft instead of going live.
+- Every draft is scored per shelf by replaying recent traffic with the other specialists held fixed. Drafts that aren't best on any shelf are dropped.
+- The best draft under the false-positive limit replaces the live rulebook only if it beats it. At most 2 specialists switch a round.
+- **Review fixes:**
+  - the live rulebook is always scored as a draft, so a switch can't win just because the deployed draft was pruned from the pool;
+  - rules removed by hygiene (retired, failed re-vetting, or removed by the FP guard) are removed from every draft too;
+  - a rule that goes live through a switch gets its full grace period before it can be retired;
+  - reflection's draft edits are logged as not deployed;
+  - draft IDs are stable.
+
+**Proof:** `engine/tests/test_s8_drafts.py`:
+- Pareto pruning;
+- at most 3 drafts per specialist;
+- at most 2 switches a round, each under the FP limit;
+- reflection edits go into drafts, not live;
+- a switch never brings back a rule hygiene removed.
+
+**Not measured:** drafts on vs off on cost. It's a stretch feature with no spec target.
+
+**Demo angle:** none, behind the scenes.
+
+### Sat Oct 24, 14:00 · M11 Threat-intel watchlist (bonus) · Stanley
+**Did:** `FraudEngine(threat_intel=True)` (on in `build_engine`). Each round, one public scam report goes through these steps:
+- it comes from a pre-scraped corpus: 10 short summaries, plus 2 withheld for held-out attackers. Eric's live scraper plugs in through the same `ThreatIntelSource` interface;
+- the threat-extractor model turns it into a pattern: signals on existing features, a lane and a playbook;
+- duplicates are skipped;
+- the pattern becomes a watch rule. A watch rule raises the score but never blocks on its own (a block resting only on watch rules becomes an extra check). It's vetted on replayed honest traffic, where it may fire on at most 0.5% of honest payments. It's promoted after 3 catches and expires after 5 quiet rounds;
+- 3 new outsider attackers run the pattern (the test persona plus 2 variations). They run every round for their first 3 rounds, then join the archive;
+- the first-contact catch rate is logged per round. `latest_threat_intel()` serves the dashboard.
+
+**Proof:** `engine/tests/test_m11_intel.py`:
+- the corpus has at least 10 reports;
+- at least 80% of patterns map to existing features in their lane;
+- an injection inside a report doesn't change the answer format;
+- a watch rule never hard-blocks;
+- 3 boosted outsider attackers per report join the archive;
+- duplicates are skipped;
+- watch rules stay within their cap;
+- first contact is logged.
+
+**Not met:** "intel on loses at least 50% less on first contact than intel off" (xfail). On seed 42, the first-round loss is about the same either way:
+- the gift-card and mule patterns are caught much better with intel on;
+- midnight-drain and threshold-split are caught worse with intel on, because the mock extractor's signals are coarse.
+
+**Demo angle:** ⭐ talking point "it reads the news". A report arrives, a watch rule appears in the specialist's lane, and the new attacker's first-contact catch rate shows on the dashboard.
+
 ---
 
 ## Entry template

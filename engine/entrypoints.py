@@ -105,6 +105,6 @@ def build_engine() -> FraudEngine:
     seed = int(os.environ.get("ENGINE_SEED", 42))
     settlement, live = _settlements()
     engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(),
-                         settlement=settlement, live_settlement=live, world=_world(seed), brain=_brain(), voters=_voters(), held_out=_held_out(),
+                         settlement=settlement, live_settlement=live, world=_world(seed), brain=_brain(), voters=_voters(), held_out=_held_out(), threat_intel=True,
                          transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
     return engine.start()

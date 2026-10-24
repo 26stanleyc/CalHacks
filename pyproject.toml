@@ -36,7 +36,9 @@ markers = [
     "m06: M6 escalation with the investigator",
     "m07: M7 Tag-Team Arena",
     "m09: M9 mandates and hijacker",
+    "s8: S8 rulebook drafts (stretch)",
     "m07: M7 held-out attackers",
+    "m11: M11 threat-intel watchlist (bonus)",
     "m12: M12 XGBoost voter, baselines and metrics",
 ]
 pythonpath = ["."]

@@ -91,9 +91,18 @@ def validate_rule(rule: Rule, lane: Lane, catalog: FeatureCatalog) -> None:
             raise RuleError(f"rule {rule.id!r} uses {name!r}, which belongs to the {owner.value} lane, not {lane.value}")
 
 
+MAX_WATCH_RULES = 3  # threat-intel watch rules, separate from the rule cap (spec 3.8)
+
+
+def regular_rules(rulebook: Rulebook) -> int:
+    return sum(not r.watch for r in rulebook.rules)
+
+
 def validate_rulebook(rulebook: Rulebook, catalog: FeatureCatalog) -> None:
-    if len(rulebook.rules) > MAX_RULES:
-        raise RuleError(f"{rulebook.lane.value} rulebook has {len(rulebook.rules)} rules; the cap is {MAX_RULES}")
+    if regular_rules(rulebook) > MAX_RULES:
+        raise RuleError(f"{rulebook.lane.value} rulebook has {regular_rules(rulebook)} rules; the cap is {MAX_RULES}")
+    if len(rulebook.rules) - regular_rules(rulebook) > MAX_WATCH_RULES:
+        raise RuleError(f"{rulebook.lane.value} rulebook has more than {MAX_WATCH_RULES} watch rules")
     ids = [r.id for r in rulebook.rules]
     if len(ids) != len(set(ids)):
         raise RuleError("rule ids must be unique")
