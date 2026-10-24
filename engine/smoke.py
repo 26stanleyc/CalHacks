@@ -14,6 +14,7 @@ import psycopg
 from contracts.config import flag  # loads .env
 from contracts.schemas import Mandate, TrafficSource, Transaction
 from engine.bureau import EngineBureau
+from engine.pipeline import DefensePipeline
 from engine.store import PostgresStore
 
 
@@ -36,7 +37,7 @@ def main() -> int:
     run_id = "smoke-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     store = PostgresStore()
     store.start_run(run_id, seed=42, defense="full", config={"milestone": "M0 smoke", "mock_llm": flag("USE_MOCK_LLM", True)})
-    bureau = EngineBureau(store)
+    bureau = EngineBureau(DefensePipeline(), store=store)
     bureau.start()
     tx = sample_transaction(run_id)
     started = time.perf_counter()

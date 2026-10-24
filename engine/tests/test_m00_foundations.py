@@ -10,6 +10,7 @@ import pytest
 
 from contracts.schemas import Action, Lane
 from engine.bureau import EngineBureau
+from engine.pipeline import DefensePipeline
 from engine.smoke import sample_transaction
 from engine.store import MemoryStore
 
@@ -27,7 +28,7 @@ def free_port() -> int:
 @pytest.fixture
 def memory_bureau():
     store = MemoryStore()
-    bureau = EngineBureau(store, port=free_port(), seed_prefix="test-m00")
+    bureau = EngineBureau(DefensePipeline(), store=store, port=free_port(), seed_prefix="test-m00")
     bureau.start()
     yield bureau, store
     bureau.stop()
@@ -74,7 +75,7 @@ def test_rows_land_in_postgres_within_5s():
         admin.execute(DB_SQL.read_text())
         store = PostgresStore(schema=schema)
         store.start_run("test-run", seed=42)
-        bureau = EngineBureau(store, port=free_port(), seed_prefix="test-m00-db")
+        bureau = EngineBureau(DefensePipeline(), store=store, port=free_port(), seed_prefix="test-m00-db")
         bureau.start()
         tx = sample_transaction("test-run")
         started = time.perf_counter()

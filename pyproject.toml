@@ -22,5 +22,6 @@ dev = [
 testpaths = ["contracts/tests", "engine/tests"]
 markers = [
     "m00: M0 foundations",
+    "m02: M2 defense skeleton",
 ]
 pythonpath = ["."]

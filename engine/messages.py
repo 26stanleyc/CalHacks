@@ -8,9 +8,11 @@ from uagents import Model
 
 
 class SubmitTx(Model):
-    """Ingress -> orchestrator: a payment to decide. payload = Transaction JSON."""
+    """Ingress -> orchestrator: a payment to decide. payload = Transaction JSON. commit=False scores
+    the payment without changing the defense's state (outside checks)."""
 
     payload: str
+    commit: bool = True
 
 
 class ScoreRequest(Model):

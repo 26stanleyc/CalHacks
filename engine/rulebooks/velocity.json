@@ -1,0 +1,74 @@
+{
+  "lane": "velocity",
+  "version": 0,
+  "rules": [
+    {
+      "id": "velocity.small_burst",
+      "score": 0.85,
+      "description": "Five or more sub-$5 payments from one agent in 10 minutes: card testing.",
+      "when": {
+        "feature": "v_small_count_agent_600s",
+        "op": ">=",
+        "value": 5
+      }
+    },
+    {
+      "id": "velocity.merchant_hopping",
+      "score": 0.6,
+      "description": "One agent paying six or more different merchants in 10 minutes.",
+      "when": {
+        "feature": "v_distinct_merchants_agent_600s",
+        "op": ">=",
+        "value": 6
+      }
+    },
+    {
+      "id": "velocity.structuring",
+      "score": 0.85,
+      "description": "The same person paying just under a round-number limit three or more times in an hour, adding up to $250+.",
+      "when": {
+        "all": [
+          {
+            "feature": "v_near_threshold_count_agent_3600s",
+            "op": ">=",
+            "value": 3
+          },
+          {
+            "feature": "v_sum_agent_3600s",
+            "op": ">=",
+            "value": 25000
+          },
+          {
+            "feature": "v_count_principal_3600s",
+            "op": ">=",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "velocity.just_under_threshold",
+      "score": 0.1,
+      "description": "A larger payment just under a round number from a principal paying again within the hour.",
+      "when": {
+        "all": [
+          {
+            "feature": "v_threshold_gap_frac",
+            "op": "<",
+            "value": 0.08
+          },
+          {
+            "feature": "v_amount_cents",
+            "op": ">=",
+            "value": 5000
+          },
+          {
+            "feature": "v_count_principal_3600s",
+            "op": ">=",
+            "value": 2
+          }
+        ]
+      }
+    }
+  ]
+}

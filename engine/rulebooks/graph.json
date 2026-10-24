@@ -1,0 +1,40 @@
+{
+  "lane": "graph",
+  "version": 0,
+  "rules": [
+    {
+      "id": "graph.farm_swarm",
+      "score": 0.8,
+      "description": "A brand-new agent paying a merchant that six or more people paid in the last 10 minutes, mostly through brand-new agents.",
+      "when": {
+        "all": [
+          {
+            "feature": "g_agent_new",
+            "op": ">=",
+            "value": 1
+          },
+          {
+            "feature": "g_principals_per_merchant_600s",
+            "op": ">=",
+            "value": 6
+          },
+          {
+            "feature": "g_new_agent_tx_merchant_600s",
+            "op": ">=",
+            "value": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "graph.many_agents_one_principal",
+      "score": 0.06,
+      "description": "One person behind four or more different agents. Common for honest people (trips, family agents), so it only adds to other signals.",
+      "when": {
+        "feature": "g_agents_per_principal",
+        "op": ">=",
+        "value": 4
+      }
+    }
+  ]
+}
