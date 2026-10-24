@@ -17,7 +17,30 @@ def test_stubs_pass_conformance():
     conformance.check_page_scanner(stubs.StubPageScanner())
     conformance.check_threat_intel(stubs.StubThreatIntel())
     conformance.check_settlement(stubs.StubSettlement())
+    conformance.check_defense(stubs.StubDefense())
     conformance.check_engine(stubs.StubEngine(allowlist={"team"}), team_sender="team")
+
+
+def test_http_api_round_trips_every_entry_point():
+    from fastapi.testclient import TestClient
+
+    from contracts.api import DASHBOARD_SENDER, HttpEngine, create_app
+
+    app = create_app(stubs.StubEngine(allowlist={"team", DASHBOARD_SENDER}))
+    remote = HttpEngine(client=TestClient(app))
+    conformance.check_engine(remote, team_sender="team")
+    assert remote.set_freeze(True, requested_by=DASHBOARD_SENDER) is True
+
+
+def test_stub_app_allows_the_dashboard(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from contracts.api import DASHBOARD_SENDER, create_stub_app
+
+    monkeypatch.setenv("TEAM_ALLOWLIST_ADDRESSES", "agent1qexample")
+    client = TestClient(create_stub_app())
+    assert client.post("/run_round", headers={"X-Requested-By": DASHBOARD_SENDER}).status_code == 200
+    assert client.post("/run_round", headers={"X-Requested-By": "stranger"}).status_code == 403
 
 
 def test_mock_llm_returns_valid_instances_for_every_schema():

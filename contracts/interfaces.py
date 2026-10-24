@@ -7,6 +7,7 @@
 | PageScanner       | Eric (Apify page scans)               | Stanley's features, investigator |
 | ThreatIntelSource | Eric (news scraper)                   | Stanley's watch rules            |
 | Settlement        | Eric (x402)                           | Stanley's orchestrator           |
+| Defense           | Stanley (full system), Ryan (baselines) | Ryan's benchmark runner        |
 """
 
 from datetime import datetime
@@ -17,6 +18,7 @@ from contracts.schemas import (
     AttackFeedback,
     Decision,
     FeatureVector,
+    GroundTruth,
     PageScan,
     SettlementResult,
     ThreatReport,
@@ -67,4 +69,23 @@ class ThreatIntelSource(Protocol):
 class Settlement(Protocol):
     def settle(self, tx: Transaction, decision: Decision) -> SettlementResult:
         """Settle allowed payments via x402; never settles a blocked one."""
+        ...
+
+
+@runtime_checkable
+class Defense(Protocol):
+    """One benchmark contender: the full system, a baseline (static rules, XGBoost alone) or an
+    ablation. The benchmark runner feeds every contender identical traffic (spec 5.1)."""
+
+    name: str  # becomes RoundMetrics.defense, e.g. "full", "static_rules", "xgboost", "no_xgb_voter"
+
+    def decide(self, tx: Transaction, features: FeatureVector) -> Decision: ...
+
+    def learn(self, round: int, labeled: list[tuple[Transaction, FeatureVector, GroundTruth]]) -> None:
+        """Called once after each round with that round's labeled training traffic. Static
+        contenders do nothing; never called with held-out or chat-sourced transactions."""
+        ...
+
+    def freeze(self, on: bool) -> None:
+        """While frozen, learn() must not change the contender (used for exploitability exams)."""
         ...
