@@ -11,10 +11,11 @@ VOTE_STEP_UP_AT = 0.15
 
 
 class Specialist:
-    def __init__(self, lane: Lane, rulebook: Rulebook, catalog: FeatureCatalog):
+    def __init__(self, lane: Lane, rulebook: Rulebook, catalog: FeatureCatalog, validate: bool = True):
         if rulebook.lane != lane:
             raise ValueError(f"{lane.value} specialist given the {rulebook.lane.value} rulebook")
-        validate_rulebook(rulebook, catalog)
+        if validate:
+            validate_rulebook(rulebook, catalog)
         self.lane = lane
         self.rulebook = rulebook
         self.features = set(catalog.lane_features(lane))

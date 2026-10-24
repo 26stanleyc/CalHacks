@@ -16,9 +16,14 @@ touches state runs under one lock.
 
 A round (spec 3.9 point 7, M3) runs in 3 waves. Each wave is that slice of the legitimate
 traffic plus each outsider lineage's payments. The defense stays fixed for the whole round.
-Between waves the outsiders see only their outcomes and adapt.
+Between waves the outsiders see only their outcomes and adapt. After the waves, unless the defense
+is frozen, the learning loop runs (spec 4, M4).
 
-Learning (S4), the investigator (S5), the arena (S6) and mandate scoring (S7) plug in later.
+Locking: `_round_lock` lets one round run at a time; `_lock` guards the defense's state and is held
+only while a wave's payments are decided or the defense changes, so model calls (attackers between
+waves, reflection, the critic) never block check_payment or explain.
+
+The investigator (S5), the arena (S6) and mandate scoring (S7) plug in later.
 """
 
 import hashlib
@@ -36,11 +41,19 @@ from contracts.stubs import StubPageScanner, StubSettlement
 from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain
+from engine.learning.labels import Record, realized_cost
+from engine.learning.loop import LearningLoop
 from engine.pipeline import DefensePipeline
 from engine.sim.world import World
 from engine.store import LogStore, MemoryStore, log_bundle
 
 CHECK_PREFIX = "check:"
+ROUND_BUDGET_USD = 0.60  # spec 4.1's per-round estimate; a round over twice this pauses the run
+FP_CAP = 0.02
+
+
+class LLMBudgetExceeded(RuntimeError):
+    """A round cost more than twice the estimate (spec 4.1 stop rule); the run is paused."""
 
 
 def unit_hash(key: str) -> float:
@@ -76,7 +89,8 @@ class FraudEngine:
                  seed: int = 42, allowlist: set[str] | None = None, scanner: PageScanner | None = None,
                  settlement: Settlement | None = None, live_settlement: Settlement | None = None,
                  live_per_round: int = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
-                 fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None):
+                 fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
+                 voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -84,7 +98,7 @@ class FraudEngine:
         self.run_id = run_id or f"dev-seed{seed}"
         self.checks_run_id = f"{self.run_id}-checks"
         self.world = world or World(seed=seed)
-        self.pipeline = pipeline or DefensePipeline(identities=self.world.identities)
+        self.pipeline = pipeline or DefensePipeline(identities=self.world.identities, voters=voters)
         self.allowlist = allowlist if allowlist is not None else team_allowlist()
         self.scanner = scanner or StubPageScanner()
         self.settlement = settlement or StubSettlement()  # every allowed round payment; must be a stub
@@ -101,15 +115,25 @@ class FraudEngine:
                              role=("outsider_a", "outsider_b")[i % 2], mandate_for=self.world.fraud_mandate)
             for i, persona in enumerate(PERSONAS)]
         self.frozen = False
+        self.paused: str | None = None
+        self.round_budget_usd = round_budget_usd
         self.bureau = None
         self._lock = threading.RLock()
+        self._round_lock = threading.Lock()
+        self.learning = LearningLoop(self.pipeline, self.brain, self.store, self.run_id, FP_CAP, lock=self._lock)
+        self.last_learning = None
         self._latest_check: dict[str, str] = {}  # caller tx_id -> stored id of its latest check
+        self._round_decisions: dict[str, Decision] = {}  # this round's, until its batch reaches the database
         self.store.start_run(self.run_id, seed=seed, defense="full", config={"transport": transport, "milestone": "S3"})
         self.store.start_run(self.checks_run_id, seed=seed, defense="checks", config={"of_run": self.run_id})
         latest = self.store.get_metrics(self.run_id)
         self.round = latest.round if latest else 0  # resume when restarted on an existing run_id
         if self.round:
             self._resume_attackers()
+            self._resume_rulebooks()
+            controls = [r for r in self.store.get_rows("defender_actions", self.run_id) if r["action"] in ("pause", "resume")]
+            if controls and controls[-1]["action"] == "pause":
+                self.paused = controls[-1]["reason"]  # a pause survives a restart
 
     def _resume_attackers(self) -> None:
         """Pick each outsider lineage back up from its last logged record, so a restart mid-run
@@ -119,6 +143,27 @@ class FraudEngine:
             payload = latest.get(attacker.attacker_id)
             if payload is not None and hasattr(attacker, "restore"):
                 attacker.restore(AttackerRecord.model_validate(payload))
+
+    def _resume_rulebooks(self) -> None:
+        """Pick the learned rulebooks back up: the latest deployed version of each lane."""
+        from engine.dsl import Rulebook
+        from engine.specialists import Specialist
+
+        latest = {}
+        for row in self.store.get_rows("rulebook_versions", self.run_id):
+            if row["deployed"]:
+                latest[row["lane"]] = row["rules"]
+        for lane, specialist in list(self.pipeline.specialists.items()):
+            if lane.value in latest:
+                book = Rulebook(lane=lane, version=specialist.rulebook.version + 1, rules=latest[lane.value])
+                self.pipeline.specialists[lane] = Specialist(lane, book, self.pipeline.catalog)
+
+    def resume(self, requested_by: str) -> None:
+        """Lift a pause from the spend stop rule (team only)."""
+        self._require_team(requested_by)
+        if self.paused:
+            self._log_control(self.round, "resume", f"resumed by {requested_by}")
+        self.paused = None
 
     # --- lifecycle -----------------------------------------------------------------------
 
@@ -174,6 +219,8 @@ class FraudEngine:
 
     def explain(self, tx_id: str) -> Decision:
         with self._lock:
+            if tx_id in self._round_decisions:  # decided this round, not flushed yet
+                return with_tx_id(self._round_decisions[tx_id], tx_id)
             stored_id = self._latest_check.get(tx_id)
             decision = self.store.get_decision(stored_id) if stored_id else None
             if decision is None:
@@ -194,13 +241,18 @@ class FraudEngine:
 
     def run_round(self, requested_by: str) -> RoundMetrics:
         self._require_team(requested_by)
-        with self._lock:
-            self.round += 1
-            round_no = self.round
+        with self._round_lock:
+            if self.paused:
+                raise LLMBudgetExceeded(self.paused)
+            with self._lock:
+                self.round += 1
+                round_no = self.round
+                frozen = self.frozen
             costs = self.pipeline.orchestrator.costs
             pass_rate = {a.attacker_id: getattr(getattr(a, "persona", None), "step_up_pass", costs.fraud_step_up_pass)
                          for a in self.attackers}
-            loss = legit_n = legit_flagged = 0
+            spend_before = self.brain.spend()
+            records: list[Record] = []
             self._live_sent = 0
             with self.store.batch():
                 for wave, legit in enumerate(self._legit_by_wave(round_no)):
@@ -209,27 +261,65 @@ class FraudEngine:
                         n = self.fraud_per_persona // WAVES + (wave < self.fraud_per_persona % WAVES)
                         traffic += [(tx, attacker.truth(tx)) for tx in attacker.generate(self.run_id, round_no, wave, n, self.seed)]
                     feedback: dict[str, list[AttackFeedback]] = defaultdict(list)
-                    for tx, truth in sorted(traffic, key=lambda pair: (pair[0].ts, pair[0].tx_id)):
-                        decision, outcome = self._process(tx, truth, pass_rate.get(tx.attacker_id, costs.fraud_step_up_pass))
-                        if truth.is_fraud:
-                            loss += tx.amount_cents if outcome.settled else 0
-                            feedback[tx.attacker_id].append(AttackFeedback(tx_id=tx.tx_id, outcome=decision.action,
-                                                                           settled=outcome.settled))
-                        else:
-                            legit_n += 1
-                            legit_flagged += outcome.flagged
+                    with self._lock:  # the defense is fixed within the wave (and the round)
+                        for tx, truth in sorted(traffic, key=lambda pair: (pair[0].ts, pair[0].tx_id)):
+                            record = self._process(tx, truth, pass_rate.get(tx.attacker_id, costs.fraud_step_up_pass))
+                            records.append(record)
+                            if truth.is_fraud:
+                                feedback[tx.attacker_id].append(AttackFeedback(tx_id=tx.tx_id, outcome=record.decision.action,
+                                                                               settled=record.settled))
                     for attacker in self.attackers:  # outcomes only: outsiders never learn who objected
                         attacker.observe(feedback[attacker.attacker_id])
                         self._log_wave(attacker, round_no)
+                self.last_learning = None if frozen else self.learning.learn(round_no, records)
                 self.store.log_rows("attackers", [self._attacker_row(a, round_no) for a in self.attackers])
+                spend = self._log_spend(round_no, spend_before, self.brain.spend())
+                legit = [r for r in records if not r.truth.is_fraud]
+                learned = self.last_learning
                 metrics = RoundMetrics(
                     run_id=self.run_id, seed=self.seed, round=round_no, defense="full",
-                    loss_merchant_side_cents=loss, false_positive_rate=legit_flagged / max(1, legit_n),
-                    escalation_rate=0.0, frozen=self.frozen,
+                    loss_merchant_side_cents=sum(r.tx.amount_cents for r in records if r.truth.is_fraud and r.settled),
+                    false_positive_rate=sum(r.decision.action != Action.ALLOW for r in legit) / max(1, len(legit)),
+                    escalation_rate=0.0, frozen=frozen,
                     total_attacker_profit_cents=sum(getattr(a, "round_stats", {}).get("profit", 0) for a in self.attackers),
+                    total_cost_cents=int(sum(realized_cost(r, costs) for r in records)),
+                    uncovered_misses=learned.uncovered if learned else 0,
+                    critic_agreement=learned.critic_agreement if learned else None,
+                    llm_spend_usd=round(spend, 6),
                 )
                 self.store.log_round_metrics(metrics)
+                if spend > 2 * self.round_budget_usd:
+                    self.paused = (f"round {round_no} cost ${spend:.2f}, more than twice the ${self.round_budget_usd:.2f} "
+                                   f"estimate; the run is paused until someone resumes it")
+                    self._log_control(round_no, "pause", self.paused)
+            with self._lock:
+                self._round_decisions = {}
         return metrics
+
+    def _log_control(self, round_no: int, action: str, reason: str) -> None:
+        """Run-level decisions (the spend pause and its lifting) go in the orchestrator's action log."""
+        self.store.log_rows("defender_actions", [{"run_id": self.run_id, "round": round_no, "actor": "orchestrator",
+                                                  "action": action, "cost": 0, "granted": True, "reason": reason}])
+
+    def _log_spend(self, round_no: int, before: dict, after: dict) -> float:
+        """Log the round's model spend per role (spec 4.1) and return its total in dollars."""
+        rows = []
+        before_roles, after_roles = before.get("by_role", {}), after.get("by_role", {})
+        for role, now in after_roles.items():
+            was = before_roles.get(role, {})
+            calls = now.get("calls", 0) - was.get("calls", 0)
+            if calls:
+                rows.append({"run_id": self.run_id, "round": round_no, "role": role, "model": self.brain.model_for(role),
+                             "input_tokens": int(now.get("input_tokens", 0) - was.get("input_tokens", 0)),
+                             "output_tokens": int(now.get("output_tokens", 0) - was.get("output_tokens", 0)),
+                             "cost_usd": round(now.get("cost_usd", 0.0) - was.get("cost_usd", 0.0), 6)})
+        total = float(after.get("cost_usd", 0.0)) - float(before.get("cost_usd", 0.0))
+        unattributed = round(total - sum(r["cost_usd"] for r in rows), 6)
+        if unattributed:  # the client reported spend it didn't break down by role
+            rows.append({"run_id": self.run_id, "round": round_no, "role": "unattributed", "model": "unknown",
+                         "input_tokens": 0, "output_tokens": 0, "cost_usd": unattributed})
+        self.store.log_rows("llm_spend", rows)
+        return total
 
     def _legit_by_wave(self, round_no: int) -> list[list[tuple[Transaction, GroundTruth]]]:
         """This round's legitimate traffic, split into WAVES equal time slices."""
@@ -241,11 +331,12 @@ class FraudEngine:
             waves[wave].append((tx if tx.wave == wave else tx.model_copy(update={"wave": wave}), truth))
         return waves
 
-    def _process(self, tx: Transaction, truth: GroundTruth, fraud_step_up_pass: float) -> tuple[Decision, Outcome]:
+    def _process(self, tx: Transaction, truth: GroundTruth, fraud_step_up_pass: float) -> Record:
         """Decide one round payment, log it, settle it if allowed, and update the daily spend."""
         costs = self.pipeline.orchestrator.costs
         decision, features = self._decide(tx, commit=True)
         log_bundle(self.store, tx, features, decision, truth)
+        self._round_decisions[tx.tx_id] = decision
         outcome = resolve(tx, truth, decision, fraud_step_up_pass, costs.legit_step_up_abandon)
         if decision.action == Action.ALLOW:  # the gate: only allowed payments reach x402
             if self.live_settlement is not None and not truth.is_fraud and self._live_sent < self.live_per_round:
@@ -255,7 +346,7 @@ class FraudEngine:
                 self.store.log_settlement(self.settlement.settle(tx, decision))
         if outcome.settled:
             self.pipeline.features.record_spend(tx)
-        return decision, outcome
+        return Record(tx, features, decision, truth, outcome.settled)
 
     def _log_wave(self, attacker, round_no: int) -> None:
         logs = getattr(attacker, "wave_logs", None)
@@ -283,6 +374,7 @@ class FraudEngine:
         return self.live_settlement.settle(token, decision)
 
     def set_freeze(self, on: bool, requested_by: str) -> bool:
+        """While frozen: no reflection, no weight updates, no retraining. Attackers keep adapting."""
         self._require_team(requested_by)
         with self._lock:
             self.frozen = on

@@ -311,3 +311,4 @@ class RoundMetrics(BaseModel):
     critic_agreement: float | None = None
     llm_spend_usd: float = 0.0
     frozen: bool = False
+    total_cost_cents: int = 0  # missed fraud + false blocks + step-up friction and abandonment (spec 5.1)

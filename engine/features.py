@@ -111,6 +111,18 @@ STATIC_FEATURES: dict[str, Lane] = {
     "m_merchant_allowed": Lane.MANDATE,
 }
 
+# Which side of a feature looks like fraud. Reflection may only write rules in this direction, so a
+# rule can't latch onto something that drifts with time (in round 1 every honest agent is young, so
+# "old agent" would look suspicious until round 2 proves otherwise). Primitives (counts, sums,
+# distinct values) are suspicious when high.
+SUSPICIOUS_WHEN: dict[str, str] = {
+    "t_gap_prev_s": "low", "t_gap_cv_agent": "low", "t_agent_age_s": "low", "b_memo_injection": "high",
+    "v_amount_cents": "either", "v_threshold_gap_frac": "low", "v_price_ratio": "high",
+    "g_agents_per_principal": "high", "g_principals_per_agent": "high", "g_agent_new": "high",
+    "i_identity_status": "high", "i_principal_age_s": "low",
+    "m_over_cap_ratio": "high", "m_daily_spend_ratio": "high", "m_category_allowed": "low", "m_merchant_allowed": "low",
+}
+
 SEED_PRIMITIVES: dict[str, tuple[Lane, Primitive]] = {
     "t_count_agent_60s": (Lane.TIMING, Primitive("agent_id", "tx", "count", 60)),
     "t_count_agent_600s": (Lane.TIMING, Primitive("agent_id", "tx", "count", 600)),
@@ -142,6 +154,10 @@ class FeatureCatalog:
 
     def lane_features(self, lane: Lane) -> list[str]:
         return sorted(n for n, owner in self.lanes.items() if owner == lane)
+
+    def direction(self, name: str) -> str:
+        """'high', 'low' or 'either': which side of this feature looks like fraud."""
+        return SUSPICIOUS_WHEN.get(name, "high")
 
     def owner(self, name: str) -> Lane | None:
         return self.lanes.get(name)

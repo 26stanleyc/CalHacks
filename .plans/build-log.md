@@ -270,6 +270,29 @@ The dashboard's drift query runs against real rows in Postgres.
 
 **Demo angle:** ⭐ talking point 3 setup: "watch the card tester adapt". The attacker-drift page shows each lineage's amount and interval per wave, with a ring where it rewrote its strategy after getting caught.
 
+### Sat Oct 24, 06:00 · S4 Learning loop · Stanley
+**Did:**
+- After every round, unless frozen, the defense learns:
+  - **Critic.** It assigns each missed fraud to a lane, or marks it uncovered. Every critic decision is checked against an answer computed in code, and agreement is logged. After 2 rounds under 80% agreement, a second-opinion model from the other family joins in, and code breaks ties.
+  - **Reflection.** Each specialist sees only its own lane's features: its misses, with how rare each value is among honest payments, plus its own false alarms. It proposes rules. Each proposed rule is validated against the lane, replayed on recent traffic, and reviewed by the critic.
+  - **Hygiene.** At most 15 rules per lane. Rules retire after 3 rounds without catching fraud. Learned rules are re-vetted every round against a growing 10-round honest record. An FP guard pulls rules when a round runs hot.
+  - **Hedge weights** for every voter, including Ryan's XGBoost voter. The XGBoost voter retrains each round, and its weight is capped by an out-of-sample check on honest traffic.
+  - **Spend** is tracked per role per round. A round costing more than twice the $0.60 estimate pauses the run.
+- A defense can't learn backwards. Every feature has a "suspicious when" direction, so a rule can't latch onto something that drifts with time. (In round 1 every honest agent is young, so "old agent" looked suspicious until round 2 flagged 25% of shoppers.)
+- Locks were split, so model calls during a round never block chat checks or `explain`.
+
+**Proof:** `engine/tests/test_m04_learning.py`, on Ryan's marketplace with mock brains:
+- round 10 costs 8-16% of round 1 across 3 seeds (target: at most 60%);
+- FP stays under 2% every round (worst 1.7%);
+- rulebooks stay under the cap and inside their lanes;
+- every veto is logged with a reason;
+- the second opinion engages after low agreement;
+- freezing costs money and unfreezing recovers (target restated in `evidence/target-changes.md`: the defense is still improving at round 4);
+- the spend pause works;
+- learned rulebooks survive a restart on Postgres.
+
+**Demo angle:** ⭐ the loss curve falling round over round, and the freeze beat. Freeze, losses climb while attackers keep adapting, unfreeze, and they come back down. A learned rule is readable JSON: "velocity: amount ≤ $1.35, rarer than 0.1% of honest payments".
+
 ---
 
 ## Entry template

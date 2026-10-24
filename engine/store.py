@@ -10,6 +10,7 @@ to Supabase instead of thousands.
 import contextlib
 import json
 import os
+import threading
 from typing import Iterator, Protocol
 
 import psycopg
@@ -158,33 +159,47 @@ class PostgresStore:
     """One autocommit connection. `schema` lets tests write to a throwaway schema instead of public."""
 
     def __init__(self, dsn: str | None = None, schema: str | None = None):
-        self.conn = psycopg.connect(dsn or os.environ["DATABASE_URL"], autocommit=True)
-        if schema:
-            self.conn.execute(sql.SQL("set search_path to {}").format(sql.Identifier(schema)))
+        self._dsn, self._schema = dsn or os.environ["DATABASE_URL"], schema
+        self.conn = self._connect()
+        self._side: psycopg.Connection | None = None  # for other threads' writes while a round's batch is open
         self._buffer: dict[tuple, list[tuple]] | None = None  # (table, columns) -> rows
+        self._batch_thread: int | None = None  # only this thread's writes are buffered
+
+    def _connect(self) -> psycopg.Connection:
+        conn = psycopg.connect(self._dsn, autocommit=True)
+        if self._schema:
+            conn.execute(sql.SQL("set search_path to {}").format(sql.Identifier(self._schema)))
+        return conn
 
     def close(self) -> None:
         self.conn.close()
+        if self._side is not None:
+            self._side.close()
 
     def _insert(self, table: str, rows: list[tuple], columns: tuple[str, ...] | None = None) -> None:
         if not rows:
             return
+        conn = self.conn
         if self._buffer is not None:
-            self._buffer.setdefault((table, columns), []).extend(rows)
-            return
-        with self.conn.cursor() as cur:
+            if threading.get_ident() == self._batch_thread:
+                self._buffer.setdefault((table, columns), []).extend(rows)
+                return
+            if self._side is None:  # keep this write out of the round's flush transaction
+                self._side = self._connect()
+            conn = self._side
+        with conn.cursor() as cur:
             cur.executemany(_statement(table, columns), rows)
 
     @contextlib.contextmanager
     def batch(self) -> Iterator[None]:
-        if self._buffer is not None:  # already batching: the outer batch flushes
-            yield
+        if self._buffer is not None:
+            yield  # nested: the outer batch flushes (another thread's writes go straight through)
             return
-        self._buffer = {}
+        self._buffer, self._batch_thread = {}, threading.get_ident()
         try:
             yield
         finally:
-            buffer, self._buffer = self._buffer, None
+            buffer, self._buffer, self._batch_thread = self._buffer, None, None
             with self.conn.transaction(), self.conn.cursor() as cur:
                 for table in _ORDER:
                     for (name, columns), rows in buffer.items():

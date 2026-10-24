@@ -32,6 +32,7 @@ markers = [
     "m01: M1 marketplace and legitimate traffic",
     "m02: M2 defense skeleton",
     "m03: M3 outsider personas and waves",
+    "m04: M4 learning loop",
     "m07: M7 held-out attackers",
     "m12: M12 XGBoost voter, baselines and metrics",
 ]

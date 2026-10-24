@@ -7,6 +7,7 @@ identical to one made in-process (the in-process path is what benchmarks and tes
 import hashlib
 import json
 
+from contracts.interfaces import Voter
 from contracts.schemas import Decision, FeatureVector, IdentityStatus, Lane, Transaction, TrafficSource, Vote
 from engine.dsl import Rulebook, load_seed_rulebooks
 from engine.features import FeatureCatalog, FeatureService
@@ -19,13 +20,14 @@ S2_LANES = (Lane.TIMING, Lane.GRAPH, Lane.IDENTITY, Lane.VELOCITY)  # mandate sp
 class DefensePipeline:
     def __init__(self, lanes: tuple[Lane, ...] = S2_LANES, catalog: FeatureCatalog | None = None,
                  rulebooks: dict[Lane, Rulebook] | None = None, identities: dict[str, IdentityStatus] | None = None,
-                 orchestrator: Orchestrator | None = None):
+                 orchestrator: Orchestrator | None = None, voters: list[Voter] | None = None):
         self.lanes = lanes
         self.catalog = catalog or FeatureCatalog()
         self.features = FeatureService(self.catalog, identities)
         rulebooks = rulebooks or load_seed_rulebooks(self.catalog, lanes)
         self.specialists = {lane: Specialist(lane, rulebooks[lane], self.catalog) for lane in lanes}
         self.orchestrator = orchestrator or Orchestrator()
+        self.voters = list(voters or [])  # e.g. Ryan's XGBoost voter: one more vote, weighed like any other
 
     def featurize(self, tx: Transaction, commit: bool | None = None) -> FeatureVector:
         """`commit=None` remembers the payment unless it was chat-submitted: those are scored for
@@ -41,13 +43,18 @@ class DefensePipeline:
         return self.specialists[lane].vote(tx, self.lane_slice(lane, features))
 
     def combine(self, tx: Transaction, votes: list[Vote], features: FeatureVector) -> Decision:
+        """The orchestrator's decision. Extra voters vote here (so the Bureau path gets them too),
+        unless their vote is already in `votes` (a replay of a logged decision)."""
+        present = {v.voter for v in votes}
+        votes = [*votes, *(voter.score(tx, features) for voter in self.voters if voter.name not in present)]
         order = {lane.value: i for i, lane in enumerate(self.lanes)}
         return self.orchestrator.decide(tx, sorted(votes, key=lambda v: order.get(v.voter, 99)), features)
 
     def fingerprint(self) -> str:
         """A hash of everything learning can change: rulebooks, weights and the feature catalog."""
         state = {"rules": {lane.value: s.rulebook.model_dump(mode="json") for lane, s in self.specialists.items()},
-                 "weights": self.orchestrator.weights, "features": sorted(self.catalog.lanes)}
+                 "weights": self.orchestrator.weights, "features": sorted(self.catalog.lanes),
+                 "voters": [getattr(v, "version", None) for v in self.voters]}
         return hashlib.sha256(json.dumps(state, sort_keys=True).encode()).hexdigest()
 
     def score(self, tx: Transaction, features: FeatureVector) -> Decision:

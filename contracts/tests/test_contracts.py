@@ -142,3 +142,9 @@ def test_http_explain_of_an_unknown_tx_is_a_404_and_a_key_error_for_the_client()
 def test_attack_feedback_says_whether_the_money_moved_and_defaults_to_unknown():
     assert schemas.AttackFeedback(tx_id="t", outcome=schemas.Action.ALLOW).settled is None
     assert schemas.AttackFeedback(tx_id="t", outcome=schemas.Action.STEP_UP, settled=True).settled is True
+
+
+def test_round_metrics_carry_total_cost_and_default_it_to_zero():
+    metrics = schemas.RoundMetrics(run_id="r", seed=1, round=1)
+    assert metrics.total_cost_cents == 0
+    assert schemas.RoundMetrics(run_id="r", seed=1, round=1, total_cost_cents=1234).total_cost_cents == 1234

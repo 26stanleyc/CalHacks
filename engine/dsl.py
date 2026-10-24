@@ -51,10 +51,16 @@ def condition_features(cond: dict, depth: int = 0) -> list[str]:
     if "feature" in cond:
         if set(cond) != {"feature", "op", "value"}:
             raise RuleError(f"a comparison needs exactly feature, op and value: {cond}")
-        if cond["op"] not in OPS:
+        if not isinstance(cond["op"], str) or cond["op"] not in OPS:
             raise RuleError(f"unknown operator {cond['op']!r}")
         value = cond["value"]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise RuleError(f"value must be a finite number: {cond}")
+        try:
+            finite = math.isfinite(value)
+        except OverflowError:
+            finite = False
+        if not finite or abs(value) > 1e15:
             raise RuleError(f"value must be a finite number: {cond}")
         if not isinstance(cond["feature"], str):
             raise RuleError("feature must be a name")
