@@ -231,6 +231,7 @@ class AttackFeedback(BaseModel):
     tx_id: str
     outcome: Action
     objected_by: list[Lane] | None = None  # insiders only; None for outsiders
+    settled: bool | None = None  # whether the money moved (a stepped-up payment can go either way)
 
 
 class ShelfState(BaseModel):

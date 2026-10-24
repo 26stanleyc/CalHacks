@@ -64,7 +64,7 @@ class World:
     products: list[Product] = field(default_factory=list)
     shoppers: list[Shopper] = field(default_factory=list)
     identities: dict[str, IdentityStatus] = field(default_factory=dict)  # what an identity check would say
-    round_seconds: ClassVar[float] = 4 * 3600
+    round_seconds: ClassVar[float] = 86_400  # one simulated day per round, like the marketplace
 
     def __post_init__(self):
         rng = random.Random(f"world:{self.seed}")

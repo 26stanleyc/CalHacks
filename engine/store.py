@@ -8,6 +8,7 @@ to Supabase instead of thousands.
 """
 
 import contextlib
+import json
 import os
 from typing import Iterator, Protocol
 
@@ -37,7 +38,35 @@ class LogStore(Protocol):
 
     def get_metrics(self, run_id: str, round: int | None = None) -> RoundMetrics | None: ...
 
+    def log_rows(self, table: str, rows: list[dict]) -> None:
+        """Rows for one of the arena and learning tables in ROW_TABLES; dict and list values are JSON.
+        Columns a row leaves out get the table's default."""
+        ...
+
+    def get_rows(self, table: str, run_id: str) -> list[dict]:
+        """A run's rows from one of the ROW_TABLES, oldest first (used to resume a run)."""
+        ...
+
     def batch(self) -> contextlib.AbstractContextManager: ...
+
+
+# The other append-only tables (contracts/db.sql), written as plain dict rows, in foreign-key order.
+ROW_TABLES: dict[str, tuple[str, ...]] = {
+    "escalations": ("tx_id", "tool_calls", "decision", "reasons", "timed_out"),
+    "attackers": ("attacker_id", "run_id", "round", "source", "payload"),
+    "playbook_waves": ("attacker_id", "run_id", "round", "wave", "playbook", "strategy_changed", "trigger"),
+    "rulebook_versions": ("run_id", "round", "lane", "draft", "rules", "diff", "deployed", "veto_reason"),
+    "reflections": ("run_id", "round", "lane", "payload"),
+    "features_added": ("run_id", "round", "lane", "name", "spec"),
+    "critic_checks": ("run_id", "round", "kind", "critic", "automated", "agree", "second_opinion"),
+    "defender_actions": ("run_id", "round", "actor", "action", "cost", "granted", "reason", "detail"),
+    "archive_snapshots": ("run_id", "round", "shelf_id", "payload"),
+    "archive_events": ("run_id", "round", "shelf_id", "attacker_id", "event", "detail"),
+    "threat_reports": ("report_id", "source_url", "payload", "pattern", "watch_rule_id", "critic_verdict", "attacker_ids"),
+    "merchant_pages": ("url", "merchant_id", "payload"),
+    "shopper_sessions": ("run_id", "round", "agent_id", "pages_read", "decision", "hijacked"),
+    "llm_spend": ("run_id", "round", "role", "model", "input_tokens", "output_tokens", "cost_usd"),
+}
 
 
 def log_bundle(store: LogStore, tx: Transaction, features: FeatureVector, decision: Decision,
@@ -62,6 +91,7 @@ class MemoryStore:
         self.decisions: list[Decision] = []
         self.metrics: list[RoundMetrics] = []
         self.settlements: list[SettlementResult] = []
+        self.rows: dict[str, list[dict]] = {table: [] for table in ROW_TABLES}
 
     def start_run(self, run_id: str, seed: int, defense: str = "full", config: dict | None = None) -> None:
         self.runs.setdefault(run_id, {"seed": seed, "defense": defense, "config": config or {}})
@@ -85,6 +115,17 @@ class MemoryStore:
 
     def log_settlement(self, result: SettlementResult) -> None:
         self.settlements.append(result.model_copy(deep=True))
+
+    def log_rows(self, table: str, rows: list[dict]) -> None:
+        columns = ROW_TABLES[table]
+        for row in rows:
+            unknown = set(row) - set(columns)
+            if unknown:
+                raise ValueError(f"{table} has no columns {sorted(unknown)}")
+            self.rows[table].append(json.loads(json.dumps(row, default=str)))
+
+    def get_rows(self, table: str, run_id: str) -> list[dict]:
+        return [json.loads(json.dumps(r)) for r in self.rows[table] if r.get("run_id") == run_id]
 
     def get_decision(self, tx_id: str) -> Decision | None:
         found = next((d for d in reversed(self.decisions) if d.tx_id == tx_id), None)
@@ -110,7 +151,7 @@ _INSERTS = {
     "settlements": "insert into settlements (tx_id, settled, tx_hash, network, reason) values (%s, %s, %s, %s, %s)",
     "round_metrics": "insert into round_metrics (run_id, round, payload) values (%s, %s, %s)",
 }
-_ORDER = list(_INSERTS)  # foreign-key order for flushing
+_ORDER = [*_INSERTS, *ROW_TABLES]  # foreign-key order for flushing
 
 
 class PostgresStore:
@@ -120,19 +161,19 @@ class PostgresStore:
         self.conn = psycopg.connect(dsn or os.environ["DATABASE_URL"], autocommit=True)
         if schema:
             self.conn.execute(sql.SQL("set search_path to {}").format(sql.Identifier(schema)))
-        self._buffer: dict[str, list[tuple]] | None = None
+        self._buffer: dict[tuple, list[tuple]] | None = None  # (table, columns) -> rows
 
     def close(self) -> None:
         self.conn.close()
 
-    def _insert(self, table: str, rows: list[tuple]) -> None:
+    def _insert(self, table: str, rows: list[tuple], columns: tuple[str, ...] | None = None) -> None:
         if not rows:
             return
         if self._buffer is not None:
-            self._buffer.setdefault(table, []).extend(rows)
+            self._buffer.setdefault((table, columns), []).extend(rows)
             return
         with self.conn.cursor() as cur:
-            cur.executemany(_INSERTS[table], rows)
+            cur.executemany(_statement(table, columns), rows)
 
     @contextlib.contextmanager
     def batch(self) -> Iterator[None]:
@@ -146,8 +187,9 @@ class PostgresStore:
             buffer, self._buffer = self._buffer, None
             with self.conn.transaction(), self.conn.cursor() as cur:
                 for table in _ORDER:
-                    if buffer.get(table):
-                        cur.executemany(_INSERTS[table], buffer[table])
+                    for (name, columns), rows in buffer.items():
+                        if name == table and rows:
+                            cur.executemany(_statement(table, columns), rows)
 
     def start_run(self, run_id: str, seed: int, defense: str = "full", config: dict | None = None) -> None:
         self._insert("runs", [(run_id, seed, defense, Jsonb(config or {}))])
@@ -174,6 +216,20 @@ class PostgresStore:
     def log_round_metrics(self, metrics: RoundMetrics) -> None:
         self._insert("round_metrics", [(metrics.run_id, metrics.round, Jsonb(metrics.model_dump(mode="json")))])
 
+    def log_rows(self, table: str, rows: list[dict]) -> None:
+        for row in rows:
+            unknown = set(row) - set(ROW_TABLES[table])
+            if unknown:
+                raise ValueError(f"{table} has no columns {sorted(unknown)}")
+            columns = tuple(c for c in ROW_TABLES[table] if c in row)
+            self._insert(table, [tuple(_sql_value(row[c]) for c in columns)], columns)
+
+    def get_rows(self, table: str, run_id: str) -> list[dict]:
+        columns = ROW_TABLES[table]
+        query = sql.SQL("select {} from {} where run_id = %s order by id").format(
+            sql.SQL(", ").join(map(sql.Identifier, columns)), sql.Identifier(table))
+        return [dict(zip(columns, row)) for row in self.conn.execute(query, (run_id,)).fetchall()]
+
     def get_decision(self, tx_id: str) -> Decision | None:
         row = self.conn.execute("select payload from decisions where tx_id = %s", (tx_id,)).fetchone()
         return Decision.model_validate(row[0]) if row else None
@@ -186,3 +242,18 @@ class PostgresStore:
             row = self.conn.execute("select payload from round_metrics where run_id = %s and round = %s",
                                     (run_id, round)).fetchone()
         return RoundMetrics.model_validate(row[0]) if row else None
+
+
+def _statement(table: str, columns: tuple[str, ...] | None = None):
+    if table in _INSERTS:
+        return _INSERTS[table]
+    columns = columns or ROW_TABLES[table]
+    return sql.SQL("insert into {} ({}) values ({})").format(
+        sql.Identifier(table), sql.SQL(", ").join(map(sql.Identifier, columns)),
+        sql.SQL(", ").join([sql.Placeholder()] * len(columns)))
+
+
+def _sql_value(value):
+    if isinstance(value, (dict, list)):
+        return Jsonb(json.loads(json.dumps(value, default=str)))
+    return value

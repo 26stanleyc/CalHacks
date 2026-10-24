@@ -207,7 +207,7 @@ _URL = re.compile(r"https?://[^\s<>\"')]+")
 # Chat ids (tx-..., asi-...), stored outside checks (check:...), and the engine's round ids
 # (<run>-r<round>-<tag>, e.g. dev-seed42-r1-l0-0).
 _TX_ID = re.compile(
-    r"(?<![\w:])((?:tx|asi)[-_][A-Za-z0-9._-]+|check:[A-Za-z0-9._:#-]+|[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*-r\d+-[A-Za-z0-9._-]+)",
+    r"(?<![\w:])((?:tx|asi)[-_][A-Za-z0-9._-]+|check:[A-Za-z0-9._:#-]+|[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*-r\d+(?:w\d+)?-[A-Za-z0-9._-]+)",
     re.IGNORECASE,
 )
 _DOLLARS = re.compile(r"\$\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)")

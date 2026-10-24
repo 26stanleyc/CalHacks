@@ -4,6 +4,9 @@ The Bureau's agents call these same objects, so a decision made through uAgents 
 identical to one made in-process (the in-process path is what benchmarks and tests use).
 """
 
+import hashlib
+import json
+
 from contracts.schemas import Decision, FeatureVector, IdentityStatus, Lane, Transaction, TrafficSource, Vote
 from engine.dsl import Rulebook, load_seed_rulebooks
 from engine.features import FeatureCatalog, FeatureService
@@ -40,6 +43,12 @@ class DefensePipeline:
     def combine(self, tx: Transaction, votes: list[Vote], features: FeatureVector) -> Decision:
         order = {lane.value: i for i, lane in enumerate(self.lanes)}
         return self.orchestrator.decide(tx, sorted(votes, key=lambda v: order.get(v.voter, 99)), features)
+
+    def fingerprint(self) -> str:
+        """A hash of everything learning can change: rulebooks, weights and the feature catalog."""
+        state = {"rules": {lane.value: s.rulebook.model_dump(mode="json") for lane, s in self.specialists.items()},
+                 "weights": self.orchestrator.weights, "features": sorted(self.catalog.lanes)}
+        return hashlib.sha256(json.dumps(state, sort_keys=True).encode()).hexdigest()
 
     def score(self, tx: Transaction, features: FeatureVector) -> Decision:
         """Decide from features computed elsewhere (benchmarks give every contender the same ones)."""

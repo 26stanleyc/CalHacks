@@ -137,3 +137,8 @@ def test_http_explain_of_an_unknown_tx_is_a_404_and_a_key_error_for_the_client()
     assert client.get("/explain/nope").status_code == 404
     with pytest.raises(KeyError):
         HttpEngine(client=client).explain("nope")
+
+
+def test_attack_feedback_says_whether_the_money_moved_and_defaults_to_unknown():
+    assert schemas.AttackFeedback(tx_id="t", outcome=schemas.Action.ALLOW).settled is None
+    assert schemas.AttackFeedback(tx_id="t", outcome=schemas.Action.STEP_UP, settled=True).settled is True

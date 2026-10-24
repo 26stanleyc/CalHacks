@@ -10,6 +10,8 @@ serve.py are the only places that wire in Eric's implementations:
   per round also settles for real on Base Sepolia, at a token amount within X402_MAX_SETTLE_CENTS.
 - traffic: Ryan's marketplace (data/, M1) through engine.sim.marketplace.MarketplaceWorld: his
   catalog and legitimate shoppers, one simulated day per round
+- models: Eric's Bitdeer client when BITDEER_API_KEY is set (and USE_MOCK_LLM isn't), falling back
+  to the engine's mock brains; the mock brains alone otherwise
 
 `build_engine` is also the factory Eric's chat agents look for when ENGINE_SOURCE=inprocess
 (integrations/asi_one/engine_source.py).
@@ -21,7 +23,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from contracts.api import team_allowlist
-from contracts.config import flag  # also loads .env
+from contracts.config import flag, use_mock_llm  # also loads .env
+from engine.brains import Brain, MockBrains
 from engine.engine import FraudEngine
 from engine.store import MemoryStore, PostgresStore
 
@@ -50,6 +53,23 @@ def _settlements():
     return X402Settlement(mode="stub"), live
 
 
+def _brain() -> Brain:
+    """Bitdeer when it's configured, with the engine's mock brains as the fallback (a plain MockLLM
+    can't answer the engine's questions), and the mock brains alone otherwise."""
+    if use_mock_llm():
+        return Brain(MockBrains())
+    try:
+        from integrations.bitdeer import BitdeerError, BitdeerLLM, FallbackLLM
+    except ImportError:
+        log.warning("integrations.bitdeer is unavailable; using the mock brains")
+        return Brain(MockBrains())
+    try:
+        return Brain(FallbackLLM(BitdeerLLM(), fallback=MockBrains()))
+    except BitdeerError as exc:
+        log.error("could not build the Bitdeer client (%s); using the mock brains", exc)
+        return Brain(MockBrains())
+
+
 def _world(seed: int):
     try:
         from engine.sim.marketplace import MarketplaceWorld
@@ -65,6 +85,6 @@ def build_engine() -> FraudEngine:
     seed = int(os.environ.get("ENGINE_SEED", 42))
     settlement, live = _settlements()
     engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(),
-                         settlement=settlement, live_settlement=live, world=_world(seed),
+                         settlement=settlement, live_settlement=live, world=_world(seed), brain=_brain(),
                          transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
     return engine.start()

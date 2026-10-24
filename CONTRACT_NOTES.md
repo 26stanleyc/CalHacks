@@ -272,6 +272,8 @@ Each has a test. Please review and push back on anything you'd do differently.
 - `pyproject.toml`: both branches' dependencies, test paths and markers combined.
 
 **Eric (`integrations/`)**
+- `asi_one/router.py` (S3): round tx ids now carry the wave (`<run>-r<round>w<wave>-...`), and the
+  tx id pattern accepts that.
 - `asi_one/tools.py`: explaining an unknown tx id says "I have no record of transaction X"
   instead of failing; a page Apify couldn't read says so instead of looking safe.
 - `asi_one/router.py`: the tx id pattern also matches the engine's real round ids
@@ -279,3 +281,15 @@ Each has a test. Please review and push back on anything you'd do differently.
 - `x402_settlement.py`: passes the new `SettlementResult.reason` through.
 - `tests/test_asi_one.py`: the in-process test uses a memory store, so it no longer writes to
   Supabase.
+
+### Contract changes in S3-S4 (Stanley)
+
+Additive, with defaults, so nothing existing breaks. Stubs and contract tests are updated in the
+same commits.
+
+- `AttackFeedback.settled: bool | None = None`: whether the attacker's money moved. A stepped-up
+  payment can go either way, and an outsider needs to know its profit from outcomes alone. Ryan's
+  held-out attackers ignore feedback, so they're unaffected.
+- `RoundMetrics.total_cost_cents: int = 0` (Ryan 1, partly): total cost under the cost matrix
+  (missed fraud, false blocks, step-up friction and abandoned purchases). `recall_at_1pct_fpr` and
+  `pr_auc` stay in `bench/metrics.py` for now.

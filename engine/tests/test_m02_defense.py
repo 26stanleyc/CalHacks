@@ -251,7 +251,7 @@ def test_run_round_writes_to_postgres_and_reads_back():
 
 @pytest.mark.parametrize("seed", SEEDS)
 def test_false_positive_rate_stays_low_over_a_simulated_day_of_mixed_rounds(seed):
-    """Legit payments inside real rounds (dense, mixed with fraud), across 6 rounds = 24 h."""
+    """Legit payments inside real rounds (mixed with adaptive outsiders), across 6 rounds (6 simulated days)."""
     store = MemoryStore()
     engine = FraudEngine(store=store, world=World(seed=seed), allowlist={"team"})
     for _ in range(6):

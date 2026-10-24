@@ -244,6 +244,32 @@ The engine suite passed: 58 passed, 3 skipped.
 
 **Demo angle:** ⭐ **talking point 1.** This is the on-screen proof that the agents talk to each other. Run it right after the problem slide.
 
+### Sat Oct 24, 04:30 · S3 Outsider personas and waves · Stanley
+**Did:**
+- Four named outsider lineages: card tester, structurer, account farmer, prompt injector. Each runs every round and keeps its identity for the whole run. The hijacker joins in S7 and the malicious merchant in M10.
+- Rounds now run in **3 waves**. The defense stays fixed for the whole round; the attackers adapt between waves:
+  - each wave an outsider splits its payments between its current numbers and one challenger, and keeps whichever made more profit, counting the identities it had to buy;
+  - after a bad wave (caught on more than half its attempts) it rewrites its strategy with one model call. The rewrite is validated against realism limits; an invalid one is logged and the old playbook stays.
+- Outsiders only ever see outcomes (allowed, stepped up, blocked, and whether the money arrived), never rules or which specialist objected. This is enforced in code.
+- A playbook generator turns strategy plus numbers into payments. Accounts keep their identity and mandate for the whole round, and fraud accounts write mandates shaped like honest ones, so mandates don't give fraud away.
+- `engine/brains.py`: the one way the engine asks a model anything. All inputs go in one quoted data block, so attacker text is never instructions. Replies are schema-checked and fall back to code. On mock, a stand-in answers from the same data.
+- `build_engine` uses real Bitdeer when a key is set, with the mock brains as fallback.
+- A 4-angle adversarial review confirmed 17 issues and all were fixed. Among them: playbook logs were one wave ahead of the dashboard, a mid-round identity flip, `n_accounts` having no effect, rewrite history crediting the wrong strategy, NaN bounds that could crash a round's database flush, and outsiders resetting on a restart.
+
+**Proof:** `engine/tests/test_m03_outsiders.py` (22 tests, plus one gated on Postgres):
+- at least 25 payments per persona in a 400-payment round
+- outcome-only feedback
+- extraction logged per persona per round
+- 3 waves with an identical defense fingerprint across them
+- a rewrite after every bad wave and never after a good one
+- at least 95% valid model playbooks, measured
+- step-up pass rates within 3 sigma of configured
+- deterministic for a seed
+
+The dashboard's drift query runs against real rows in Postgres.
+
+**Demo angle:** ⭐ talking point 3 setup: "watch the card tester adapt". The attacker-drift page shows each lineage's amount and interval per wave, with a ring where it rewrote its strategy after getting caught.
+
 ---
 
 ## Entry template
