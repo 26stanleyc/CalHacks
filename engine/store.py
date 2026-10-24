@@ -79,6 +79,37 @@ def log_bundle(store: LogStore, tx: Transaction, features: FeatureVector, decisi
     store.log_decision(decision)
 
 
+class TeeStore:
+    """Reads from the first store and writes to both, so a run benchmarked in memory is also in the
+    database as it goes (nothing is lost if the run is stopped early)."""
+
+    def __init__(self, primary: "MemoryStore", mirror: LogStore):
+        self.primary, self.mirror = primary, mirror
+
+    def __getattr__(self, name):  # reads and attributes come from the primary
+        return getattr(self.primary, name)
+
+    def _both(name):
+        def write(self, *args, **kwargs):
+            getattr(self.primary, name)(*args, **kwargs)
+            getattr(self.mirror, name)(*args, **kwargs)
+        return write
+
+    start_run = _both("start_run")
+    log_transaction = _both("log_transaction")
+    log_features = _both("log_features")
+    log_votes = _both("log_votes")
+    log_decision = _both("log_decision")
+    log_round_metrics = _both("log_round_metrics")
+    log_settlement = _both("log_settlement")
+    log_rows = _both("log_rows")
+
+    @contextlib.contextmanager
+    def batch(self):
+        with self.primary.batch(), self.mirror.batch():
+            yield
+
+
 def copy_run(src: "MemoryStore", dst: LogStore) -> None:
     """Write everything a memory store holds into another store (e.g. Postgres, so the dashboard can
     show a run that was benchmarked in memory), in foreign-key order."""

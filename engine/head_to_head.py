@@ -19,7 +19,8 @@ system, which favors the baselines, if anything.
     uv run python -m engine.head_to_head --real --seeds 42 --rounds 6 --out evidence/head-to-head/bitdeer
 
 --record also writes the full system's run (every decision, rule change, reflection, critic check and
-attacker) to the team database afterwards, so the dashboard can show it; its run id is printed.
+attacker) to the team database as it runs, so the dashboard can show it and a stopped run keeps every
+finished round; its run id is printed.
 """
 
 import argparse
@@ -69,8 +70,11 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
     from engine.sim.marketplace import MarketplaceWorld
     from engine.store import MemoryStore
 
+    from engine.store import PostgresStore, TeeStore
+
     run_id = f"h2h-{'real' if real else 'mock'}-{seed}" + (f"-{record}" if record else "")
-    engine = FraudEngine(store=MemoryStore(), world=MarketplaceWorld(seed=seed), allowlist={"h2h"}, seed=seed,
+    database = PostgresStore() if record else None
+    engine = FraudEngine(store=TeeStore(MemoryStore(), database) if record else MemoryStore(), world=MarketplaceWorld(seed=seed), allowlist={"h2h"}, seed=seed,
                          run_id=run_id, voters=[XGBoostVoter()], threat_intel=True,
                          **({"brain": _brain()} if real else {}))
     started = time.monotonic()
@@ -78,12 +82,8 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
         engine.run_round(requested_by="h2h")
     seconds = time.monotonic() - started
 
-    store = engine.store
-    if record:
-        from engine.store import PostgresStore, copy_run
-
-        database = PostgresStore()
-        copy_run(store, database)
+    store = engine.store.primary if record else engine.store
+    if database is not None:
         database.close()
     features = {f.tx_id: f for f in store.features}
     truth = {g.tx_id: g for g in store.ground_truth}
