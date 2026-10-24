@@ -14,16 +14,18 @@ from engine.features import FeatureCatalog, FeatureService
 from engine.orchestrator import Orchestrator
 from engine.specialists import Specialist
 
-S2_LANES = (Lane.TIMING, Lane.GRAPH, Lane.IDENTITY, Lane.VELOCITY)  # mandate specialist joins in M9
+S2_LANES = (Lane.TIMING, Lane.GRAPH, Lane.IDENTITY, Lane.VELOCITY)
+ALL_LANES = (*S2_LANES, Lane.MANDATE)  # the mandate specialist joined in M9
 
 
 class DefensePipeline:
-    def __init__(self, lanes: tuple[Lane, ...] = S2_LANES, catalog: FeatureCatalog | None = None,
+    def __init__(self, lanes: tuple[Lane, ...] = ALL_LANES, catalog: FeatureCatalog | None = None,
                  rulebooks: dict[Lane, Rulebook] | None = None, identities: dict[str, IdentityStatus] | None = None,
-                 orchestrator: Orchestrator | None = None, voters: list[Voter] | None = None):
+                 orchestrator: Orchestrator | None = None, voters: list[Voter] | None = None,
+                 product_text: dict[str, str] | None = None):
         self.lanes = lanes
         self.catalog = catalog or FeatureCatalog()
-        self.features = FeatureService(self.catalog, identities)
+        self.features = FeatureService(self.catalog, identities, product_text)
         rulebooks = rulebooks or load_seed_rulebooks(self.catalog, lanes)
         self.specialists = {lane: Specialist(lane, rulebooks[lane], self.catalog) for lane in lanes}
         self.orchestrator = orchestrator or Orchestrator()

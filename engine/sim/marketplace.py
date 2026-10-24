@@ -24,7 +24,7 @@ class MarketplaceWorld(World):
 
     def __post_init__(self):
         self.population = self.population or Population(self.seed)
-        self.products = [Product(p.product_id, p.merchant_id, p.category, p.price_cents) for p in load_catalog()]
+        self.products = [Product(p.product_id, p.merchant_id, p.category, p.price_cents, p.title) for p in load_catalog()]
         self.identities.update({s.principal.principal_id: s.principal.identity for s in self.population.shoppers})
         super().__post_init__()
 
@@ -38,6 +38,12 @@ class MarketplaceWorld(World):
         return Mandate(mandate_id=f"md-{principal_id}", principal_id=principal_id, per_payment_cap_cents=cap,
                        daily_cap_cents=daily, allowed_categories=categories,
                        request_text=f"buy {words} as needed, under ${cap // 100} per payment")
+
+    def victims(self) -> list[tuple[str, str, Mandate]]:
+        """Ryan's everyday shoppers: established agents with a history worth hijacking."""
+        from data.shoppers import Persona
+
+        return [(s.agent_id, s.principal.principal_id, s.mandate) for s in self.population.by_persona[Persona.NORMAL]]
 
     def legit_traffic(self, run_id, round, n, start_ts, span_s):
         return [(lt.tx, lt.truth) for lt in generate_legit_traffic(run_id, round, n, self.seed, self.population)]

@@ -46,6 +46,7 @@ class Product:
     merchant_id: str
     category: str
     price_cents: int
+    title: str = ""
 
 
 @dataclass
@@ -143,6 +144,15 @@ class World:
                 out.append((tx, GroundTruth(tx_id=tx.tx_id, is_fraud=True, attacker_id=attacker_id)))
             cell += 1
         return out[:n]
+
+    @property
+    def product_text(self) -> dict[str, str]:
+        """Product id -> the text a mandate request is matched against (title and category)."""
+        return {p.product_id: f"{p.title} {p.category.replace('_', ' ')}".strip() for p in self.products}
+
+    def victims(self) -> list[tuple[str, str, Mandate]]:
+        """Legitimate agents a hijacker could take over: (agent, principal, mandate)."""
+        return [(s.agent_id, s.principal_id, s.mandate) for s in self.shoppers]
 
     def fraud_mandate(self, principal_id: str, amount_cents: int, categories: list[str], daily_need_cents: int,
                       rng: random.Random) -> Mandate:

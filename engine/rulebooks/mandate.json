@@ -1,0 +1,78 @@
+{
+  "lane": "mandate",
+  "version": 0,
+  "rules": [
+    {
+      "id": "mandate.spike_at_new_merchant",
+      "score": 0.75,
+      "description": "An established agent suddenly pays eight times its usual amount, at a merchant it has never used: a hijacked agent.",
+      "when": {
+        "all": [
+          {
+            "feature": "m_amount_vs_agent",
+            "op": ">=",
+            "value": 8
+          },
+          {
+            "feature": "m_new_merchant_for_agent",
+            "op": ">=",
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "mandate.spike_new_merchant_off_hours",
+      "score": 0.6,
+      "description": "Four times the agent's usual amount, at a new merchant, five or more hours from its usual time.",
+      "when": {
+        "all": [
+          {
+            "feature": "m_amount_vs_agent",
+            "op": ">=",
+            "value": 4
+          },
+          {
+            "feature": "m_new_merchant_for_agent",
+            "op": ">=",
+            "value": 1
+          },
+          {
+            "feature": "m_hour_shift",
+            "op": ">=",
+            "value": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "mandate.at_cap_off_hours",
+      "score": 0.6,
+      "description": "Spending right up to the human's per-payment cap, far from the agent's usual hours.",
+      "when": {
+        "all": [
+          {
+            "feature": "m_over_cap_ratio",
+            "op": ">=",
+            "value": 0.97
+          },
+          {
+            "feature": "m_hour_shift",
+            "op": ">=",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "mandate.daily_limit_nearly_used",
+      "score": 0.15,
+      "description": "This payment would use more than 90% of the human's daily limit.",
+      "when": {
+        "feature": "m_daily_spend_ratio",
+        "op": ">=",
+        "value": 0.9
+      }
+    }
+  ]
+}

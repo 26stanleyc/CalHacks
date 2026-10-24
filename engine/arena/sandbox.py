@@ -45,6 +45,7 @@ class Sandbox:
         self.costs = pipeline.orchestrator.costs
         self.weights = dict(pipeline.orchestrator.weights)
         self.voters = list(pipeline.voters)
+        self.product_text = pipeline.features.product_text
         self.identities = dict(identities)
         self.products = products
         self.round_seconds = round_seconds
@@ -68,7 +69,8 @@ class Sandbox:
         self.runs += 1
         identities = dict(self.identities)
         pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, identities,
-                                   Orchestrator(costs=self.costs, weights=dict(self.weights)), voters=self.voters)
+                                   Orchestrator(costs=self.costs, weights=dict(self.weights)), voters=self.voters,
+                                   product_text=self.product_text)
         txs, accounts = [], {}
         per_wave = [n // WAVES + (w < n % WAVES) for w in range(WAVES)]
         for wave, count in enumerate(per_wave):
@@ -107,7 +109,8 @@ class Sandbox:
 
         self.runs += 1
         pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, dict(self.identities),
-                                   Orchestrator(costs=self.costs, weights=dict(self.weights)), voters=self.voters)
+                                   Orchestrator(costs=self.costs, weights=dict(self.weights)), voters=self.voters,
+                                   product_text=self.product_text)
         txs = []
         for wave in range(WAVES):
             txs += attacker.generate("sandbox", round_no, wave, n // WAVES + (wave < n % WAVES), seed)

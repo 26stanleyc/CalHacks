@@ -55,9 +55,10 @@ def test_several_transactions_are_each_decided_once(memory_bureau):
     assert len(store.decisions) == 5
 
 
-def test_s1_runs_the_four_starting_specialists(memory_bureau):
+def test_the_bureau_runs_one_agent_per_specialist(memory_bureau):
+    # four at S1; the mandate specialist joined in M9
     bureau, _ = memory_bureau
-    assert set(bureau.lanes) == {Lane.TIMING, Lane.GRAPH, Lane.IDENTITY, Lane.VELOCITY}
+    assert set(bureau.lanes) == set(Lane)
 
 
 @pytest.mark.skipif(os.environ.get("ENGINE_DB_TEST") != "1", reason="set ENGINE_DB_TEST=1 to run against a throwaway Postgres schema")
@@ -87,7 +88,7 @@ def test_rows_land_in_postgres_within_5s():
         assert time.perf_counter() - started <= 5.0
         counts = {t: admin.execute(f"select count(*) from {t} where tx_id = %s", (tx.tx_id,)).fetchone()[0]
                   for t in ("transactions", "votes", "decisions")}
-        assert counts == {"transactions": 1, "votes": 4, "decisions": 1}
+        assert counts == {"transactions": 1, "votes": len(Lane), "decisions": 1}
     finally:
         admin.execute(f"drop schema if exists {schema} cascade")
         admin.close()

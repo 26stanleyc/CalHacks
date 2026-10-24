@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 
 from contracts.schemas import Lane, TrafficSource
 from engine.brains import Brain
-from engine.dsl import MAX_RULES, Rule, holds, validate_rule
+from engine.dsl import MAX_RULES, Rule, condition_features, holds, validate_rule
 from engine.learning import hedge
 from engine.learning.critic import Critic
 from engine.learning.labels import UNCOVERED, LegitReference, Record
@@ -37,10 +37,11 @@ from engine.store import LogStore
 
 RETIRE_AFTER = 3  # rounds without a true hit
 GUARD_AT = 0.5  # of the FP cap: above this, the rules causing false alarms come out (headroom for drift)
-VOTER_AT = 0.2  # of the FP cap: what a retrained voter is calibrated to, out of sample
+VOTER_AT = 0.5  # of the FP cap: what a retrained voter is calibrated to, out of sample
 REVET_HONEST_SHARE = 0.003  # a learned rule firing on more of the growing honest record than this retires
 HOLDOUT_HONEST_SHARE = 0.005  # a new rule may fire on at most this share of the newest (held-out) honest round
 MIN_HONEST_ROUNDS = 3  # rounds of honest history before a new rule can be judged rare enough to deploy
+MIN_HONEST_SAMPLES = 600  # honest payments that must carry each feature a new rule uses (a rarity estimate needs data)
 REPLAY_ROUNDS = 3  # rounds of fraud a proposed rule is replayed on (what it would catch)
 HONEST_ROUNDS = 10  # rounds of honest traffic it's replayed on (false alarms need far more data than catches)
 MISSES_PER_REFLECTION = 30
@@ -134,16 +135,28 @@ class LearningLoop:
 
         self.hedge_weights = hedge.update(self.hedge_weights, records, self.pipeline.orchestrator.costs)
         self.example_rounds.append([(r.features, r.truth.is_fraud) for r in records])
-        self.voter_caps = self._calibrate_voters(self.hedge_weights, records)
-        weights = {voter: min(w, self.voter_caps.get(voter, 1.0)) for voter, w in self.hedge_weights.items()}
+        weights = self._relative(self.hedge_weights)
+        self.voter_caps = self._calibrate_voters(weights, records)
+        for voter in self.pipeline.voters:
+            weights[voter.name] = min(weights.get(voter.name, 1.0), self.voter_caps.get(voter.name, 1.0))
         examples = [e for rnd in self.example_rounds for e in rnd]
         with self.lock:  # commit everything at once
             self.live.specialists = dict(self.pipeline.specialists)
             self.live.orchestrator.weights = weights
+            for r in records:  # agent baselines learn from honest payments only
+                if not r.truth.is_fraud:
+                    self.live.features.learn_baseline(r.tx)
             for voter in self.live.voters:
                 voter.retrain(examples)
         out.weights = dict(weights)
         return out
+
+    def _relative(self, hedge_weights: dict[str, float]) -> dict[str, float]:
+        """Weights on the specialists' scale: the best specialist weighs 1, and extra voters are measured
+        against it, so a voter's cap means the same thing however Hedge ranks it."""
+        lanes = {lane.value for lane in self.pipeline.lanes}
+        top = max((w for v, w in hedge_weights.items() if v in lanes), default=1.0) or 1.0
+        return {v: round(min(1.0, w / top) if v in lanes else w / top, 6) for v, w in hedge_weights.items()}
 
     def _calibrate_voters(self, weights: dict[str, float], latest: list[Record]) -> dict[str, float]:
         """Each extra voter's cap, vetted like a rule but out of sample: a shadow copy trained on every
@@ -155,7 +168,7 @@ class LearningLoop:
         honest = [r for r in recent if not r.truth.is_fraud and not r.truth.breaches_mandate]
         target = self.fp_cap * VOTER_AT
         for voter in self.pipeline.voters:
-            if len(self.example_rounds) < 2 or not honest:
+            if len(self.example_rounds) < MIN_HONEST_ROUNDS or not honest:  # too few labels to trust it yet
                 caps[voter.name] = hedge.FLOOR
                 continue
             shadow = copy.deepcopy(voter)  # trained without the rounds it's judged on
@@ -185,6 +198,14 @@ class LearningLoop:
             for rule in specialist.rulebook.rules:
                 stats[rule.id] = {"true_hits": 0, "false_hits": 0}
                 self.last_true_hit.setdefault(rule.id, round_no - 1)
+        # A rule whose features were missing on most payments couldn't have caught anything: its
+        # retirement clock doesn't run that round (e.g. agent baselines before agents have history).
+        for specialist in self.pipeline.specialists.values():
+            for rule in specialist.rulebook.rules:
+                names = condition_features(rule.when)
+                present = sum(all(n in r.features.values for n in names) for r in records)
+                if records and present < 0.1 * len(records):
+                    self.last_true_hit[rule.id] = round_no
         for r in records:
             for vote in r.decision.votes:
                 for rule_id in vote.rule_ids:
@@ -326,6 +347,14 @@ class LearningLoop:
             if problem is None and len(self.honest) < MIN_HONEST_ROUNDS:
                 problem = (f"too little honest history yet ({len(self.honest)} of {MIN_HONEST_ROUNDS} rounds) to judge "
                            f"how often it would fire on honest payments")
+            if problem is None:
+                honest_all = [r for rnd in self.honest for r in rnd if not r.truth.breaches_mandate]
+                for name in sorted(set(condition_features(rule.when))):
+                    carried = sum(name in r.features.values for r in honest_all)
+                    if carried < min(MIN_HONEST_SAMPLES, len(honest_all) // 2):
+                        problem = (f"too few honest payments carry {name} yet ({carried} of {MIN_HONEST_SAMPLES}) "
+                                   f"to judge how rare its threshold is")
+                        break
             if problem is None and self._holdout:
                 names = set(self.pipeline.catalog.lane_features(lane))
                 honest_new = [r for r in self._holdout if not r.truth.breaches_mandate]

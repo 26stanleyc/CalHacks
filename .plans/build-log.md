@@ -342,6 +342,31 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** ⭐⭐ talking point 3, "the defense attacks itself". Spawned attackers spike losses in rounds 2-3, then the arena grid goes from red to green while exploitability falls. Use the defender-decisions panel to show which specialist spawned against which shelf, and why.
 
+### Sat Oct 24, 11:30 · S7 Mandates and hijacker · Stanley
+**Did:**
+- **A fifth specialist, mandate.** It asks "is this what the human authorized?" Its features:
+  - **Match score.** How well the product matches the human's original request. A local text embedding makes no LLM call and takes about 0.02 ms per payment. It's a stand-in for the spec's sentence-transformer, which would mean downloading model weights.
+  - **Agent baseline.** Each agent's usual amount, merchants, categories and hours. The baseline learns only from payments later confirmed honest, so a hijacker can't teach it that its own behavior is normal.
+- **The hijacker persona.** It spends with real shoppers' agent IDs and mandates, adapts like the other outsiders, and buys no identities.
+- **Hardening found along the way:**
+  - the XGBoost voter's cap is now relative to the best specialist (it could be bypassed before);
+  - a new rule needs enough honest payments carrying its features before its rarity can be judged;
+  - missing baselines are missing, not neutral, so thresholds don't drift as agents gain history;
+  - the voter is trusted only after 3 rounds of labels.
+
+**Proof:** `engine/tests/test_m09_mandates.py`:
+- every payment carries a mandate;
+- the match score makes no model call and takes under 1 ms;
+- over-cap and forbidden-merchant payments are hard-vetoed;
+- the mandate specialist votes on every payment, acts every round and spawns at least every 3 rounds;
+- hijack breaches are always blocked, and baselines never learn from hijacked payments.
+
+**Not met:** at least 80% of hijacker payments caught. Once it learns to stay inside each victim's mandate, about 45% are caught (xfail). Honest shoppers also shift hours, so the remaining signals overlap.
+
+**Full-system numbers (arena + hijacker + XGBoost, mock brains, 3 seeds):** outsider losses fall to 47-79% of round 1. Total cost rises, because spawned sparring attackers are counted. FP stays at or under 2% except one 2.7% round on seed 7. On mock brains, the mandate specialist's seed rules are retired or pulled by the FP guard by round 8. Earlier milestones' tests run as of their milestone (no arena or hijacker for M3/M4/M6); there, round 10 costs 3-10% of round 1.
+
+**Demo angle:** ⭐ the Fraud Desk blocks a hijacked shopper's purchase for breaking the mandate, and names the mandate specialist and the rule.
+
 ---
 
 ## Entry template

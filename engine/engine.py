@@ -45,6 +45,7 @@ from contracts.schemas import (Action, AttackerRecord, AttackFeedback, Decision,
 from contracts.stubs import StubPageScanner, StubSettlement
 from engine.arena.archive import Archive
 from engine.arena.arena import Arena
+from engine.arena.hijacker import HijackerAttacker
 from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
@@ -103,7 +104,7 @@ class FraudEngine:
                  fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
-                 arena: bool = True):
+                 arena: bool = True, hijacker: bool = True):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -111,7 +112,8 @@ class FraudEngine:
         self.run_id = run_id or f"dev-seed{seed}"
         self.checks_run_id = f"{self.run_id}-checks"
         self.world = world or World(seed=seed)
-        self.pipeline = pipeline or DefensePipeline(identities=self.world.identities, voters=voters)
+        self.pipeline = pipeline or DefensePipeline(identities=self.world.identities, voters=voters,
+                                                    product_text=self.world.product_text)
         self.allowlist = allowlist if allowlist is not None else team_allowlist()
         self.scanner = scanner or StubPageScanner()
         self.settlement = settlement or StubSettlement()  # every allowed round payment; must be a stub
@@ -126,7 +128,9 @@ class FraudEngine:
         self.attackers = attackers if attackers is not None else [
             OutsiderAttacker(persona, self.brain, self.world.products, self.world.identities, self.world.round_seconds,
                              role=("outsider_a", "outsider_b")[i % 2], mandate_for=self.world.fraud_mandate)
-            for i, persona in enumerate(PERSONAS)]
+            for i, persona in enumerate(PERSONAS)] + ([  # the hijacker lineage joined in M9
+            HijackerAttacker(self.brain, self.world.products, self.world.identities, self.world.round_seconds,
+                             self.world.victims(), role="outsider_a")] if hijacker else [])
         self.frozen = False
         self.paused: str | None = None
         self.round_budget_usd = round_budget_usd

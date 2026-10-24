@@ -16,6 +16,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from contracts.schemas import FeatureVector, IdentityStatus, Lane, Transaction
+from engine import mandates
 
 ENTITIES = ("agent_id", "principal_id", "merchant_id")
 AGGREGATES = ("count", "sum", "mean", "max", "distinct")
@@ -109,6 +110,12 @@ STATIC_FEATURES: dict[str, Lane] = {
     "m_daily_spend_ratio": Lane.MANDATE,
     "m_category_allowed": Lane.MANDATE,
     "m_merchant_allowed": Lane.MANDATE,
+    # M9: how well the purchase matches the human's request, and the agent-behavior baseline
+    "m_request_match": Lane.MANDATE,
+    "m_amount_vs_agent": Lane.MANDATE,
+    "m_new_merchant_for_agent": Lane.MANDATE,
+    "m_new_category_for_agent": Lane.MANDATE,
+    "m_hour_shift": Lane.MANDATE,
 }
 
 # Which side of a feature looks like fraud. Reflection may only write rules in this direction, so a
@@ -121,7 +128,11 @@ SUSPICIOUS_WHEN: dict[str, str] = {
     "g_agents_per_principal": "high", "g_principals_per_agent": "high", "g_agent_new": "high",
     "i_identity_status": "high", "i_principal_age_s": "low",
     "m_over_cap_ratio": "high", "m_daily_spend_ratio": "high", "m_category_allowed": "low", "m_merchant_allowed": "low",
+    "m_request_match": "low", "m_amount_vs_agent": "high", "m_new_merchant_for_agent": "high",
+    "m_new_category_for_agent": "high", "m_hour_shift": "high",
 }
+BASELINE_MIN = 3  # payments an agent needs before its baseline means anything
+BASELINE_KEEP = 50
 
 SEED_PRIMITIVES: dict[str, tuple[Lane, Primitive]] = {
     "t_count_agent_60s": (Lane.TIMING, Primitive("agent_id", "tx", "count", 60)),
@@ -167,9 +178,12 @@ class FeatureService:
     """Stateful: transactions must be fed in time order. `commit=False` computes features without
     remembering the transaction (chat-submitted checks must not change the defense's state)."""
 
-    def __init__(self, catalog: FeatureCatalog | None = None, identities: dict[str, IdentityStatus] | None = None):
+    def __init__(self, catalog: FeatureCatalog | None = None, identities: dict[str, IdentityStatus] | None = None,
+                 product_text: dict[str, str] | None = None):
         self.catalog = catalog or FeatureCatalog()
         self.identities = identities if identities is not None else {}
+        self.product_text = product_text if product_text is not None else {}  # product id -> title and category
+        self.baseline: dict[str, deque] = defaultdict(lambda: deque(maxlen=BASELINE_KEEP))  # agent -> past payments
         self.events: dict[str, dict[str, deque]] = {e: defaultdict(deque) for e in ENTITIES}
         self.first_seen_agent: dict[str, float] = {}
         self.first_seen_principal: dict[str, float] = {}
@@ -247,10 +261,37 @@ class FeatureService:
         values["m_daily_spend_ratio"] = _cap_ratio(spent_today + tx.amount_cents, m.daily_cap_cents) if m else 0.0
         values["m_category_allowed"] = 0.0 if m and m.allowed_categories and tx.category not in m.allowed_categories else 1.0
         values["m_merchant_allowed"] = 0.0 if m and m.allowed_merchants and tx.merchant_id not in m.allowed_merchants else 1.0
+        product = self.product_text.get(tx.product_id or "", tx.category or "")
+        values["m_request_match"] = mandates.request_match(m.request_text, product) if m else 1.0
+        values.update(self._baseline(tx))
 
         if commit:
             self._commit(tx, record, gap)
         return FeatureVector(tx_id=tx.tx_id, values=values)
+
+    def _baseline(self, tx: Transaction) -> dict[str, float]:
+        """How this payment compares with the agent's own history (spec 3.2: the hijacker signal). With
+        too little history the features are missing, not neutral: rules don't fire on a missing value,
+        and honest-traffic statistics then describe only agents that have a baseline, so a threshold
+        learned while most agents were new doesn't start firing as their baselines fill in."""
+        past = self.baseline.get(tx.agent_id, ())
+        if len(past) < BASELINE_MIN:
+            return {}
+        amounts = sorted(p[2] for p in past)
+        median = amounts[len(amounts) // 2] or 1
+        angles = [p[3] / 24 * 2 * math.pi for p in past]
+        mean_hour = (math.atan2(sum(map(math.sin, angles)), sum(map(math.cos, angles))) / (2 * math.pi) * 24) % 24
+        hour = (tx.ts % DAY_SECONDS) / 3600
+        shift = abs(hour - mean_hour)
+        return {"m_amount_vs_agent": tx.amount_cents / median,
+                "m_new_merchant_for_agent": 0.0 if any(p[0] == tx.merchant_id for p in past) else 1.0,
+                "m_new_category_for_agent": 0.0 if any(p[1] == tx.category for p in past) else 1.0,
+                "m_hour_shift": min(shift, 24 - shift)}
+
+    def learn_baseline(self, tx: Transaction) -> None:
+        """Add a payment known to be honest to its agent's baseline. Called after the round from labeled
+        traffic, so a hijacker's own payments never teach the baseline that its behavior is normal."""
+        self.baseline[tx.agent_id].append((tx.merchant_id, tx.category, tx.amount_cents, (tx.ts % DAY_SECONDS) / 3600))
 
     def _commit(self, tx: Transaction, record: dict, gap: float | None) -> None:
         now = tx.ts
@@ -289,6 +330,7 @@ def build_features(txs: Iterable[Transaction], identities: dict[str, IdentitySta
         features = out[tx.tx_id] = service.compute(tx, commit=True)
         if features.values["m_over_cap_ratio"] <= 1.0 and features.values["m_daily_spend_ratio"] <= 1.0:
             service.record_spend(tx)
+            service.learn_baseline(tx)  # label-blind here: every payment within its mandate counts
     return out
 
 

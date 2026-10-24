@@ -106,8 +106,8 @@ def holds(cond: dict, values: dict[str, float]) -> bool:
         value = values.get(cond["feature"])
         return value is not None and OPS[cond["op"]](value, cond["value"])
     (key, inner), = cond.items()
-    if key == "not":
-        return not holds(inner, values)
+    if key == "not":  # a missing feature never makes a rule fire, negated or not
+        return all(f in values for f in condition_features(inner)) and not holds(inner, values)
     if key == "all":
         return all(holds(c, values) for c in inner)
     return any(holds(c, values) for c in inner)

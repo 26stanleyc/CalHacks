@@ -221,7 +221,7 @@ class Arena:
         archive after learning, scored on the same terms as the incumbents.)"""
         shelf_of = {}
         for a in [*outsiders, *(a for a, _ in self.running)]:
-            shelf_of[a.attacker_id] = a.playbook.shelf.id()
+            shelf_of[a.attacker_id] = getattr(a, "shelf", a.playbook.shelf).id()
         self._shelf_of = shelf_of
         self._outsiders = list(outsiders)
         per_shelf: dict[str, list] = defaultdict(list)
@@ -248,8 +248,8 @@ class Arena:
         # This round's attackers compete for shelves on the same terms: the same 50-payment run
         # against the same defense, not their live profit from a different number of payments.
         for attacker in [*getattr(self, "_outsiders", []), *(a for a, _ in self.running)]:
-            if isinstance(attacker, ArchiveRunner):
-                continue  # already on its shelf, just re-scored
+            if isinstance(attacker, ArchiveRunner) or not getattr(attacker, "archivable", True):
+                continue  # already on its shelf (just re-scored), or not replayable in a sandbox
             record = attacker.record()
             self.archive.offer(record.model_copy(update={"profit_cents": score(record), "scored_round": round_no}))
         rows = [] if frozen else self._defender_actions(round_no, pipeline, sandbox, records)

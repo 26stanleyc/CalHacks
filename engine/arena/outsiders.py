@@ -224,10 +224,8 @@ class OutsiderAttacker:
             if count <= 0:
                 continue
             tag = "c" if probe == "challenger" else ""
-            emitted = playbooks.emit(playbook, run_id=run_id, round=round, wave=wave, n=count, seed=seed,
-                                     products=self.products, identities=self.identities,
-                                     round_seconds=self.round_seconds, tag=tag, mandate_for=self.mandate_for,
-                                     accounts=self._accounts[tag], start=self._probe_sent[tag])
+            emitted = self._emit(playbook, run_id=run_id, round=round, wave=wave, n=count, seed=seed, tag=tag,
+                                 accounts=self._accounts[tag], start=self._probe_sent[tag])
             self._probe_sent[tag] += len(emitted)
             out.extend(e.tx for e in emitted)
             self.sent.update({e.tx.tx_id: (probe, e.tx.amount_cents) for e in emitted})
@@ -235,6 +233,11 @@ class OutsiderAttacker:
             self._new_principals[probe] |= fresh
             self.round_stats["principals"] |= fresh
         return out
+
+    def _emit(self, playbook: Playbook, *, run_id, round, wave, n, seed, tag, accounts, start) -> list:
+        return playbooks.emit(playbook, run_id=run_id, round=round, wave=wave, n=n, seed=seed, products=self.products,
+                              identities=self.identities, round_seconds=self.round_seconds, tag=tag,
+                              mandate_for=self.mandate_for, accounts=accounts, start=start)
 
     def truth(self, tx: Transaction) -> GroundTruth:
         return GroundTruth(tx_id=tx.tx_id, is_fraud=True, attacker_id=self.attacker_id)

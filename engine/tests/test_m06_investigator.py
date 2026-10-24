@@ -25,7 +25,7 @@ TEAM = "agent1qteam"
 
 @pytest.fixture(scope="module")
 def ten_rounds():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], arena=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], arena=False, hijacker=False)
     metrics = [engine.run_round(requested_by=TEAM) for _ in range(10)]
     return engine, metrics
 
@@ -59,7 +59,7 @@ def test_the_escalation_rate_falls_by_round_10(ten_rounds):
 
 def test_the_precompute_cap_holds_when_it_binds():
     engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], escalation_cap=5,
-                         arena=False)
+                         arena=False, hijacker=False)
     for _ in range(3):
         m = engine.run_round(requested_by=TEAM)
         assert m.escalation_rate * 400 <= 5
