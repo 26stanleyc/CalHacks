@@ -19,9 +19,12 @@ import logging
 import os
 import secrets
 import threading
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import uagents.asgi
-from uagents import Agent, Bureau, Context
+from pydantic import BaseModel
+from uagents import Agent, Bureau, Context, Model
 
 from contracts.schemas import Decision, FeatureVector, Lane, Transaction, Vote
 from engine.messages import DecisionReply, ScoreRequest, SubmitTx, VoteReply
@@ -45,15 +48,27 @@ def _agent(name: str, seed_prefix: str, loop: asyncio.AbstractEventLoop) -> Agen
     )
 
 
+@dataclass(frozen=True)
+class Hop:
+    """One message delivered between two of the engine's agents, reported to `on_hop` as it
+    arrives (engine/trace.py prints them). `payload` is the contracts model the message carried."""
+
+    sender: str
+    receiver: str
+    message: str
+    payload: BaseModel
+
+
 class EngineBureau:
     """Owns the agents and the Bureau: `start()`, then `submit_sync(tx)` / `submit_with_features(tx)`
     (or `await submit(tx)`), then `stop()`. If a store is given, every decision is logged.
     Submissions are expected one at a time per tx_id (FraudEngine serializes them)."""
 
     def __init__(self, pipeline: DefensePipeline, store: LogStore | None = None, port: int | None = None,
-                 seed_prefix: str | None = None):
+                 seed_prefix: str | None = None, on_hop: Callable[[Hop], None] | None = None):
         self.pipeline = pipeline
         self.store = store
+        self.on_hop = on_hop
         self.lanes: tuple[Lane, ...] = pipeline.lanes
         self.port = port or int(os.environ.get("ENGINE_BUREAU_PORT", DEFAULT_BUREAU_PORT))
         prefix = seed_prefix or os.environ.get("ENGINE_AGENT_SEED_PREFIX") or secrets.token_hex(16)
@@ -62,6 +77,7 @@ class EngineBureau:
         self.orchestrator = _agent("orchestrator", prefix, self._loop)
         self.specialists = {lane: _agent(f"specialist-{lane.value}", prefix, self._loop) for lane in self.lanes}
         self._lane_of = {agent.address: lane for lane, agent in self.specialists.items()}
+        self._names = {a.address: a.name for a in (self.ingress, self.orchestrator, *self.specialists.values())}
         self._waiting: dict[str, concurrent.futures.Future[tuple[Decision, FeatureVector]]] = {}
         self._pending: dict[str, tuple[Transaction, FeatureVector, dict[str, Vote]]] = {}
         self._features: dict[str, FeatureVector] = {}
@@ -84,6 +100,7 @@ class EngineBureau:
                 log.warning("dropped a DecisionReply from unexpected sender %s", sender)
                 return
             decision = Decision.model_validate_json(msg.payload)
+            self._hop(sender, self.ingress, msg, decision)
             future = self._waiting.pop(decision.tx_id, None)
             features = self._features.pop(decision.tx_id, None)
             if future is not None and not future.done() and features is not None:
@@ -95,6 +112,7 @@ class EngineBureau:
                 log.warning("dropped a SubmitTx from unexpected sender %s", sender)
                 return
             tx = Transaction.model_validate_json(msg.payload)
+            self._hop(sender, self.orchestrator, msg, tx)
             features = self.pipeline.featurize(tx, commit=msg.commit)
             self._pending[tx.tx_id] = (tx, features, {})
             for lane, agent in self.specialists.items():
@@ -108,6 +126,7 @@ class EngineBureau:
             if lane is None or vote.voter != lane.value:
                 log.warning("dropped a VoteReply from unexpected sender %s", sender)
                 return
+            self._hop(sender, self.orchestrator, msg, vote)
             pending = self._pending.get(vote.tx_id)
             if pending is None:
                 return
@@ -132,8 +151,14 @@ class EngineBureau:
                 log.warning("dropped a ScoreRequest from unexpected sender %s", sender)
                 return
             tx = Transaction.model_validate_json(msg.tx)
-            vote = self.pipeline.specialists[lane].vote(tx, FeatureVector.model_validate_json(msg.features))
+            features = FeatureVector.model_validate_json(msg.features)
+            self._hop(sender, agent, msg, features)
+            vote = self.pipeline.specialists[lane].vote(tx, features)
             await ctx.send(sender, VoteReply(payload=vote.model_dump_json()))
+
+    def _hop(self, sender: str, receiver: Agent, msg: Model, payload: BaseModel) -> None:
+        if self.on_hop is not None:
+            self.on_hop(Hop(self._names[sender], receiver.name, type(msg).__name__, payload))
 
     def start(self) -> None:
         """Run the Bureau on its own event loop in a background thread. On shutdown the Bureau
