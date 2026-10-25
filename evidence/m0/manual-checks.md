@@ -47,9 +47,9 @@ From a fresh ASI:One session, run the three prompts M8 asks for and record it:
 2. `Why was tx-1234 blocked?`
 3. `How is the defense doing?`
 
-Save the recording and the Agentverse URLs to `evidence/m08/`. Until checkpoint I2 the
-answers come from `contracts.stubs.StubEngine`, so the numbers are canned; the routing,
-sandboxing and allowlist are real.
+Save the recording and the Agentverse URLs to `evidence/m08/`. The agents now answer from
+the real engine by default (`ENGINE_SOURCE=http` against `engine.serve`). The one-command start
+and the exact steps are in `evidence/m08/README.md`.
 
 Also worth doing while you are there: note the sender address ASI:One presents for you, and
 add it to `TEAM_ALLOWLIST_ADDRESSES` in `.env`. Until then "run a round" is refused for
@@ -65,7 +65,7 @@ Address: `agent1qd73ye5agcd0xleqkg6u75nsc0khr74znjeynl8x5ywedaux84ytu49snwx`
 
 Ask: `Is https://example.com/product safe for my shopping agent?`
 
-The scan is canned until M10, when `scan_page` becomes a real Apify scrape. The injection
+On the real engine `scan_page` is a live Apify scrape (M10). The injection
 detector behind it is already real and already separates the two fixture pages
 (`integrations/fixtures/pages/`): poisoned scores 1.0, clean scores 0.0.
 
