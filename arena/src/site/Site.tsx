@@ -112,7 +112,7 @@ type Nav = "in" | "out" | "next" | "prev";
 const CHAPTERS: { id: ChapterId; title: string; teaser: string }[] = [
   { id: "why", title: "Why it matters", teaser: "Card fraud tools ask the wrong question about AI agents." },
   { id: "how", title: "How it works", teaser: "Five specialists check every payment, then attack themselves." },
-  { id: "results", title: "What it saves", teaser: "About half the cost of defenses that never learn." },
+  { id: "results", title: "What it saves", teaser: "About a quarter cheaper than XGBoost retrained every round, after day one." },
   { id: "built", title: "Built on", teaser: "Fetch.ai, Bitdeer, Coinbase x402 and Apify." },
 ];
 
@@ -354,25 +354,28 @@ function ResultsChapter() {
   return (
     <>
       <p className="section-lede">
-        Against the same attackers, TagTeam costs about half what defenses that don't learn cost, and bothers far fewer
-        honest shoppers than the usual rules-plus-machine-learning stack.
+        On PaySim payments, with the same attackers adapting live against each defense, TagTeam loses less money than an
+        XGBoost retrained after every round, even after XGBoost has labels to learn from.
       </p>
       <ul className="headline-figures">
         <li>
-          <strong>48% lower</strong> total cost than rules that never change ($58.3k vs $111.2k)
+          <strong>24% lower</strong> total cost than XGBoost retrained every round ($10.0k vs $13.2k)
         </li>
         <li>
-          <strong>45% less</strong> lost to attacks it had never seen, in their first round ($11.9k vs $21.6k)
+          <strong>28% less</strong> fraud let through ($9.0k vs $12.6k)
         </li>
         <li>
-          <strong>A quarter</strong> as many honest shoppers flagged as rules plus XGBoost (1.14% vs 4.23%)
+          <strong>A third fewer</strong> honest payments flagged (1.69% vs 2.55%)
         </li>
       </ul>
       <ResultsChart />
       <p className="method">
-        Simulated agent marketplace with real open models hosted by Bitdeer: 3 seeds of 6 rounds each, 1,622 model calls,
-        mean across seeds. The rules-plus-XGBoost stack is about level with TagTeam on total cost, but its worst rounds
-        flag 14% of honest shoppers. These are strong first readings, not final results.
+        PaySim, a public synthetic data set modelled on real mobile-money logs, supplies the honest payments and its own
+        fraud; TagTeam's attack agents attack on top, and each round XGBoost faces the same attackers, adapting to it.
+        Rounds 2 to 6 on 3 seeds never used for tuning, mean across seeds (per seed 32%, 9% and 31% lower cost). Round 1
+        is left out because XGBoost has no labels yet; counting it, TagTeam's cost is about 47% lower. Claude models
+        stand in for the open models; a short retest on the open models (3 rounds) also came out ahead, 14% lower cost
+        after round 1.
       </p>
     </>
   );

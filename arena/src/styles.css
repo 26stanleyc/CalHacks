@@ -89,7 +89,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 
 /* Event feed, newest on top. */
 .feed {
-  position: absolute; left: 24px; bottom: 158px; margin: 0; padding: 0; list-style: none;
+  position: absolute; left: 24px; bottom: calc(var(--timeline-h, 122px) + 36px); margin: 0; padding: 0; list-style: none;
   width: min(400px, calc(100vw - 48px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none;
 }
 .feed li {
@@ -109,7 +109,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 
 .hud-right:has(.card) + .legend { display: none; }
 .legend {
-  position: absolute; right: 24px; bottom: 158px; background: var(--paper);
+  position: absolute; right: 24px; bottom: calc(var(--timeline-h, 122px) + 36px); background: var(--paper);
   border-radius: 14px; padding: 8px 12px; font-size: 12.5px; display: grid; grid-template-columns: auto auto; gap: 2px 14px;
 }
 .legend { grid-template-columns: auto auto; gap: 3px 18px; }
@@ -157,6 +157,8 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 .bar.current { outline: 2px solid var(--ink); outline-offset: 1px; }
 .bar.frozen { background: repeating-linear-gradient(135deg, rgba(61, 107, 224, 0.12) 0 4px, transparent 4px 8px); }
 .marks { display: grid; gap: 4px; height: 18px; }
+/* Many rounds: thinner gaps, so each bar stays wide enough to click. */
+.track.dense .bars, .track.dense .marks { gap: 2px; }
 .frozen-mark {
   border-top: 2px solid var(--seraph); color: #b4c8ff; font-size: 12px; font-weight: 700;
   text-align: center; white-space: nowrap; line-height: 16px; position: relative;
@@ -176,7 +178,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 /* The unit card. */
 /* Right column: the shelf map, with the unit card below it when one is open. */
 .hud-right {
-  position: absolute; top: 18px; right: 24px; width: 380px; align-items: flex-end; max-height: calc(100% - 154px);
+  position: absolute; top: 18px; right: 24px; width: 380px; align-items: flex-end; max-height: calc(100% - var(--timeline-h, 122px) - 48px);
   display: flex; flex-direction: column; gap: 12px;
 }
 .shelf-map {
@@ -294,7 +296,8 @@ blockquote {
   .speeds { grid-column: 1 / -1; justify-self: center; }
   .caption { display: none; }
   .shelf-map { display: none; }
-  .arena .deploy-note, .arena .final-note { top: auto; bottom: 172px; }
+  .track.dense .bars, .track.dense .marks { gap: 1px; }
+  .arena:has(.card) :is(.deploy-note, .final-note) { display: none; }
   .hud-right { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; max-height: 60%; z-index: 45; }
 }
 
@@ -335,7 +338,7 @@ blockquote {
 .scoreboard .versus .behind { display: block; margin-top: 4px; color: #f4c26b; font-weight: 700; }
 .deploy-note {
   position: fixed; top: 74px; left: 50%; transform: translateX(-50%); z-index: 45; margin: 0; pointer-events: none;
-  max-width: min(420px, calc(100vw - 32px)); padding: 9px 16px; border-radius: 10px; font-size: 14px; text-align: center;
+  max-width: min(420px, calc(100vw - 832px)); padding: 9px 16px; border-radius: 10px; font-size: 14px; text-align: center;
   background: var(--paper); color: var(--ink); border: 1px solid rgba(125, 156, 245, 0.55);
   box-shadow: 0 0 24px rgba(99, 139, 240, 0.35); animation: note 5s ease-out forwards;
 }
@@ -344,7 +347,7 @@ blockquote {
 /* The closing line of the run: as quiet as the deploy note, and it stays until playback moves on. */
 .final-note {
   position: fixed; top: 74px; left: 50%; transform: translateX(-50%); z-index: 45; margin: 0;
-  width: max-content; max-width: min(420px, calc(100vw - 32px)); padding: 9px 16px; border-radius: 10px;
+  width: max-content; max-width: min(420px, calc(100vw - 832px)); padding: 9px 16px; border-radius: 10px;
   font-size: 14px; line-height: 1.45; text-align: center; color: var(--ink);
   background: var(--paper); border: 1px solid rgba(125, 156, 245, 0.45); animation: summary-in 0.4s ease-out;
 }
@@ -355,6 +358,15 @@ blockquote {
 }
 .plaque.model { color: #e3e8e6; border: 1px solid rgba(167, 177, 173, 0.6); }
 @keyframes summary-in { from { opacity: 0; } }
+/* The notes sit between the left column and the shelf map. When that gap gets too narrow, they move
+   down to just above the timeline, and the nav drops its wordmark so it clears the shelf map. */
+@media (max-width: 1120px) {
+  .arena .deploy-note, .arena .final-note { top: auto; bottom: calc(var(--timeline-h, 122px) + 32px); max-width: min(400px, calc(100vw - 32px)); }
+  .arena:has(.deploy-note, .final-note) :is(.feed, .legend) { display: none; }
+  /* With a card open on the right, the note moves left so it doesn't cover the card. */
+  .arena:has(.card) :is(.deploy-note, .final-note) { left: 24px; transform: none; max-width: min(400px, calc(100vw - 452px)); }
+  .arena-nav .wordmark { display: none; }
+}
 .bar .ghost {
   position: absolute; left: 0; right: 0; border: 1.5px solid var(--model); border-radius: 4px;
   background: rgba(167, 177, 173, 0.14); pointer-events: none;
@@ -385,3 +397,20 @@ blockquote {
 .timeline .key .ghost-key { border: 1.5px solid var(--model); background: rgba(167, 177, 173, 0.14); }
 .timeline .key .negative { background: var(--shaky); }
 .timeline .key .growth { flex-basis: 100%; color: var(--ink); }
+
+/* A loss bar cut at the top of the scale: a zigzag edge says "taller than shown". */
+.bars.net .bar .fill.clipped, .bars.net .bar .ghost.clipped {
+  border-radius: 0 0 3px 3px;
+  -webkit-mask: linear-gradient(-135deg, transparent 4px, #000 0) top left / 8px 100% repeat-x;
+  mask: linear-gradient(-135deg, transparent 4px, #000 0) top left / 8px 100% repeat-x;
+}
+.timeline .key .cut-key { background: var(--model); -webkit-mask: linear-gradient(-135deg, transparent 4px, #000 0) top left / 8px 100% repeat-x; mask: linear-gradient(-135deg, transparent 4px, #000 0) top left / 8px 100% repeat-x; }
+
+/* XGBoost's same-round loss, drawn over TagTeam's bar: bright enough to compare at a glance. */
+.bars.net .bar .ghost { border: 2px solid #d5dcd9; background: rgba(213, 220, 217, 0.12); z-index: 2; }
+/* The real amount of a bar cut at the top of the scale. */
+.bar .cut-label {
+  position: absolute; top: 1px; left: 50%; transform: translateX(-50%); z-index: 3; pointer-events: none;
+  font-size: 9.5px; font-weight: 700; color: var(--ink); background: var(--paper); border-radius: 3px; padding: 0 2px; white-space: nowrap;
+}
+.group-mark.after { font-weight: 800; }

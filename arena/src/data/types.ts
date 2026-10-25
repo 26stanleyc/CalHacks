@@ -102,6 +102,7 @@ export interface Payment {
   objected_by: Lane[]; // lanes whose vote was step_up or block
   escalated: boolean;
   explanation: string;
+  breach?: boolean; // an honest payment over its human's mandate: blocking it is right, not a lost sale
 }
 
 export interface Retune {
@@ -138,6 +139,9 @@ export interface Baseline {
   decisions: Record<string, { action: Action; settled: boolean }>;
   totals: BaselineTotals;
   ours_totals: BaselineTotals;
+  // true when the baseline ran live against the same attackers (its own payments, public/paysim/xgboost.json)
+  // rather than deciding TagTeam's recorded payments
+  live?: boolean;
 }
 
 export interface BaselineTotals {

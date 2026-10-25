@@ -1,6 +1,7 @@
 // Payments in flight. Every drawn payment is a coin arcing from its thrower to the gate.
-// A blocked coin is zapped by the specialists that objected; a stolen coin drops into the
-// vault and flashes it red. Honest coins are gold, attack coins crimson.
+// A stopped coin is shot by the specialists that objected (or the orchestrator, when the call was
+// its alone) and tumbles out of the sky; a stolen coin drops into the vault and flashes it red.
+// Honest coins are gold, attack coins crimson.
 
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
@@ -11,11 +12,15 @@ import { GATE, actorPos, type Vec3 } from "./layout";
 import { INTERCEPT_FRAC, type CoinFlight, type RoundModel } from "./roundModel";
 
 const ARC = 2.2;
+const FALL = 0.7; // seconds a shot-down coin tumbles before it's gone
+const GRAVITY = 9;
 const ZAP_POOL = 120;
 const FLASH_POOL = 80;
 const tmp = new THREE.Object3D();
 const a = new THREE.Vector3();
 const b = new THREE.Vector3();
+const hit = new THREE.Vector3();
+const ahead = new THREE.Vector3();
 const up = new THREE.Vector3(0, 1, 0);
 
 function arcPoint(c: CoinFlight, u: number, out: THREE.Vector3) {
@@ -62,29 +67,38 @@ export function Coins({ model, soloFrom }: { model: RoundModel; soloFrom?: Vec3 
 
     drawn.forEach((c, i) => {
       const stops = c.outcome === "blocked" || c.outcome === "false_alarm";
-      const end = stops ? c.intercept + 0.3 : c.land + 0.15;
+      const end = stops ? c.intercept + FALL : c.land + 0.15;
       if (t < c.launch || t > end) return hide(cm, i);
-      const u = Math.min((t - c.launch) / (c.land - c.launch), stops ? INTERCEPT_FRAC : 1);
-      arcPoint(c, u, a);
+      if (stops) arcPoint(c, INTERCEPT_FRAC, hit);
       let s = 1;
-      if (stops && t > c.intercept) s = 1 - (t - c.intercept) / 0.3;
-      if (!stops && t > c.land) s = 1 - (t - c.land) / 0.15;
+      if (stops && t > c.intercept) {
+        // Shot down: it pops up a little, keeps some forward speed, then drops and tumbles.
+        const dt = t - c.intercept;
+        arcPoint(c, INTERCEPT_FRAC + 0.05, ahead);
+        a.copy(ahead).sub(hit).multiplyScalar(dt * 4).add(hit);
+        a.y = hit.y + 1.2 * dt - (GRAVITY / 2) * dt * dt;
+        tmp.rotation.set(Math.PI / 2 + dt * 14, clock.elapsedTime * 6 + i, dt * 9);
+        if (dt > FALL - 0.2) s = (FALL - dt) / 0.2;
+      } else {
+        arcPoint(c, Math.min((t - c.launch) / (c.land - c.launch), stops ? INTERCEPT_FRAC : 1), a);
+        tmp.rotation.set(Math.PI / 2, clock.elapsedTime * 6 + i, 0);
+        if (!stops && t > c.land) s = 1 - (t - c.land) / 0.15;
+      }
       tmp.position.copy(a);
-      tmp.rotation.set(Math.PI / 2, clock.elapsedTime * 6 + i, 0);
       tmp.scale.setScalar(Math.max(0.001, s));
       tmp.updateMatrix();
       cm.setMatrixAt(i, tmp.matrix);
 
-      // Zap beams from each objecting angel, just before and after the intercept.
-      if (stops && t > c.intercept - 0.12 && t < c.intercept + 0.22) {
-        const w = 1 - Math.abs(t - c.intercept) / 0.22;
+      // A beam from each shooter to where the coin is hit, just before and after the hit.
+      if (stops && t > c.intercept - 0.15 && t < c.intercept + 0.2) {
+        const w = 1 - Math.abs(t - c.intercept) / 0.2;
         const sources = soloFrom ? [soloFrom] : c.zappers.map(actorPos);
         for (const p of sources) {
           if (z >= ZAP_POOL) break;
           b.set(p[0], p[1] + 0.95, p[2]);
-          const len = b.distanceTo(a);
-          tmp.position.copy(b).add(a).multiplyScalar(0.5);
-          tmp.quaternion.setFromUnitVectors(up, a.clone().sub(b).normalize());
+          const len = b.distanceTo(hit);
+          tmp.position.copy(b).add(hit).multiplyScalar(0.5);
+          tmp.quaternion.setFromUnitVectors(up, ahead.copy(hit).sub(b).normalize());
           tmp.scale.set(w, len, w);
           tmp.updateMatrix();
           zm.setMatrixAt(z++, tmp.matrix);
@@ -130,7 +144,7 @@ export function Coins({ model, soloFrom }: { model: RoundModel; soloFrom?: Vec3 
         <meshStandardMaterial roughness={0.3} metalness={0.3} emissive="#3a2a00" />
       </instancedMesh>
       <instancedMesh ref={zaps} args={[undefined, undefined, ZAP_POOL]} frustumCulled={false}>
-        <cylinderGeometry args={[0.06, 0.06, 1, 6]} />
+        <cylinderGeometry args={[0.07, 0.07, 1, 6]} />
         <meshBasicMaterial color="#4F7BFF" />
       </instancedMesh>
       <instancedMesh ref={flashes} args={[undefined, flashMat, FLASH_POOL]} frustumCulled={false}>

@@ -388,6 +388,26 @@ The engine suite passed: 58 passed, 3 skipped.
 
 **Demo angle:** ⭐ the before/after at scale. At 1× each half runs about 9 minutes, so play at 8× (about 2¼ minutes each) or click ahead on the timeline. Say plainly: one seed, XGBoost trained once and untrained in round 1.
 
+### Sun Oct 25, ~01:00 · PaySim demo: TagTeam vs live XGBoost, tuned · Stanley (branches `stanley/crs-trial`, `stanley/arena-viz`, not merged or pushed)
+**Did:**
+- **PaySim world** (`engine/sim/paysim.py`): real PaySim transfers and cash-outs are the honest payments, PaySim's recorded account takeovers run as one fixed attacker, and TagTeam's attack agents attack on top. Amounts scaled 1:10,000; identities and mandates synthesized; takeover pairs kept together.
+- **Live XGBoost** (`engine/live_vs_xgboost.py`): XGBoost retrained after every round faces the same attacker roster as TagTeam each round, live, with each attacker adapting to the defense in front of it. Both scored the same way (step-ups resolved by the engine's draw, honest mandate breaches left out).
+- **Tuning** (`engine/tune.py`): TagTeam's own decision and learning settings only, on tuning seeds 1–3; XGBoost, attackers, data and scoring untouched. Chosen setting (`TUNED`): choose block or verify from the combiner's probability before its false-positive shift, block only from 90%, calibrate to 90% of the cap, investigator off (on stand-in models it blocked honest payments).
+- **Arena:** PaySim is the default data set (`?data=marketplace` keeps the simulated one); step 0 plays XGBoost's own live run. Overview results replaced with the PaySim held-out figures.
+
+**Proof (held-out seeds 42–44, 20 rounds, stand-in models):**
+
+  | | TagTeam (tuned) | XGBoost, retrained every round | TagTeam before tuning |
+  |---|---|---|---|
+  | Total cost | $31.6k ± 1.1k | $37.8k ± 1.1k | $38.0k ± 1.4k |
+  | Fraud let through | $28.4k | $34.7k | $34.6k |
+  | Honest payments flagged | 0.88% | 0.88% | 0.76% |
+
+  Per seed, cost 20.5% / 18.0% / 9.9% lower than XGBoost; money lost (fraud + honest money stopped) 18.7% / 18.3% / 11.6% lower. Specialists off: TagTeam's lead falls from about 20% to 6% (tuning seeds).
+
+**Demo angle:** ⭐ "same attackers, both defenses learning every round, TagTeam still lets 18% less fraud through." Say plainly: stand-in models, one data set, investigator off, 16% is an average (one seed 10%).
+
+
 ---
 
 ## Entry template

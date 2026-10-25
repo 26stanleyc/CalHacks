@@ -30,8 +30,19 @@ function AttackerCard({ id }: { id: string }) {
     getRoundModel(replay, round).coins.map((c) => [c.payment.tx_id, c.outcome === "blocked" ? c.intercept : c.land]),
   );
   const resolved = (txId: string) => (resolvedAt.get(txId) ?? 0) <= tq;
+  // What it has taken from the defense on screen: its payments that settled, earlier rounds included.
+  let taken = 0;
+  replay.rounds.slice(0, round + 1).forEach((rr, i) =>
+    rr.waves.forEach((w) =>
+      w.payments.forEach((p) => {
+        if (p.attacker_id === id && p.is_fraud && p.settled && (i < round || resolved(p.tx_id))) taken += p.amount_cents;
+      }),
+    ),
+  );
   const origin =
-    a.source === "spawned"
+    a.lineage === "paysim"
+      ? "Account takeovers from the PaySim data set. It replays them and never adapts"
+      : a.source === "spawned"
       ? `Built by the ${ACTOR_NAME[a.parent as Actor]} to beat its own rules`
       : a.source === "outsider"
         ? "A classic fraudster who only sees whether it got through"
@@ -59,8 +70,8 @@ function AttackerCard({ id }: { id: string }) {
         </dd>
         <dt>Runs on</dt>
         <dd>{modelName(a.model)}</dd>
-        <dt>Profit so far</dt>
-        <dd>{money(a.profit_cents)}</dd>
+        <dt>Taken so far</dt>
+        <dd>{money(taken)}</dd>
       </dl>
       <h3>Plan</h3>
       <blockquote>{a.strategy}</blockquote>
@@ -244,22 +255,45 @@ function ShelfCard({ id }: { id: string }) {
 function GateCard() {
   const replay = useArena((s) => s.replay)!;
   const round = useArena((s) => s.round);
-  const m = replay.rounds[round].metrics;
+  const tq = useArena((s) => Math.floor(s.t * 4) / 4);
+  const r = replay.rounds[round];
+  // This round so far, from the payments as they resolve, so it agrees with the scoreboard.
+  const shelfOf = new Map(r.attackers.map((a) => [a.attacker_id, a.shelf]));
+  let stores = 0;
+  let shoppers = 0;
+  let honest = 0;
+  let flagged = 0;
+  for (const c of getRoundModel(replay, round).coins) {
+    if (c.outcome === "stolen" && c.land <= tq) {
+      if (shelfOf.get(c.payment.attacker_id ?? "")?.endsWith("/buyer")) shoppers += c.payment.amount_cents;
+      else stores += c.payment.amount_cents;
+    }
+    if (!c.attack && c.launch <= tq) honest++;
+    if (!c.attack && c.payment.action !== "allow" && c.intercept <= tq) flagged++;
+  }
+  const stealable = r.metrics.exploitability_cents; // -1 when not measured (the baseline)
   return (
     <article className="card gate-card">
       <Close />
       <p className="kind">The checkpoint</p>
       <h2>x402 gate</h2>
       <p className="origin">Every payment in the network passes here. The defense decides whether it settles.</p>
+      <h3>This round so far</h3>
       <dl className="facts">
         <dt>Stolen from stores</dt>
-        <dd>{money(m.loss_merchant_side_cents)}</dd>
+        <dd>{money(stores)}</dd>
         <dt>Stolen from shoppers</dt>
-        <dd>{money(m.loss_buyer_side_cents)}</dd>
-        <dt>False alarms</dt>
-        <dd>{(m.false_positive_rate * 100).toFixed(1)}% of honest payments</dd>
-        <dt>Still stealable</dt>
-        <dd>{money(m.exploitability_cents)} by a fresh attacker</dd>
+        <dd>{money(shoppers)}</dd>
+        <dt>Honest flagged</dt>
+        <dd>
+          {flagged} of {honest} payments
+        </dd>
+        {stealable >= 0 && (
+          <>
+            <dt>Still stealable</dt>
+            <dd>{money(stealable)} by a fresh attacker, measured after the round</dd>
+          </>
+        )}
       </dl>
     </article>
   );

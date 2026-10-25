@@ -37,6 +37,7 @@ export interface Runs {
   after: Replay;
   before: Replay | null;
   baseline: Baseline | null;
+  dataset: "paysim" | "marketplace";
 }
 
 interface ArenaState {

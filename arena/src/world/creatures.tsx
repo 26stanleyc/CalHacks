@@ -237,11 +237,13 @@ export function Angel({ actor, pos, zaps, learns, order = 0 }: { actor: Actor; p
   );
 }
 
-// Step 0's defender: one XGBoost model trained once, standing alone at the checkpoint.
+// Step 0's defender: one XGBoost model, standing alone at the checkpoint. Its plaque is the
+// baseline's own label ("XGBoost, trained once" or "XGBoost, retrained each round").
 // Grey is the baseline's colour everywhere: the pillar, its timeline bars and its outlines.
 const xgbBody = new THREE.MeshStandardMaterial({ color: "#2a333c", metalness: 0.6, roughness: 0.3 });
 const xgbStripe = new THREE.MeshBasicMaterial({ color: "#d5dcd9" });
 export function XgbNode({ pos }: { pos: Vec3 }) {
+  const label = useArena((s) => s.runs?.baseline?.label ?? "XGBoost");
   const ring = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
     if (!ring.current) return;
@@ -250,7 +252,7 @@ export function XgbNode({ pos }: { pos: Vec3 }) {
   });
   return (
     <group position={pos}>
-      <Pickable sel={{ kind: "gate" }} label="XGBoost, trained once">
+      <Pickable sel={{ kind: "gate" }} label={label}>
         <mesh position-y={0.7} material={xgbBody} castShadow>
           <boxGeometry args={[0.5, 1.4, 0.5]} />
         </mesh>
@@ -264,7 +266,7 @@ export function XgbNode({ pos }: { pos: Vec3 }) {
         <torusGeometry args={[0.32, 0.02, 8, 40]} />
       </mesh>
       <Html position={[0, 2.05, 0]} center zIndexRange={[12, 0]} style={{ pointerEvents: "none" }}>
-        <div className="plaque model">XGBoost, trained once</div>
+        <div className="plaque model">{label}</div>
       </Html>
     </group>
   );
