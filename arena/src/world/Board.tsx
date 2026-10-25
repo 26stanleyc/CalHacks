@@ -8,6 +8,7 @@ import { useArena } from "../store";
 import { shelfName } from "../ui/words";
 import { Pickable } from "./creatures";
 import { HEX, SHELF_TILE, TILE_TOP, ring } from "./layout";
+import { Scenery } from "./Scenery";
 import { liveShelves } from "./shelfLive";
 
 const TILE_R = HEX * 0.95;
@@ -141,6 +142,7 @@ export function Board() {
         .map((t, i) => (
           <Tree key={i} x={t.x} z={t.z} s={0.8 + (i % 3) * 0.2} />
         ))}
+      <Scenery />
       <mesh rotation-x={-Math.PI / 2} position-y={-0.2} receiveShadow>
         <circleGeometry args={[60, 64]} />
         <meshStandardMaterial color={C.water} roughness={0.35} metalness={0.1} />
