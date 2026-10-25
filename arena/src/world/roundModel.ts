@@ -101,6 +101,8 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
     }),
   );
 
+  const perShelf = new Map<ShelfId, number>();
+  for (const a of sorted) perShelf.set(a.shelf, (perShelf.get(a.shelf) ?? 0) + 1);
   const devils: DevilPlacement[] = sorted.map((a) => {
     let slot: number;
     if (a.source === "outsider" && outsiderShelf.get(a.attacker_id) === a.shelf) slot = 0;
@@ -110,7 +112,7 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
     }
     return {
       attacker: a,
-      pos: shelfSlot(a.shelf, slot),
+      pos: shelfSlot(a.shelf, slot, (perShelf.get(a.shelf) ?? 0) + 1),
       appear: newIds.has(a.attacker_id) ? SPAWN_POP + hash(a.attacker_id) * 0.6 : 0,
       leave: kept.has(a.attacker_id) ? null : LEARN_START + 0.5 + hash(a.attacker_id) * 1.2,
       retunes: retunes.get(a.attacker_id) ?? [],

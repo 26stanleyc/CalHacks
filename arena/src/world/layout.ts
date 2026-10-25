@@ -58,11 +58,16 @@ const SLOT_OFFSETS: [number, number][] = [
   [0, 0],
   ...[0, 1, 2, 3, 4, 5].map((k): [number, number] => [0.52 * Math.cos(Math.PI / 6 + (k * Math.PI) / 3), 0.52 * Math.sin(Math.PI / 6 + (k * Math.PI) / 3)]),
 ];
-export function shelfSlot(id: ShelfId, slot: number): Vec3 {
+// A crowded shelf (more than seven) spreads everyone after the centre evenly round one ring.
+export function shelfSlot(id: ShelfId, slot: number, count = SLOT_OFFSETS.length): Vec3 {
   const t = SHELF_TILE[id];
   if (!t) return datasetSpot(id);
-  const [dx, dz] = SLOT_OFFSETS[slot % SLOT_OFFSETS.length];
-  return [t.x + dx, TILE_TOP[4], t.z + dz];
+  if (count <= SLOT_OFFSETS.length || slot === 0) {
+    const [dx, dz] = SLOT_OFFSETS[slot % SLOT_OFFSETS.length];
+    return [t.x + dx, TILE_TOP[4], t.z + dz];
+  }
+  const a = Math.PI / 6 + ((slot - 1) * 2 * Math.PI) / (count - 1);
+  return [t.x + 0.58 * Math.cos(a), TILE_TOP[4], t.z + 0.58 * Math.sin(a)];
 }
 
 // A public dataset's fraud ("dataset/<amount>/<side>") isn't on any arena shelf. Each amount group

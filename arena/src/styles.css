@@ -376,6 +376,8 @@ blockquote {
   position: absolute; left: 0; right: 0; border: 1.5px solid var(--model); border-radius: 4px;
   background: rgba(167, 177, 173, 0.14); pointer-events: none;
 }
+/* Below the zero line the baseline lost money that round: tint it red like other losses. */
+.bar .ghost.loss { background: rgba(239, 125, 115, 0.45); }
 .bar .fill { position: relative; }
 .bars.net .bar .fill { position: absolute; left: 0; right: 0; border-radius: 4px; }
 .bars.net .bar .zero { position: absolute; left: 0; right: 0; height: 1px; background: rgba(236, 229, 210, 0.45); z-index: 1; }
