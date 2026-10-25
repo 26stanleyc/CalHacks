@@ -136,3 +136,57 @@ export async function outsiderDrift(runId: string): Promise<DriftRow[]> {
     [runId],
   );
 }
+
+export interface CrsRunRow {
+  run_id: string;
+  checks: number;
+  live: number;
+}
+
+/** Runs whose decisions carry a CRS report (decisions.payload.crs), newest first. */
+export async function listCrsRuns(): Promise<CrsRunRow[]> {
+  await connection();
+  return query<CrsRunRow>(
+    `select t.run_id, count(*)::int as checks,
+            count(*) filter (where d.payload->'crs'->>'mocked' = 'false')::int as live
+       from decisions d join transactions t using (tx_id) join runs r using (run_id)
+      where jsonb_typeof(d.payload->'crs') = 'object'
+      group by t.run_id, r.started_at
+      order by r.started_at desc`,
+  );
+}
+
+export interface CrsCheckRow {
+  tx_id: string;
+  round: number;
+  source: string;
+  attacker_id: string | null;
+  amount_cents: number;
+  is_fraud: boolean | null;
+  action: Action;
+  score: number;
+  band: [number, number];
+  mocked: boolean;
+  watch: string | null;
+  hidden: string[];
+  reasons: string;
+  tool_calls: ToolCall[];
+}
+
+/** Every payment CRS checked in a run, latest first. */
+export async function crsChecks(runId: string): Promise<CrsCheckRow[]> {
+  await connection();
+  return query<CrsCheckRow>(
+    `select t.tx_id, t.round, t.source, t.attacker_id, (t.payload->>'amount_cents')::int as amount_cents,
+            g.is_fraud, d.action, (c->>'score')::float as score, c->'band' as band, (c->>'mocked')::boolean as mocked,
+            c->>'watch' as watch, coalesce(c->'hidden', '[]') as hidden, c->>'reasons' as reasons,
+            coalesce(c->'tool_calls', '[]') as tool_calls
+       from decisions d
+       join transactions t using (tx_id)
+       left join ground_truth g using (tx_id)
+       cross join lateral (select d.payload->'crs' as c) x
+      where t.run_id = $1 and jsonb_typeof(c) = 'object'
+      order by t.round desc, (t.payload->>'ts')::float desc`,
+    [runId],
+  );
+}

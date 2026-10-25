@@ -63,7 +63,7 @@ function PaymentSlip() {
 const LANES: { name: string; what: string }[] = [
   { name: "Timing", what: "How fast and how regularly the agent pays, and instructions hidden in its payment note." },
   { name: "Graph", what: "How many agents share one owner, wallet or contact, and whether the agent is brand new." },
-  { name: "Identity", what: "Whether the human behind the agent is verified, and how long they've existed." },
+  { name: "Identity", what: "Whether CRS verified the human behind the agent, their fraud score, and how long they've existed." },
   { name: "Velocity", what: "The amount: above normal, just under a limit, or far off the item's usual price." },
   { name: "Mandate", what: "Whether the human asked for this: spending caps, allowed stores and categories, and the store page itself." },
 ];
@@ -419,8 +419,9 @@ function BuiltChapter() {
         <div>
           <dt>CRS Credit API</dt>
           <dd>
-            On close calls, checks the human behind the agent: fills in missing details, verifies their identity, and
-            scores their email and phone for fraud.
+            Checks the human behind every agent once, when the agent first appears: verifies their identity, scores
+            their email and phone for fraud, and sets how much of the requested limit the agent may spend. Close calls
+            get a second look.
           </dd>
         </div>
       </dl>

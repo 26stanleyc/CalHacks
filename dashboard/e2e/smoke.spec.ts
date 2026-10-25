@@ -100,3 +100,12 @@ test("run round advances the engine's round", async ({ page }) => {
   await expect(page.getByTestId("engine-round")).toHaveText(String(before + 1));
   expect((await engineMetrics()).round).toBe(before + 1);
 });
+
+test("the CRS page lists the CRS checks of a run", async ({ page }) => {
+  const [{ checks }] = await db<{ checks: number }>(
+    "select count(*)::int as checks from decisions where jsonb_typeof(payload->'crs') = 'object'",
+  );
+  test.skip(checks === 0, "no run with CRS checks in the database");
+  await page.goto("/crs");
+  await expect(page.getByTestId("crs-row").first()).toBeVisible();
+});
