@@ -60,6 +60,7 @@ from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
 from engine.investigator import Investigator
 from engine.learning.labels import Record, realized_cost
 from engine.learning.loop import LearningLoop
+from engine.page_cache import PrescannedPages
 from engine.pipeline import DefensePipeline
 from engine.sim.pages import WorldPageScanner
 from engine.sim.world import World
@@ -162,7 +163,8 @@ class FraudEngine:
                                      drafts=drafts, stacking=stacking)
         self.escalation_cap = escalation_cap
         self.page_url_for = getattr(self.world, "page_url_for", lambda tx: None)
-        self.investigator = Investigator(self.brain, self.pipeline, self.scanner, page_url_for=self.page_url_for)
+        self.pages = PrescannedPages(self.scanner)  # payments never wait on a live page scan
+        self.investigator = Investigator(self.brain, self.pipeline, self.pages, page_url_for=self.page_url_for)
         # Merchant-risk features read cached page scans only (spec 3.2): pages are scanned once per
         # round in _prime_pages, never on a payment's decision path.
         self.page_risk = PageRisk(self.scanner, self.page_url_for)
@@ -301,7 +303,7 @@ class FraudEngine:
         return with_tx_id(decision, tx_id)
 
     def scan_page(self, url: str) -> PageScan:
-        return self.scanner.scan(url)
+        return self.pages.scan_now(url)
 
     def get_metrics(self, run_id: str | None = None, round: int | None = None) -> RoundMetrics:
         run = run_id or self.run_id
@@ -439,6 +441,7 @@ class FraudEngine:
             attacker.forget_pages()
         urls = self.world.page_urls() if hasattr(self.world, "page_urls") else []
         fresh = self.page_risk.prime(urls)
+        self.pages.keep(fresh)  # the investigator reads the same scans
         return [{"url": scan.url, "merchant_id": scan.merchant_id, "payload": scan.model_dump(mode="json")}
                 for scan in fresh]
 
