@@ -233,7 +233,7 @@ Schema and seed data, the marketplace (catalog, 5 weird-but-legit personas, iden
 
 **Demo angle:** ⭐ the dashboard is live, not seeded. The Run round button is the beat for "watch one round happen".
 
-### Sat Oct 24, ~03:00 · Demo trace: one payment hopping between the uAgents · Stanley (branch `stanley/uagent-trace`, not merged)
+### Sat Oct 24, ~03:00 · Demo trace: one payment hopping between the uAgents · Stanley (branch `stanley/uagent-trace`, merged at integration)
 **Did:**
 - `EngineBureau` takes an optional `on_hop` callback. Each agent reports a message as it arrives: who sent it, who got it, the message type and the parsed payload. Nothing else in the Bureau changed.
 - `engine/trace.py` sends a card tester's 8th tiny payment in 36 s through the real Bureau and prints the 10 hops with timings, then the decision. `--scenario legit` shows an honest payment, and `--pace` sets the seconds per line for a live audience (default 0.3). Nothing is written to the database.
@@ -632,7 +632,7 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** "an attacker hiding their phone and email doesn't escape the check: CRS looks them up from name and address, then verifies".
 
-### Sat Oct 24, 03:27 · Arena replay (3D battle view) · Stanley (branch `stanley/arena-viz`, not merged)
+### Sat Oct 24, 03:27 · Arena replay (3D battle view) · Stanley (branch `stanley/arena-viz`, merged at integration)
 **Did:**
 - New standalone app in `arena/` (Vite, React Three Fiber). It's separate from Ryan's `dashboard/`, so neither steps on the other.
 - The layout puts the x402 gate at the centre with the 5 specialists and the orchestrator as angels around it. The 24 arena shelves are the outer ring of hex tiles: attacks on stores on one half, attacks on shoppers on the other.
@@ -654,7 +654,7 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** ⭐ the 40 s "arms race" beat. Play rounds 1→20 at 4–8×: shelves go red to green, the timeline bars fall, a news scam drops at round 6, and the freeze at 15–16 makes them jump while the scoreboard's catch rate drops. Then pause and click a devil to show its plan, and an angel to show its rules. 🔜 Needs an exporter from the real run tables to `arena/public/replay.json`.
 
-### Sat Oct 24, ~04:30 · Arena shelf map · Stanley (branch `stanley/arena-viz`, not merged)
+### Sat Oct 24, ~04:30 · Arena shelf map · Stanley (branch `stanley/arena-viz`, merged at integration)
 **Did:**
 - Added a flat 4×6 shelf grid at the top right of the arena, the Rainbow Teaming figure. Rows are attack styles; columns are amount bands, split into attacks on stores and attacks on shoppers.
 - Cells share the 3D tiles' colours and recolour with them during learning. A gold halo marks each shelf a defender built an attacker for that round (orange for a news scam). Clicking a cell opens the shelf card.
@@ -672,7 +672,7 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** ⭐ the "arena grid" beat from the demo script. Pause during learning and point at cells turning green; the halos show where the defenders aimed this round.
 
-### Sat Oct 24, ~05:30 · TagTeam overview page · Stanley (branch `stanley/arena-viz`, not merged)
+### Sat Oct 24, ~05:30 · TagTeam overview page · Stanley (branch `stanley/arena-viz`, merged at integration)
 **Did:**
 - New landing page at `/` with the 3D arena moved to `/demo/`. Both pages share a nav and the TagTeam mark.
 - The design borrows from security printing, since anti-counterfeiting is literally fraud defense: a banknote-green ground and engraved wave lines. The hero is a payment slip that the five specialists stamp one by one, ending in a "Blocked" stamp. It's the spec's hijacked-shopper example: $99.99 against a mandate of "a charger under $30".
@@ -698,7 +698,7 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** ⭐ open on the overview for the 30 s "problem" beat: the stamped slip shows a hijacked agent being stopped. The "What it saves" section is the proof slide. Then click **Live arena**.
 
-### Sat Oct 24, ~17:15 · Arena plays a real run · Stanley (branch `stanley/arena-viz`, not merged)
+### Sat Oct 24, ~17:15 · Arena plays a real run · Stanley (branch `stanley/arena-viz`, merged at integration)
 **Did:**
 - The arena now plays `arena/public/replay.json`: run `h2h-real-42-202610241623` on real Bitdeer models, 4 rounds and 2,056 payments. It was exported by `engine/export_replay.py` on `stanley/core-engine` (the sister session).
 - Adapted the arena to real data:
@@ -717,7 +717,7 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** ⭐ "this is a real run": every devil, rule and payment on screen came from GLM and DeepSeek on Bitdeer. The real run shows learning: 38% of attack payments caught in round 1, 57% in round 4. Say it plainly: 4 rounds, one seed.
 
-### Sat Oct 24, ~18:20 · Step 0, net scoring, overview chapters · Stanley (branch `stanley/arena-viz`, not merged)
+### Sat Oct 24, ~18:20 · Step 0, net scoring, overview chapters · Stanley (branch `stanley/arena-viz`, merged at integration)
 **Did:**
 - **Arena step 0.** The demo opens with XGBoost trained once deciding the same recorded payments, using real per-payment decisions from `engine/export_baseline.py` (sister session). There are no angels, just one XGBoost pillar, and the screen edges pulse red when money gets through. It flows straight into TagTeam: the team deploys and a short note carries step 0's result across.
 - **Net scoring.** Net is honest payments through minus money stolen. On the real run (h2h-real-42-202610241623):
@@ -747,7 +747,7 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** ⭐ the before/after. Play from the start at 4×. XGBoost's net collapses to negative by round 4, TagTeam deploys, and the outline bars show it holding steady on the same payments. Say plainly: 4 rounds, one seed, XGBoost untrained in round 1.
 
-### Sat Oct 24, 20:35 · Arena on the 20-round real run · Stanley (branch `stanley/arena-viz`, not merged)
+### Sat Oct 24, 20:35 · Arena on the 20-round real run · Stanley (branch `stanley/arena-viz`, merged at integration)
 **Did:**
 - **20-round replay and baseline.** The arena now plays run h2h-real-42-202610241732 from the sister session.
 
@@ -809,6 +809,25 @@ bad stores — same engine, same payment path."
 - the hackpack check.
 
 **Demo angle:** talking point 5 ⭐. A judge asks the Fraud Desk about a $49 charger with a $30 mandate and gets the real engine's block, then asks why and gets the same decision back.
+
+### Sun Oct 25, 02:45 · CRS merged into core-engine; first recorded run with live CRS · Stanley
+**Did:**
+- **Merged** `stanley/crs-escalation` into `stanley/core-engine`. The engine conflicts were all side by side with M10 merchants. Full suite: 480 passed.
+- **More of CRS's answers used where they mean something:**
+  - The reverse lookup now checks the phone or email belongs to the payer; if not, no allow.
+  - FraudFinder's red flags (new email, prepaid or VoIP phone, phone or address registered to someone else, proxy IP, IP far from the address) are named in the reasons, without counting twice.
+- **Not used, on purpose:** credit reports (a credit pull, ruled out), criminal, eviction and bankruptcy records. Those are lending and tenant screening, not payment fraud.
+- **Recorded `h2h-real-42-202610250153`** on real models with live CRS. Live mode was set for that process only; `.env` stays at 0, so other sessions' benchmarks don't log in to CRS.
+  - 23 live CRS checks, all on fraud: 13 blocked by failed identity checks, 10 stepped up. No honest shopper was checked.
+  - 11 of the 23 payers hid their phone and email.
+- **Finding:** with the learned combiner, the uncertain zone sits below the 0.30 band edge. In round 3, 94 fraud payments and 0 honest ones scored 0.10–0.30. The 20-a-round cap also left 134 in-band payments unchecked in round 4.
+
+**Proof:**
+- `evidence/crs-live-sandbox.md` (recorded-run section);
+- `evidence/head-to-head/bitdeer-crs-live.md`;
+- `engine/tests/test_crs_live.py` (name check, red flags).
+
+**Demo angle:** ⭐ a real CRS sandbox answer in the arena: "identity verification failed: input SSN belongs to a deceased person". Say "CRS sandbox test identities stand in for our simulated shoppers".
 
 ---
 
