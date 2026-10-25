@@ -43,6 +43,9 @@ BANDS: dict[str, tuple[float, str]] = {
 }
 FLOOR_CENTS = 500  # a restricted agent can still buy something small: $5
 GOOD_SCORE = 680  # a scoreable file at or above this reads as established credit
+# Below this, capacity is thin. It lowers the line and never refuses the agent: a poor credit file
+# is a reason to lend less, not a reason to think a payment is fraud.
+THIN_SCORE = 620
 HIGH_RISK = 75  # FraudFinder's high band, as risk_level uses it
 
 
@@ -74,6 +77,20 @@ def band_for(profile: CrsProfile) -> tuple[str, tuple[str, ...]]:
     if not profile.bureaus_with_file or not profile.credit_score:
         thin = "no credit file at any bureau" if not profile.bureaus_with_file else "a file, but no score"
         return "starter", (thin, f"identity {'verified' if profile.verified == 0 else 'not fully verified'}")
+    if profile.frozen:
+        # A frozen file is not a bad file, it is an unreadable one: there is no basis for a full line.
+        return "standard", ("a bureau file is frozen, so the person cannot be fully assessed",)
+    if profile.bureaus_scored < 3:
+        # A file that exists but cannot be scored is not evidence of capacity (CRS's P20).
+        return "standard", (f"only {profile.bureaus_scored} of 3 bureaus could score this file",)
+    if profile.bureaus_with_file < 3:
+        # The bureaus disagree about whether this person exists. Thinner evidence, smaller line.
+        return "standard", (f"only {profile.bureaus_with_file} of 3 bureaus hold a file, "
+                            f"score {profile.credit_score}",)
+    if profile.credit_score < THIN_SCORE:
+        # Low capacity is a reason for a small line, never for refusing the agent: this is a
+        # spending limit, not a loan. See THIN_SCORE.
+        return "starter", (f"score {profile.credit_score}: capacity for a starter line only",)
     if profile.verified == 0 and profile.credit_score >= GOOD_SCORE and profile.risk_level == "low":
         return "full", (f"identity verified, score {profile.credit_score} at "
                         f"{profile.bureaus_with_file} of 3 bureaus, fraud risk {profile.risk_level}",)

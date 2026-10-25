@@ -238,6 +238,53 @@ class MockCrs:
 
 
 PERSONAS: dict[str, dict] = json.loads(Path(__file__).with_name("crs_personas.json").read_text())["personas"]
+
+
+@dataclass
+class PersonaCrs:
+    """A bureau that plays one of CRS's 20 sandbox test persons exactly, from the outcomes CRS
+    publishes for them (`crs_personas.json`). `MockCrs` invents a plausible person from an identity
+    profile, which is right for a simulated marketplace but cannot reproduce a credit freeze, a
+    fraud alert or two bureaus disagreeing. This can, so the conformance suite means something
+    without credentials and offline runs behave like the live sandbox."""
+
+    persona_id: str
+    mocked: bool = True
+
+    @property
+    def person(self) -> dict:
+        return PERSONAS[self.persona_id]
+
+    def data_prefill(self, principal_id: str) -> dict:
+        if self.persona_id in NO_CONTACT_RECORD:
+            return {"status": "no_record"}
+        thin = self.person["decision"] == "NO_FILE" or "thin" in self.person["profile"].lower()
+        return {"status": "found", "fields": ["name", "address"] + ([] if thin else ["dob", "phone", "ssn_last4"]),
+                "record_age_years": 1.0 if thin else 12.0,
+                "matches_payer": self.person["identity_expected"] != "fail"}
+
+    def data_append(self, principal_id: str) -> dict:
+        contact = self.person["contact"]["phone"]
+        if self.persona_id in NO_CONTACT_RECORD or not contact:
+            return {"status": "no_match", "found": [], "contact": ""}
+        return {"status": "found", "found": ["email", "phone"], "contact": contact}
+
+    def identity_verification(self, principal_id: str, prefill: dict | None) -> dict:
+        verdict = self.person["identity_expected"]
+        return {"persona": self.persona_id, "result": verdict, "score": {"pass": 90, "review": 55, "fail": 15}[verdict],
+                "reason": self.person["identity_verification_expected"]}
+
+    def fraud_finder(self, principal_id: str) -> dict:
+        score = int(self.person["fraud_score_expected"])
+        text = self.person["fraud_finder_expected"]
+        signals = [s for s in ("email 3 days old", "email invalid", "phone dead", "voip prepaid",
+                               "phone owner no_match") if s in text]
+        return {"persona": self.persona_id, "risk_score": score, "risk_level": risk_level(score),
+                "signals": signals}
+
+    def credit_report(self, principal_id: str) -> dict:
+        return {"persona": self.persona_id} | merge_credit_reports(
+            {b: dict(v) for b, v in self.person["credit_expected"].items()})
 # Which of CRS's sandbox test persons plays a simulated principal, by what a bureau would know about it.
 PERSONA_GROUPS = {
     "real_full": ("P01", "P02", "P10", "P19"),  # clean identities that verify

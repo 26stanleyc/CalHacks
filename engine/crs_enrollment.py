@@ -49,6 +49,8 @@ class CrsProfile:
     contact: str = ""  # the phone or inbox the person resolves to, shared across a farm
     credit_score: int = 0  # 0 = no score (no file, frozen, or not scoreable)
     bureaus_with_file: int = 0
+    bureaus_scored: int = 0
+    frozen: bool = False  # at least one bureau's file is frozen, so it cannot be assessed
     deceased: bool = False
     reasons: tuple[str, ...] = ()
     calls: tuple[str, ...] = ()  # which CRS products were asked, in order
@@ -140,6 +142,8 @@ class CrsEnrollment:
             reasons.append("the phone or email belongs to someone else")
         if credit.get("deceased"):
             reasons.append("bureau file flagged deceased")
+        if credit.get("frozen"):
+            reasons.append("a bureau file is frozen, so it cannot be assessed")
 
         contact = str(appended.get("contact") or "")
         if contact:
@@ -156,6 +160,8 @@ class CrsEnrollment:
             contact=contact,
             credit_score=int(credit.get("score", 0)),
             bureaus_with_file=int(credit.get("bureaus_with_file", 0)),
+            bureaus_scored=int(credit.get("bureaus_scored", 0)),
+            frozen=bool(credit.get("frozen")),
             deceased=bool(credit.get("deceased")),
             reasons=tuple(reasons),
             calls=tuple(calls),

@@ -106,7 +106,10 @@
      "status": "FileReturned",
      "score": 790
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 11,
+   "idv_raw": "PASS"
   },
   "P02": {
    "name": "DANIEL WHITFIELD",
@@ -213,7 +216,10 @@
      "status": "FileReturned",
      "score": 815
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 9,
+   "idv_raw": "PASS"
   },
   "P03": {
    "name": "JASMINE REYES",
@@ -320,7 +326,10 @@
      "status": "FileReturned",
      "score": 660
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 14,
+   "idv_raw": "PASS"
   },
   "P04": {
    "name": "TOMAS LINDQVIST",
@@ -427,7 +436,10 @@
      "status": "NoFileReturnedNoHit",
      "score": 0
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 18,
+   "idv_raw": "PASS"
   },
   "P05": {
    "name": "RICKY DALTON",
@@ -534,7 +546,10 @@
      "status": "FileReturned",
      "score": 540
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 52,
+   "idv_raw": "PASS"
   },
   "P06": {
    "name": "ANGELA MORRISSEY",
@@ -641,7 +656,10 @@
      "status": "FileReturned",
      "score": 580
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 12,
+   "idv_raw": "PASS"
   },
   "P07": {
    "name": "MARCUS BELLAMY",
@@ -748,7 +766,10 @@
      "status": "FileReturned",
      "score": 560
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 12,
+   "idv_raw": "PASS"
   },
   "P08": {
    "name": "PRIYA VENKATESAN",
@@ -855,7 +876,10 @@
      "status": "FileReturned",
      "score": 690
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 10,
+   "idv_raw": "PASS"
   },
   "P09": {
    "name": "DEREK HOLLOWAY",
@@ -962,7 +986,10 @@
      "status": "FileReturned",
      "score": 700
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 11,
+   "idv_raw": "PASS"
   },
   "P10": {
    "name": "LAUREN KOWALCZYK",
@@ -1069,7 +1096,10 @@
      "status": "FileReturned",
      "score": 720
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 10,
+   "idv_raw": "PASS"
   },
   "P11": {
    "name": "BRANDON SZABO",
@@ -1176,7 +1206,10 @@
      "status": "FileReturned",
      "score": 610
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 11,
+   "idv_raw": "PASS"
   },
   "P12": {
    "name": "VICTOR ANAND",
@@ -1283,7 +1316,10 @@
      "status": "NoFileReturnedNoHit",
      "score": 0
     }
-   }
+   },
+   "identity_expected": "fail",
+   "fraud_score_expected": 85,
+   "idv_raw": "FAIL"
   },
   "P13": {
    "name": "KAYLA BRENNAN",
@@ -1390,7 +1426,10 @@
      "status": "FileReturned",
      "score": 640
     }
-   }
+   },
+   "identity_expected": "fail",
+   "fraud_score_expected": 88,
+   "idv_raw": "FAIL"
   },
   "P14": {
    "name": "HAROLD PETTIGREW",
@@ -1497,7 +1536,10 @@
      "status": "Deceased",
      "score": 0
     }
-   }
+   },
+   "identity_expected": "fail",
+   "fraud_score_expected": 80,
+   "idv_raw": "FAIL"
   },
   "P15": {
    "name": "NICOLE FARRAGUT",
@@ -1604,7 +1646,10 @@
      "status": "FileReturned",
      "score": 740
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 10,
+   "idv_raw": "PASS"
   },
   "P16": {
    "name": "SAMUEL OYELARAN",
@@ -1711,7 +1756,10 @@
      "status": "FileReturned",
      "score": 730
     }
-   }
+   },
+   "identity_expected": "review",
+   "fraud_score_expected": 50,
+   "idv_raw": "KBA_REQUIRED"
   },
   "P17": {
    "name": "ELENA CASTELLANOS",
@@ -1818,7 +1866,10 @@
      "status": "FileReturned",
      "score": 700
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 11,
+   "idv_raw": "PASS"
   },
   "P18": {
    "name": "TERRENCE ABERNATHY",
@@ -1925,7 +1976,10 @@
      "status": "FileReturned",
      "score": 650
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 12,
+   "idv_raw": "PASS"
   },
   "P19": {
    "name": "GRACE NAKAMURA",
@@ -2032,7 +2086,10 @@
      "status": "FileReturned",
      "score": 770
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 9,
+   "idv_raw": "PASS"
   },
   "P20": {
    "name": "DOLORES WHITCOMB",
@@ -2139,7 +2196,10 @@
      "status": "FileReturned",
      "score": 700
     }
-   }
+   },
+   "identity_expected": "pass",
+   "fraud_score_expected": 8,
+   "idv_raw": "PASS"
   }
  }
 }
