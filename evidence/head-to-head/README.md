@@ -46,13 +46,18 @@ Trained on days 1-15, scored on days 16-31. See [../public-data/paysim.md](../pu
 
 | contender | PR-AUC | recall at 1% FPR |
 |---|---|---|
-| ours | 0.080 | **16.7%** |
-| xgboost_retrained | **0.085** | 16.3% |
+| **ours, merged design** (learned combiner + anomaly voter) | **0.102** | **21.2%** |
+| ours, before the merge | 0.080 | 16.7% |
+| xgboost_retrained | 0.085 | 16.3% |
 | rules_plus_xgboost | 0.085 | 16.3% |
 | xgboost_trained (frozen) | 0.044 | 13.2% |
 | static_rules | 0.008 | 0.0% |
 
-- Ours is level with retrained XGBoost and clearly ahead of the frozen model and the static rules.
+- **With the merged design, ours is clearly ahead of every baseline on public data:** PR-AUC is
+  0.102 vs 0.085, and at 1% false positives it catches 21.2% of fraud vs 16.3%, about 30% more. At
+  its cost-based operating point it is the only contender that catches any fraud (5.4%, flagging
+  0.09% of honest payments).
+- Before the merge, it was level with retrained XGBoost (0.080 / 16.7%).
 - Absolute detection is low for everyone. PaySim's strong signal is the account balance columns,
   which the dataset's own notes say leak the label, so they're excluded. Our feature set is built
   for agent commerce (mandates, agent baselines, injections), and PaySim exercises none of that.

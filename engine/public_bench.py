@@ -9,8 +9,8 @@ row becomes a payment: origin account -> agent and principal, destination -> mer
 step (an hour) -> time, one simulated day per round.
 
 Contenders, all scored on the same feature vectors our feature service computes:
-- `ours`: the engine's defense (seed rulebooks, the learning loop and the XGBoost voter), learning
-  from each day's labels;
+- `ours`: the engine's defense as build_engine runs it (seed rulebooks, the learning loop, the XGBoost
+  and anomaly voters, and the learned combiner), learning from each day's labels;
 - `xgboost_trained`: XGBoost trained once on the first half of the month, all labels, then frozen:
   the "trained on lots of data" model;
 - `xgboost_retrained`: XGBoost retrained on all labels so far, on the benchmark schedule;
@@ -55,7 +55,6 @@ def load(path: Path, sample_pct: int) -> dict[int, list[tuple]]:
 def run(days: dict[int, list[tuple]], train_days: int) -> dict:
     from bench.baselines import StaticRulesDefense, XGBoostDefense
     from bench.metrics import cost_cents, pr_auc, recall_at_fpr
-    from bench.xgb_voter import XGBoostVoter
     from contracts.schemas import Action, GroundTruth, TrafficSource, Transaction
     from engine.brains import Brain
     from engine.learning.labels import Record
@@ -63,7 +62,9 @@ def run(days: dict[int, list[tuple]], train_days: int) -> dict:
     from engine.pipeline import DefensePipeline
     from engine.store import MemoryStore
 
-    pipeline = DefensePipeline(voters=[XGBoostVoter()])
+    from engine.entrypoints import _voters
+
+    pipeline = DefensePipeline(voters=_voters())
     loop = LearningLoop(pipeline, Brain(), MemoryStore(), "paysim")
     trained, retrained, static = XGBoostDefense(), XGBoostDefense(), StaticRulesDefense()
     history = []
