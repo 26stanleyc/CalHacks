@@ -59,6 +59,21 @@ def test_build_engine_never_settles_for_real_unless_asked(monkeypatch, live):
         engine.stop()
 
 
+def test_build_engine_settles_every_allowed_payment_for_real_when_asked(monkeypatch):
+    from engine.entrypoints import build_engine
+
+    monkeypatch.setenv("TESTNET_WALLET_PRIVATE_KEY", "0x" + "11" * 32)
+    monkeypatch.setenv("MERCHANT_WALLET_ADDRESS", "0x" + "22" * 20)
+    monkeypatch.setenv("ENGINE_LIVE_SETTLEMENT", "all")
+    engine = build_engine()  # no round: building the settlement makes no network call
+    try:
+        assert engine.settlement.mode == "stub"
+        assert engine.live_settlement.mode == "real" and engine.live_settlement.max_cents == 1
+        assert engine.live_per_round is None
+    finally:
+        engine.stop()
+
+
 class FakeRealSettlement:
     """Stands in for X402Settlement(mode="real") without touching the network."""
 
@@ -82,6 +97,19 @@ def test_the_live_tail_settles_one_honest_payment_per_round_at_a_token_amount():
     assert all(not truth[tx.tx_id].is_fraud and tx.amount_cents <= 100 for tx in live.calls)
     on_chain = [s for s in engine.store.settlements if s.tx_hash]
     assert len(on_chain) == 2
+
+
+def test_the_demo_round_settles_every_allowed_payment_live_and_nothing_else():
+    live = FakeRealSettlement()
+    live.max_cents = 1
+    engine = FraudEngine(world=World(seed=42), allowlist={TEAM}, live_settlement=live, live_per_round=None, n_legit=30)
+    engine.run_round(requested_by=TEAM)
+    allowed = {d.tx_id for d in engine.store.decisions if d.action == Action.ALLOW}
+    truth = {g.tx_id: g for g in engine.store.ground_truth}
+    assert {tx.tx_id for tx in live.calls} == allowed
+    assert any(truth[tx.tx_id].is_fraud for tx in live.calls)  # fraud that got through really pays
+    assert all(tx.amount_cents == 1 for tx in live.calls)
+    assert all(s.tx_hash for s in engine.store.settlements)  # no allowed payment fell back to the stub
 
 
 def test_chat_tools_check_and_explain_on_the_real_engine():

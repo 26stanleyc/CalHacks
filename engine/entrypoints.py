@@ -8,6 +8,8 @@ serve.py are the only places that wire in Eric's implementations:
 - settlement: integrations.x402_settlement.X402Settlement in stub mode for every allowed round
   payment, always. ENGINE_LIVE_SETTLEMENT=1 adds the demo's live tail: one honest allowed payment
   per round also settles for real on Base Sepolia, at a token amount within X402_MAX_SETTLE_CENTS.
+  ENGINE_LIVE_SETTLEMENT=all settles every allowed payment for real instead, fraud that got through
+  included, at 1 cent of test USDC each (the buyer wallet needs a cent per allowed payment).
 - traffic: Ryan's marketplace (data/, M1) through engine.sim.marketplace.MarketplaceWorld: his
   catalog and legitimate shoppers, one simulated day per round
 - models: Eric's Bitdeer client when BITDEER_API_KEY is set (and USE_MOCK_LLM isn't), falling back
@@ -57,15 +59,18 @@ def _scanner(world):
 
 
 def _settlements():
-    """(every-payment settlement, live-tail settlement or None). Never infers real mode from the
-    wallet keys being present: real only when ENGINE_LIVE_SETTLEMENT is explicitly on."""
+    """(every-payment settlement, live settlement or None, live payments per round; None is all of
+    them). Never infers real mode from the wallet keys being present: real only when
+    ENGINE_LIVE_SETTLEMENT is explicitly on."""
     try:
         from integrations.x402_settlement import X402Settlement
     except ImportError:
         log.warning("integrations.x402_settlement is unavailable; using the stub settlement")
-        return None, None
+        return None, None, 1
+    if os.environ.get("ENGINE_LIVE_SETTLEMENT", "").strip().lower() == "all":
+        return X402Settlement(mode="stub"), X402Settlement(mode="real", max_cents=1), None
     live = X402Settlement(mode="real") if flag("ENGINE_LIVE_SETTLEMENT") else None
-    return X402Settlement(mode="stub"), live
+    return X402Settlement(mode="stub"), live, 1
 
 
 def _brain() -> Brain:
@@ -127,9 +132,9 @@ def build_engine() -> FraudEngine:
     store = MemoryStore() if os.environ.get("ENGINE_STORE") == "memory" else PostgresStore()
     run_id = os.environ.get("ENGINE_RUN_ID") or "dev-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     seed = int(os.environ.get("ENGINE_SEED", 42))
-    settlement, live = _settlements()
+    settlement, live, live_per_round = _settlements()
     world = _world(seed) or World(seed=seed)  # built first: the page scanner reads its pages
     engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(world),
-                         settlement=settlement, live_settlement=live, world=world, brain=_brain(), voters=_voters(), held_out=_held_out(), threat_intel=True,
+                         settlement=settlement, live_settlement=live, live_per_round=live_per_round, world=world, brain=_brain(), voters=_voters(), held_out=_held_out(), threat_intel=True,
                          threat_source=_intel_source(), transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
     return engine.start()

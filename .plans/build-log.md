@@ -877,6 +877,11 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** none on its own. It makes cheat-sheet items 1, 6 and 9 true on one branch.
 
+### Sun Oct 25, 03:30 · M13 x402: every allowed payment can settle for real · Stanley
+**Did:** `ENGINE_LIVE_SETTLEMENT=all` settles every payment TagTeam allows through x402 on Base Sepolia, fraud that got through included, at 1 cent of test USDC each (buyer wallet to merchant wallet, whatever the simulated amount). Blocked and checked payments never reach x402. Works in `build_engine` (serve, chat agents) and in `engine.head_to_head`, which records the TagTeam runs. `=1` still means one honest payment per round; unset is still stub only. Settlements run one after another and wait for a block, so keep rounds small (`n_legit` 300 means about 300 settlements and $3 of test USDC a round).
+**Proof:** `engine/tests/test_integration.py` (every allowed payment settles live and nothing else; `build_engine` picks up `all`); engine suite 281 passed. A trial round of 20 shoppers settled about 21 one-cent payments before it was stopped: buyer wallet 0.97 → 0.76 USDC.
+**Demo angle:** "every payment TagTeam allowed in this run really settled through x402 on testnet," shown with Basescan hashes from the `settlements` table.
+
 ## Entry template
 
 ```markdown

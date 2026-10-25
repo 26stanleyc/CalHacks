@@ -65,7 +65,7 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
     from bench.metrics import cost_cents
     from contracts.schemas import Action
     from engine.engine import FraudEngine
-    from engine.entrypoints import _brain, _voters
+    from engine.entrypoints import _brain, _settlements, _voters
     from engine.sim.marketplace import MarketplaceWorld
     from engine.store import MemoryStore
 
@@ -73,8 +73,10 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
 
     run_id = f"h2h-{'real' if real else 'mock'}-{seed}" + (f"-{record}" if record else "")
     database = PostgresStore() if record else None
+    settlement, live, live_per_round = _settlements()  # stub unless ENGINE_LIVE_SETTLEMENT is set
     engine = FraudEngine(store=TeeStore(MemoryStore(), database) if record else MemoryStore(), world=MarketplaceWorld(seed=seed), allowlist={"h2h"}, seed=seed,
-                         run_id=run_id, voters=_voters(), threat_intel=True,
+                         run_id=run_id, voters=_voters(), threat_intel=True, settlement=settlement,
+                         live_settlement=live, live_per_round=live_per_round,
                          **({"brain": _brain()} if real else {}))
     started = time.monotonic()
     for _ in range(rounds):
