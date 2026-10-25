@@ -53,6 +53,12 @@ class Sandbox:
         self.mandate_for = mandate_for
         self.runs = 0
 
+    def _pipeline(self, identities: dict[str, IdentityStatus]) -> DefensePipeline:
+        """A fresh copy of the frozen defense for one sandbox run."""
+        return DefensePipeline(self.lanes, self.catalog, self.rulebooks, identities,
+                               Orchestrator(costs=self.costs, weights=dict(self.weights), combiner=self.combiner), voters=self.voters,
+                               product_text=self.product_text)
+
     def score(self, playbook: Playbook, *, seed: int, round_no: int, step_up_pass: float, tag: str) -> SandboxResult:
         """The defense measuring an archive attacker (re-scoring, archive entry): its committed playbook
         against this frozen copy. Not tuning, so outsiders are measured too; they never call this."""
@@ -69,9 +75,7 @@ class Sandbox:
 
         self.runs += 1
         identities = dict(self.identities)
-        pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, identities,
-                                   Orchestrator(costs=self.costs, weights=dict(self.weights), combiner=self.combiner), voters=self.voters,
-                                   product_text=self.product_text)
+        pipeline = self._pipeline(identities)
         txs, accounts = [], {}
         per_wave = [n // WAVES + (w < n % WAVES) for w in range(WAVES)]
         for wave, count in enumerate(per_wave):
@@ -109,9 +113,7 @@ class Sandbox:
         from engine.engine import resolve
 
         self.runs += 1
-        pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, dict(self.identities),
-                                   Orchestrator(costs=self.costs, weights=dict(self.weights), combiner=self.combiner), voters=self.voters,
-                                   product_text=self.product_text)
+        pipeline = self._pipeline(dict(self.identities))
         txs = []
         for wave in range(WAVES):
             txs += attacker.generate("sandbox", round_no, wave, n // WAVES + (wave < n % WAVES), seed)
