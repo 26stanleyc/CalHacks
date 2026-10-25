@@ -1,4 +1,5 @@
 import type { Actor, AttackerSource, ShelfId } from "../data/types";
+import { ethBandLabel } from "../data/ethBands";
 import { parseShelf } from "../data/mock";
 
 const STYLE: Record<string, string> = {
@@ -24,7 +25,8 @@ const SIDE: Record<string, string> = { merchant: "against stores", buyer: "again
 export function shelfName(id: ShelfId): string {
   const { style, amount, side } = parseShelf(id);
   // A dataset's fraud has no attack style, only an amount: "dataset/<amount>/<side>".
-  if ((style as string) === "dataset") return `Fraud in the dataset, ${AMOUNT[amount]()}`;
+  if ((style as string) === "dataset")
+    return `Fraud in the dataset, ${amount.startsWith("eth") ? ethBandLabel(Number(amount.slice(3))) : AMOUNT[amount]()}`;
   return `${STYLE[style]}, ${AMOUNT[amount]()}, ${SIDE[side]}`;
 }
 

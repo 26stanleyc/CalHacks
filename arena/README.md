@@ -72,7 +72,7 @@ The same run also has its own page, **`/ethereum/`** (nav: Real data): the arena
 
 The replay is gzipped because it holds every payment (the scoreboard counts them all); the app unzips it in the browser. The baseline file lists only decisions that aren't "allow, settled", which is what the app assumes for a missing payment. To re-export, see the commands in that evidence file.
 
-What differs on screen: amounts are in ether (Ξ); the data has no attack styles, so phishing payments stand on the beach in three groups by amount (teal ring) instead of on the shelves, and the shelf grid is hidden; phase lines give the real UTC dates each wave covers and don't say attackers adapt (recorded fraud doesn't).
+What differs on screen: amounts are in ether (Ξ); the data has no attack styles, so phishing payments stand on the beach in 12 groups by amount, spread evenly round the island (teal ring), instead of on the shelves (the app splits the export's amount bands finer, `src/data/ethBands.ts`), and the shelf grid is hidden; phase lines give the real UTC dates each wave covers and don't say attackers adapt (recorded fraud doesn't).
 
 ### Phishing log (`/phishing/`)
 

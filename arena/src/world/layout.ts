@@ -2,6 +2,7 @@
 // specialists plus the orchestrator, rings 2–3 the battlefield, ring 4 the 24 arena shelves
 // (attacks on stores on one half, attacks on shoppers on the other) and ring 5 the beach.
 
+import { ETH_BAND_COUNT } from "../data/ethBands";
 import { ALL_SHELVES, LANES } from "../data/mock";
 import type { Actor, ShelfId } from "../data/types";
 
@@ -73,8 +74,14 @@ export function shelfSlot(id: ShelfId, slot: number, ringCount: number): Vec3 {
 
 // A public dataset's fraud ("dataset/<amount>/<side>") isn't on any arena shelf. Each amount group
 // stands on the beach just outside the shelf ring, behind the shelves for the same amount.
+// The Ethereum run's finer bands (ethBands.ts) stand evenly round the whole beach instead.
+const beach = ring(5);
 function datasetSpot(id: ShelfId): Vec3 {
   const [, amount, side] = id.split("/");
+  if (amount.startsWith("eth")) {
+    const t = beach[Math.round((Number(amount.slice(3)) * beach.length) / ETH_BAND_COUNT)];
+    return [t.x, TILE_TOP[5], t.z];
+  }
   const t = SHELF_TILE[`hijack_injection/${amount}/${side}`];
   return [t.x * 1.22, TILE_TOP[5], t.z * 1.22];
 }

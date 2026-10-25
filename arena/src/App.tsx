@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toBaselineReplay } from "./data/baseline";
+import { splitEthBands } from "./data/ethBands";
 import { makeMockReplay } from "./data/mock";
 import type { Baseline, Replay } from "./data/types";
 import { useArena, type DataSet, type Runs } from "./store";
@@ -71,6 +72,7 @@ async function loadRuns(data: DataSet): Promise<Runs> {
   }
   const after = (await loadJson<Replay>(DATA_SETS[data].replay)) ?? makeMockReplay();
   if (data === "marketplace") renumber(after);
+  if (data === "eth") splitEthBands(after);
   const baseline = await loadJson<Baseline>(DATA_SETS[data].baseline);
   if (!baseline || baseline.run_id !== after.run_id) return { after, before: null, baseline: null, dataset: data };
   return { after, before: toBaselineReplay(after, baseline), baseline, dataset: data };
