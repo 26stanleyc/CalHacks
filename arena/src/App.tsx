@@ -93,6 +93,7 @@ const initialData = (): DataSet => {
 // and the switch only appears when there's more than one choice.
 function DataSwitch({ data, loading, onChange }: { data: DataSet; loading: boolean; onChange: (d: DataSet) => void }) {
   const dataset = useArena((s) => s.runs?.after.dataset);
+  const playing = useArena((s) => s.runs?.dataset);
   const [available, setAvailable] = useState<DataSet[]>([DEFAULT, ...(data === DEFAULT ? [] : [data])]);
   useEffect(() => {
     Promise.all(
@@ -117,6 +118,14 @@ function DataSwitch({ data, loading, onChange }: { data: DataSet; loading: boole
       )}
       {loading ? (
         <p className="source">Loading the payments…</p>
+      ) : playing === "paysim" ? (
+        // Say plainly which data the default arena plays.
+        <p className="chain big">
+          <b>
+            PaySim
+            <span>Synthetic mobile-money payments, modelled on real logs</span>
+          </b>
+        </p>
       ) : (
         dataset && (
           <>

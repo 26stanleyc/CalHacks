@@ -263,7 +263,7 @@ export function Site() {
                   <>
                     <div className="closing-cta">
                       <a className="button primary" href={DEMO_HREF}>
-                        Open the live arena
+                        Open the PaySim arena
                       </a>
                     </div>
                     <footer className="site-footer">
@@ -321,7 +321,7 @@ function Hero({ go }: { go: (to: number) => void }) {
         </p>
         <div className="actions">
           <a className="button primary" href={DEMO_HREF}>
-            Open the live arena
+            Open the PaySim arena
           </a>
           <button className="button" onClick={() => go(PAGES.findIndex((p) => p.id === "how"))}>
             How it works
