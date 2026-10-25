@@ -22,6 +22,11 @@ a code block can only be relaxed to a step-up. Hard vetoes never reach CRS.
 CRS runs before the investigator. A payment CRS allowed or blocked isn't escalated; one it left at
 step-up can still go to the investigator, which sees the CRS results in its case.
 
+Watch list: a person FraudFinder rates high risk goes on the CRS watch list. Every later payment of
+theirs, whatever its score, is stepped up at least (never allowed), with no new CRS call and no
+investigator. The engine logs each addition as a defender action (actor "crs", action "watch"), so a
+restarted run picks the list back up.
+
 Two clients behind the `CrsClient` interface, picked by CRS_ESCALATION (see `crs_from_env`):
 - `HttpCrs`, the real CRS sandbox (https://api-sandbox.stitchcredit.com/api): AccurateAppend reverse
   lookup as the prefill, TransUnion TruValidate identity verification, and AtData FraudFinder. The
@@ -253,6 +258,8 @@ class CrsEscalation:
     low: float = field(default_factory=lambda: _env_float("CRS_BAND_LOW", 0.30))
     high: float = field(default_factory=lambda: _env_float("CRS_BAND_HIGH", 0.70))
     max_per_round: int = field(default_factory=lambda: int(_env_float("CRS_MAX_PER_ROUND", MAX_PER_ROUND)))
+    watched: dict[str, dict] = field(default_factory=dict)  # principal -> the FraudFinder flag that put them there
+    new_watches: list[dict] = field(default_factory=list)  # additions the engine hasn't logged yet
 
     def __post_init__(self):
         if not 0.0 <= self.low <= self.high <= 1.0:
@@ -260,6 +267,21 @@ class CrsEscalation:
 
     def in_band(self, decision: Decision) -> bool:
         return decision.vetoed_by is None and self.low <= decision.weighted_score <= self.high
+
+    def is_watched(self, principal_id: str) -> bool:
+        return principal_id in self.watched
+
+    def watch(self, tx: Transaction, decision: Decision) -> Decision:
+        """A payment from someone on the watch list: stepped up at least, whatever its score."""
+        action = Action.BLOCK if decision.action == Action.BLOCK else Action.STEP_UP
+        reasons = f"on the CRS watch list since FraudFinder rated them high risk ({self.watched[tx.principal_id]['risk_score']})"
+        return self._report(tx, decision, [], action, reasons, watch="on_list")
+
+    def restore(self, actions: list[dict]) -> None:
+        """Pick the watch list back up on a restarted run from its logged defender actions."""
+        for row in actions:
+            if row["actor"] == "crs" and row["action"] == "watch":
+                self.watched[row["detail"]["principal_id"]] = row["detail"]
 
     def check(self, tx: Transaction, features: FeatureVector, decision: Decision) -> Decision:
         """The decision after the CRS checks (call only for in-band payments)."""
@@ -284,7 +306,10 @@ class CrsEscalation:
         if idv["result"] == "fail":
             action, reasons = Action.BLOCK, f"identity verification failed ({idv['reason']})"
         elif risk["risk_level"] == "high":
-            action, reasons = Action.BLOCK, f"FraudFinder risk is high ({risk['risk_score']})"
+            action, reasons = Action.BLOCK, f"FraudFinder risk is high ({risk['risk_score']}); added to the CRS watch list"
+            entry = {"principal_id": tx.principal_id, "tx_id": tx.tx_id, "risk_score": risk["risk_score"]}
+            self.watched[tx.principal_id] = entry
+            self.new_watches.append(entry)
         elif idv["result"] == "pass" and risk["risk_level"] == "low":
             action, reasons = Action.ALLOW, f"identity verified and FraudFinder risk is low ({risk['risk_score']})"
         else:
@@ -298,11 +323,12 @@ class CrsEscalation:
         if action == Action.ALLOW and decision.action == Action.BLOCK:
             action = Action.STEP_UP
             reasons += " (a code block can only be relaxed to a step-up)"
-        return self._report(tx, decision, calls, action, reasons)
+        return self._report(tx, decision, calls, action, reasons, watch="added" if tx.principal_id in self.watched else None)
 
-    def _report(self, tx: Transaction, decision: Decision, calls: list[ToolCall], action: Action, reasons: str) -> Decision:
+    def _report(self, tx: Transaction, decision: Decision, calls: list[ToolCall], action: Action, reasons: str,
+                watch: str | None = None) -> Decision:
         report = CrsReport(tx_id=tx.tx_id, score=decision.weighted_score, band=(self.low, self.high), tool_calls=calls,
-                           decision=action, reasons=reasons, mocked=self.client.mocked)
+                           decision=action, reasons=reasons, mocked=self.client.mocked, watch=watch)
         tag = "CRS check (mocked)" if self.client.mocked else "CRS check"
         return decision.model_copy(update={"action": action, "crs": report,
                                            "explanation": f"{tag}: {reasons[:1].upper()}{reasons[1:]}."})

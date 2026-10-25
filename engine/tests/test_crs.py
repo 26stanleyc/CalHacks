@@ -169,8 +169,13 @@ def crs_round():
     return engine
 
 
+def was_checked(d: Decision) -> bool:
+    """CRS ran its checks (not just the watch list)."""
+    return d.crs is not None and d.crs.watch != "on_list"
+
+
 def test_in_band_payments_get_crs_and_out_of_band_ones_do_not(crs_round):
-    checked = [d for d in crs_round.store.decisions if d.crs is not None]
+    checked = [d for d in crs_round.store.decisions if was_checked(d)]
     assert checked, "no payment fell in the band on the test round"
     assert all(0.3 <= d.crs.score <= 0.7 and d.vetoed_by is None for d in checked)
     assert all(d.action == d.crs.decision or d.escalated for d in checked)
@@ -181,7 +186,7 @@ def checked_per_round(engine) -> dict[int, int]:
     round_of = {t.tx_id: t.round for t in engine.store.transactions}
     counts = {r: 0 for r in set(round_of.values())}
     for d in engine.store.decisions:
-        counts[round_of[d.tx_id]] += d.crs is not None
+        counts[round_of[d.tx_id]] += was_checked(d)
     return counts
 
 
@@ -213,5 +218,77 @@ def test_crs_checks_reach_the_arena_replay(crs_round):
     payments = [p for r in replay["rounds"] for w in r["waves"] for p in w["payments"]]
     checked = [p for p in payments if p["crs"]]
     assert len(checked) == sum(d.crs is not None for d in crs_round.store.decisions)
-    assert all(p["crs"]["mocked"] and p["crs"]["calls"][0]["tool"].startswith("crs_") for p in checked)
+    assert all(p["crs"]["mocked"] and all(c["tool"].startswith("crs_") for c in p["crs"]["calls"]) for p in checked)
+    assert all(p["crs"]["calls"] for p in checked if p["crs"]["watch"] != "on_list")
     assert all(p["crs"] is None for p in payments if p not in checked)
+
+
+# --- the watch list ---------------------------------------------------------------------------------
+
+def test_high_fraudfinder_risk_puts_the_person_on_the_watch_list():
+    crs = CrsEscalation(FakeCrs(idv="pass", risk="high"), low=0.3, high=0.7)
+    tx = sample_tx()
+    out = crs.check(tx, FeatureVector(tx_id=tx.tx_id, values=VERIFIED_OLD), decision(0.5))
+    assert out.action == Action.BLOCK and out.crs.watch == "added" and crs.is_watched(tx.principal_id)
+    assert crs.new_watches == [{"principal_id": tx.principal_id, "tx_id": tx.tx_id, "risk_score": 90}]
+
+
+@pytest.mark.parametrize("idv, risk", [("pass", "medium"), ("pass", "low"), ("fail", "high")])
+def test_only_a_high_fraudfinder_risk_adds_to_the_watch_list(idv, risk):
+    crs = CrsEscalation(FakeCrs(idv=idv, risk=risk), low=0.3, high=0.7)
+    tx = sample_tx()
+    out = crs.check(tx, FeatureVector(tx_id=tx.tx_id, values=VERIFIED_OLD), decision(0.5))
+    assert not crs.watched and out.crs.watch is None  # a failed identity check blocks before FraudFinder runs
+
+
+@pytest.mark.parametrize("code, final", [(Action.ALLOW, Action.STEP_UP), (Action.STEP_UP, Action.STEP_UP),
+                                         (Action.BLOCK, Action.BLOCK)])
+def test_a_watched_persons_later_payments_are_never_allowed_and_call_no_crs(code, final):
+    client = FakeCrs()
+    crs = CrsEscalation(client, low=0.3, high=0.7)
+    crs.watched["p-1"] = {"principal_id": "p-1", "tx_id": "earlier", "risk_score": 88}
+    out = crs.watch(sample_tx(), decision(0.02, code))  # far below the band
+    assert out.action == final and out.crs.watch == "on_list" and out.crs.tool_calls == [] and not client.called
+    assert "watch list" in out.explanation
+
+
+@pytest.fixture(scope="module")
+def watch_round():
+    """Every in-band payment's FraudFinder check comes back high, so its person is watched from then on."""
+    world = MarketplaceWorld(seed=42)
+    engine = FraudEngine(world=world, allowlist={TEAM}, arena=False, hijacker=False,
+                         crs=CrsEscalation(FakeCrs(idv="pass", risk="high"), low=0.3, high=0.7, max_per_round=10))
+    for _ in range(2):
+        engine.run_round(requested_by=TEAM)
+    return engine
+
+
+def test_watched_people_are_stepped_up_for_the_rest_of_the_run(watch_round):
+    order = {t.tx_id: (t.ts, t.tx_id) for t in watch_round.store.transactions}
+    principal = {t.tx_id: t.principal_id for t in watch_round.store.transactions}
+    added = {}
+    for d in sorted(watch_round.store.decisions, key=lambda d: order[d.tx_id]):
+        if d.crs and d.crs.watch == "added":
+            added.setdefault(principal[d.tx_id], order[d.tx_id])
+    assert added, "nobody was flagged on the test round"
+    later = [d for d in watch_round.store.decisions
+             if principal[d.tx_id] in added and order[d.tx_id] > added[principal[d.tx_id]] and not d.vetoed_by]
+    assert later, "no flagged person paid again"
+    assert all(d.action != Action.ALLOW and d.crs.watch == "on_list" and not d.escalated for d in later)
+
+
+def test_watch_list_additions_are_logged_and_survive_a_restart(watch_round):
+    rows = [r for r in watch_round.store.get_rows("defender_actions", watch_round.run_id) if r["actor"] == "crs"]
+    assert {r["detail"]["principal_id"] for r in rows} == set(watch_round.crs.watched)
+    assert all(r["action"] == "watch" and r["granted"] for r in rows)
+    restarted = FraudEngine(store=watch_round.store, run_id=watch_round.run_id, world=MarketplaceWorld(seed=42),
+                            allowlist={TEAM}, arena=False, hijacker=False, crs=CrsEscalation(FakeCrs()))
+    assert restarted.crs.watched == watch_round.crs.watched
+
+
+def test_the_replay_says_who_is_on_the_watch_list(watch_round):
+    from engine.export_replay import build, memory_tables
+
+    replay = build(memory_tables(watch_round.store, watch_round.run_id), watch_round.run_id)
+    marks = {p["crs"]["watch"] for r in replay["rounds"] for w in r["waves"] for p in w["payments"] if p["crs"]}
+    assert {"added", "on_list"} <= marks

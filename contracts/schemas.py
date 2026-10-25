@@ -7,6 +7,7 @@ so nothing on the defense side can read it by accident.
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -175,6 +176,7 @@ class CrsReport(BaseModel):
     decision: Action
     reasons: str
     mocked: bool = True  # False only when the calls went to the real CRS API
+    watch: Literal["added", "on_list"] | None = None  # FraudFinder flagged this person now, or earlier
 
 
 class Decision(BaseModel):
@@ -186,7 +188,7 @@ class Decision(BaseModel):
     vetoed_by: str | None = None  # e.g. "mandate:over_cap", "identity:failed"
     escalated: bool = False
     investigator: InvestigatorReport | None = None
-    crs: CrsReport | None = None  # set when the score fell in the CRS band
+    crs: CrsReport | None = None  # set when the score fell in the CRS band or the person is on the CRS watch list
     explanation: str = ""
 
 

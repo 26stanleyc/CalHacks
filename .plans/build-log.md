@@ -516,6 +516,27 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** the CRS card in the arena can now say "live CRS sandbox", not "mocked", when the run is recorded with `CRS_ESCALATION=live`. The sandbox answers only for test persons, so say "CRS sandbox test identities stand in for our simulated shoppers".
 
+### Sat Oct 24, 21:00 · CRS watch list · Stanley
+**Did:**
+- **Watch list.** A person FraudFinder rates high risk (score 75 or above) goes on the CRS watch list.
+  - Every later payment of theirs, whatever its score, is stepped up at least, never allowed. A block stays a block.
+  - It makes no new CRS call and never goes to the investigator.
+  - Medium risk and failed identity checks don't add anyone: a failed identity check blocks before FraudFinder runs.
+- **Records:**
+  - Each addition is a `defender_actions` row (actor `crs`, action `watch`, detail with the person, the payment and the score), so a restarted run picks the list back up.
+  - Payments carry `Decision.crs.watch`: `added` when the person was flagged on that payment, `on_list` after that.
+  - The arena replay's `crs.watch` has the same values.
+- **First look** (mock bureau, seed 42, 3 rounds, no cap): 2 people flagged, both attackers. Their 7 later payments were all blocked or stepped up. False-positive rate unchanged.
+
+**Proof:** `engine/tests/test_crs.py` (watch-list section):
+- only high risk adds;
+- later payments are never allowed and make no CRS call;
+- a 2-round run;
+- logged rows survive a restart;
+- the replay marks.
+
+**Demo angle:** "once CRS flags someone, they stay flagged": a payment card showing "on the CRS watch list" on an attacker's next try.
+
 ---
 
 ## Entry template

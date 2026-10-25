@@ -175,6 +175,8 @@ class FraudEngine:
             if self.watchlist:
                 self.watchlist.restore(self.store.get_rows("defender_actions", self.run_id),
                                        [r for s in self.pipeline.specialists.values() for r in s.rulebook.rules], self.round)
+            if self.crs:
+                self.crs.restore(self.store.get_rows("defender_actions", self.run_id))
             if self.arena:
                 self.arena.restore(self.store.get_rows("archive_snapshots", self.run_id),
                                    self.store.get_rows("attackers", self.run_id),
@@ -322,7 +324,9 @@ class FraudEngine:
                         with self._lock:  # the defense is fixed within the round
                             decision, features = self._decide(tx, commit=True)
                         code_action = decision.action
-                        if self.crs and crs_checked < self.crs.max_per_round and self.crs.in_band(decision):
+                        if self.crs and self.crs.is_watched(tx.principal_id) and not decision.vetoed_by:
+                            decision = self.crs.watch(tx, decision)  # no new CRS call
+                        elif self.crs and crs_checked < self.crs.max_per_round and self.crs.in_band(decision):
                             crs_checked += 1  # CRS calls run outside the lock, like the investigator
                             decision = self.crs.check(tx, features, decision)
                         if escalated < wave_budget and self._escalates(tx, decision, features):
@@ -343,6 +347,12 @@ class FraudEngine:
                     parallel(lambda attacker: attacker.observe(feedback[attacker.attacker_id]), [a for a, _ in running])
                     for attacker, _ in running:
                         self._log_wave(attacker, round_no)
+                if self.crs and self.crs.new_watches:
+                    self.store.log_rows("defender_actions", [{
+                        "run_id": self.run_id, "round": round_no, "actor": "crs", "action": "watch", "cost": 0,
+                        "granted": True, "reason": f"FraudFinder rated this person high risk ({w['risk_score']})",
+                        "detail": w} for w in self.crs.new_watches])
+                    self.crs.new_watches = []
                 if self.arena:
                     self.arena.after_waves(round_no, records, self.attackers + [a for a, _ in intel])
                 if not frozen:  # labeled cases for the investigator's similar_cases (a frozen defense keeps no labels)
@@ -423,8 +433,8 @@ class FraudEngine:
         about the same, or a specialist wanted a block the combined decision didn't give, unless the
         pattern is a familiar one the code already handles the way past cases went. Hard vetoes never
         escalate."""
-        if decision.vetoed_by or decision.crs is not None and decision.crs.decision != Action.STEP_UP:
-            return False  # CRS already allowed or blocked it
+        if decision.vetoed_by or decision.crs is not None and (decision.crs.decision != Action.STEP_UP or decision.crs.watch):
+            return False  # CRS already allowed or blocked it, or the person is on the CRS watch list (never allowed)
         split = decision.action != Action.BLOCK and any(v.vote == Action.BLOCK and decision.weights.get(v.voter, 1.0) > 0
                                                         for v in decision.votes)  # a voter sitting out doesn't count
         if not (split or self.pipeline.orchestrator.is_close_call(decision.weighted_score, tx.amount_cents)):
