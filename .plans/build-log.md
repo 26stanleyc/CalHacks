@@ -774,6 +774,17 @@ bad stores — same engine, same payment path."
 
 ---
 
+### Sun Oct 25, 02:49 · Integration: every branch on one line · Stanley
+**Did:** branch `stanley/integration`, cut from `stanley/core-engine` (which already held Eric's `m10`, Ryan's dashboard, CRS, stacking and per-round saves), plus:
+- `page-scan-cache`: the investigator reads kept page scans, never a live 20 s Apify scan. Combined with core's per-round `PageRisk` priming: the round's fresh scans are handed to the investigator's cache, so nothing is scanned twice.
+- `real-data-engine` (ULB and Ethereum phishing replays), `arena-real-data` and `arena-viz` (the 3D arena, dataset switch, `/ethereum/`, `/phishing/`, the 20-round real run), `uagent-trace` (`engine.trace`), `tagteam-vs-swarm-sim` (`sim/`).
+- The live Apify threat-intel crawl (`integrations/threat_intel.py`), which existed only as uncommitted files, is now committed and wired into `build_engine` (live when `APIFY_TOKEN` is set, corpus otherwise).
+- Left out: `crs-trial` (scratch branch with a tuning run in progress); stale uncommitted leftovers in the `stacking`, `per-round-saves` and `arena-viz` worktrees, which later commits replaced.
+
+**Proof:** `uv run pytest` 495 passed, 8 skipped, 3 xfailed; the arena app type-checks and builds.
+
+**Demo angle:** none on its own. It makes cheat-sheet items 1, 6 and 9 true on one branch.
+
 ## Entry template
 
 ```markdown
