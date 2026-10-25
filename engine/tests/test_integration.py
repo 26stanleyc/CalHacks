@@ -27,12 +27,16 @@ def offline(monkeypatch):
 
 def test_inprocess_engine_source_finds_the_real_engine():
     from integrations.asi_one.engine_source import get_engine
-    from integrations.page_scanner import FixturePageScanner
+    from integrations.page_scanner import ApifyPageScanner, FixturePageScanner
+    from engine.sim.pages import WorldPageScanner
 
     engine = get_engine("inprocess")
     try:
         assert isinstance(engine, FraudEngine)
-        assert isinstance(engine.scanner, FixturePageScanner)  # no Apify token: fixtures, no network
+        # M10 layers the scanners: the simulated marketplace's own pages are read out of the world,
+        # and only a real URL falls through to the fallback. Still no network for round traffic.
+        assert isinstance(engine.scanner, WorldPageScanner)
+        assert isinstance(engine.scanner.fallback, (ApifyPageScanner, FixturePageScanner))
     finally:
         engine.stop()
 

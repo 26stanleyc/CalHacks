@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from contracts.schemas import GroundTruth, IdentityStatus, Mandate, TrafficSource, Transaction
+from engine.sim.pages import PageStore, page_url, product_page
 
 LEGIT_PERSONAS = ("normal", "bulk", "subscription_burst", "travel_new_device", "multi_user_agent")
 LEGIT_WEIGHTS = (0.60, 0.10, 0.10, 0.10, 0.10)
@@ -65,6 +66,7 @@ class World:
     products: list[Product] = field(default_factory=list)
     shoppers: list[Shopper] = field(default_factory=list)
     identities: dict[str, IdentityStatus] = field(default_factory=dict)  # what an identity check would say
+    pages: PageStore = field(default_factory=PageStore)  # one product page per product (M10)
     round_seconds: ClassVar[float] = 86_400  # one simulated day per round, like the marketplace
 
     def __post_init__(self):
@@ -77,6 +79,28 @@ class World:
         for i in range(self.n_shoppers):
             identity = IdentityStatus.VERIFIED if rng.random() < 0.9 else IdentityStatus.THIN_FILE
             self.shoppers.append(self._shopper(f"legit-{i}", identity, rng))
+        self._build_pages()
+
+    def _build_pages(self) -> None:
+        """An ordinary product page for every honest product (M10). Malicious merchants write their
+        own pages into the same store when they set up their storefronts."""
+        for p in self.products:
+            self.pages.put(self.page_url_of(p.merchant_id, p.product_id),
+                           product_page(p.title or p.category.replace("_", " ").title(), p.price_cents,
+                                        merchant=p.merchant_id), p.merchant_id)
+
+    @staticmethod
+    def page_url_of(merchant_id: str, product_id: str | None) -> str:
+        return page_url(merchant_id, product_id or "index")
+
+    def page_url_for(self, tx: Transaction) -> str | None:
+        """The page behind one payment, or None if this store has no page the world knows. This is
+        the only way a URL reaches the scanner: the investigator's model never picks one."""
+        url = self.page_url_of(tx.merchant_id, tx.product_id)
+        return url if self.pages.get(url) is not None else None
+
+    def page_urls(self) -> list[str]:
+        return list(self.pages.pages)
 
     def _shopper(self, name: str, identity: IdentityStatus, rng: random.Random, cap_cents: int = 300_000) -> Shopper:
         principal = f"pr-{name}"

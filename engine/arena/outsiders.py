@@ -22,6 +22,7 @@ from contracts.schemas import (Action, AmountBand, AttackerRecord, AttackerSourc
 from engine.arena import playbooks
 from engine.arena.playbooks import REALISM
 from engine.brains import Brain, mock_answer
+from engine.sim.pages import PAGE_INJECTIONS
 from engine.sim.world import INJECTION_MEMOS
 
 CHALLENGER_SHARE = 0.4
@@ -67,6 +68,19 @@ PERSONAS = (
             {"amount_cents": 14_000, "amount_spread": 0.75, "interval_s": 330, "n_accounts": 1, "n_merchants": 5,
              "identity_quality": 0.5, "memo_rate": 1.0}, INJECTION_MEMOS),
 )
+
+
+# The malicious merchant (spec 3.1, M10). It sits on the *buyer* side of the archive: its victims
+# are honest shoppers, and the money it takes is theirs, not a store's. The lineage lives in
+# engine/arena/merchant.py because its payments come from shoppers reading its pages, not from
+# accounts it bought, the same way the hijacker lives in engine/arena/hijacker.py.
+MALICIOUS_MERCHANT = Persona(
+    "malicious_merchant", 0.15, "Poison product pages so shopping agents buy the premium bundle.",
+    # identity_quality reads as page subtlety here: the share of hijacked sessions kept inside the
+    # shopper's mandate, where only the overcharge gives the page away. memo_rate is how often the
+    # agent also parrots the hidden text into the payment memo.
+    {"amount_cents": 4_900, "amount_spread": 0.5, "interval_s": 1_200, "n_accounts": 12, "n_merchants": 3,
+     "identity_quality": 0.25, "memo_rate": 0.6}, PAGE_INJECTIONS)
 
 
 class PlaybookRewrite(BaseModel):
@@ -171,9 +185,15 @@ class OutsiderAttacker:
 
     # --- playbooks ----------------------------------------------------------------------
 
+    def shelf_of(self, params: dict) -> ShelfKey:
+        """Which shelf a set of numbers puts this lineage on. The one place the shelf is decided, so
+        a lineage that lives on a different side of the market (engine/arena/merchant.py) overrides
+        this and stays there through re-tuning and rewrites alike."""
+        return shelf_for(params)
+
     def _playbook(self, strategy: str, params: dict, bounds: dict, payloads: list[str]) -> Playbook:
         return Playbook(playbook_id=f"{self.attacker_id}-g{self.generation}-t{self.tunes}", attacker_id=self.attacker_id,
-                        strategy=strategy, params=params, param_bounds=bounds, shelf=shelf_for(params),
+                        strategy=strategy, params=params, param_bounds=bounds, shelf=self.shelf_of(params),
                         free_text_payloads=payloads)
 
     def _challenge(self, round: int, wave: int) -> Playbook:
@@ -190,7 +210,7 @@ class OutsiderAttacker:
                 params[name] = params[name] + rng.gauss(0, 0.15) * (hi - lo)
         params = playbooks.clamp(params, bounds)
         return self.playbook.model_copy(update={"playbook_id": f"{self.playbook.playbook_id}-c{wave}", "params": params,
-                                                "shelf": shelf_for(params)})
+                                                "shelf": self.shelf_of(params)})
 
     def restore(self, record: AttackerRecord) -> None:
         """Pick a lineage back up from its last logged record (resuming a run)."""

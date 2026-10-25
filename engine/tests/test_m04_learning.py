@@ -21,7 +21,7 @@ TEAM = "agent1qteam"
 
 @pytest.fixture(scope="module")
 def ten_rounds():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], hijacker=False, arena=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], hijacker=False, merchants=False, arena=False)
     metrics = [engine.run_round(requested_by=TEAM) for _ in range(10)]
     return engine, metrics
 
@@ -62,7 +62,7 @@ def test_the_defense_actually_learned(ten_rounds):
 def test_learned_rules_catch_fraud_without_the_xgboost_voter():
     # Rule learning on its own, measured honestly: on the mock brains the learned rules catch fraud,
     # but outsiders adapt around them, so the cost reduction above comes from the XGBoost voter.
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, arena=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False, arena=False)
     for _ in range(6):
         engine.run_round(requested_by=TEAM)
     truth = {g.tx_id: g.is_fraud for g in engine.store.ground_truth}
@@ -117,7 +117,7 @@ class StubbornCritic(MockBrains):
 
 def test_low_critic_agreement_for_2_rounds_brings_in_the_second_opinion():
     model = StubbornCritic()
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, brain=Brain(model), voters=[XGBoostVoter()], hijacker=False, arena=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, brain=Brain(model), voters=[XGBoostVoter()], hijacker=False, merchants=False, arena=False)
     for _ in range(3):
         engine.run_round(requested_by=TEAM)
     roles_by_round = [role for role, _ in model.calls]
@@ -130,7 +130,7 @@ def test_low_critic_agreement_for_2_rounds_brings_in_the_second_opinion():
 def _losses(frozen_rounds: tuple[int, ...]) -> dict[int, int]:
     """Per round, what the outsider lineages extracted: the outside threat, which runs identically
     frozen or not (a frozen defense also stops spawning its own sparring attackers)."""
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], hijacker=False, arena=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], hijacker=False, merchants=False, arena=False)
     loss = {}
     for round_no in range(1, 11):
         engine.set_freeze(round_no in frozen_rounds, requested_by=TEAM)
@@ -151,7 +151,7 @@ def test_freezing_lets_losses_climb_and_unfreezing_recovers():
 
 
 def test_frozen_rounds_change_nothing_in_the_defense():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], hijacker=False, arena=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], hijacker=False, merchants=False, arena=False)
     engine.run_round(requested_by=TEAM)
     engine.set_freeze(True, requested_by=TEAM)
     before = engine.pipeline.fingerprint()
@@ -173,7 +173,7 @@ class PricedBrains(MockBrains):
 
 
 def test_spend_is_tracked_per_round():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, brain=Brain(PricedBrains(0.001)), hijacker=False, arena=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, brain=Brain(PricedBrains(0.001)), hijacker=False, merchants=False, arena=False)
     metrics = engine.run_round(requested_by=TEAM)
     rows = engine.store.rows["llm_spend"]
     assert metrics.llm_spend_usd > 0
@@ -186,13 +186,13 @@ def test_a_round_costing_more_than_twice_the_estimate_pauses_the_run():
 
     store = MemoryStore()
     engine = FraudEngine(store=store, run_id="spendy", world=MarketplaceWorld(seed=42), allowlist={TEAM},
-                         brain=Brain(PricedBrains(1.0)), hijacker=False, arena=False)
+                         brain=Brain(PricedBrains(1.0)), hijacker=False, merchants=False, arena=False)
     engine.run_round(requested_by=TEAM)
     assert engine.paused
     assert any(r["action"] == "pause" and "twice" in r["reason"] for r in store.rows["defender_actions"])
     with pytest.raises(LLMBudgetExceeded):
         engine.run_round(requested_by=TEAM)
-    restarted = FraudEngine(store=store, run_id="spendy", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, arena=False)
+    restarted = FraudEngine(store=store, run_id="spendy", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False, arena=False)
     assert restarted.paused  # a restart doesn't quietly lift the pause
     restarted.resume(requested_by=TEAM)
     assert not restarted.paused
@@ -217,13 +217,13 @@ def test_learning_logs_land_in_postgres_and_a_restart_keeps_the_learned_rulebook
         admin.execute((Path(__file__).resolve().parents[2] / "contracts" / "db.sql").read_text())
         store = PostgresStore(schema=schema)
         engine = FraudEngine(store=store, run_id="test-m04", world=MarketplaceWorld(seed=42), allowlist={TEAM},
-                             voters=[XGBoostVoter()], hijacker=False, arena=False)
+                             voters=[XGBoostVoter()], hijacker=False, merchants=False, arena=False)
         for _ in range(3):
             engine.run_round(requested_by=TEAM)
         for table in ("critic_checks", "reflections", "rulebook_versions"):
             assert admin.execute(f"select count(*) from {table}").fetchone()[0] > 0, table
         assert admin.execute("select count(*) from rulebook_versions where draft = 0").fetchone()[0] > 0
-        again = FraudEngine(store=store, run_id="test-m04", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, arena=False)
+        again = FraudEngine(store=store, run_id="test-m04", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False, arena=False)
         for lane, specialist in engine.pipeline.specialists.items():
             assert [r.id for r in again.pipeline.specialists[lane].rulebook.rules] == [r.id for r in specialist.rulebook.rules]
         store.close()

@@ -276,7 +276,13 @@ class Arena:
         for sid in self.archive.area(lane):
             shelf = self.archive.shelves[sid]
             if shelf.key.side != Side.MERCHANT:
-                continue  # buyer-side shelves need malicious merchants (M10)
+                # Buyer-side shelves are live as of M10: the malicious-merchant lineage sits on one
+                # and its outcomes count there, so the arena grid and `shelves_defended` cover both
+                # sides of the market. They stay out of a specialist's *spawn area* because the
+                # sandbox replays a playbook as payments from the attacker's own accounts, which
+                # cannot express "an honest shopper read a poisoned page"; an attacker spawned here
+                # would be a merchant-side attacker wearing a buyer-side label.
+                continue
             state = shelf.state(round_no)
             area.append({"shelf_id": sid, "filled": bool(shelf.entries), "unknown": state.unknown,
                          "learnability": round(state.learnability, 4), "catch_rate": round(state.catch_rate, 4)})

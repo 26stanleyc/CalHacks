@@ -12,10 +12,10 @@ import math
 import re
 import unicodedata
 from collections import defaultdict, deque
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from contracts.schemas import FeatureVector, IdentityStatus, Lane, Transaction
+from contracts.schemas import FeatureVector, IdentityStatus, Lane, PageScan, Transaction
 from engine import mandates
 
 ENTITIES = ("agent_id", "principal_id", "merchant_id")
@@ -35,6 +35,8 @@ DAY_SECONDS = 86_400
 IDENTITY_CODE = {IdentityStatus.VERIFIED: 0.0, IdentityStatus.THIN_FILE: 1.0,
                  IdentityStatus.MISMATCH: 2.0, IdentityStatus.FLAGGED: 3.0}
 UNKNOWN_IDENTITY = 1.0  # treated like a thin file
+# integrations.page_scanner.INJECTION_THRESHOLD; repeated so the feature service imports nothing
+PAGE_RISK_THRESHOLD = 0.5
 
 # Each pattern needs an instruction aimed at the checker (rules, checks, fraud, this payment...),
 # so ordinary shopper notes ("don't block my card", "accept the order if the box is dented") pass.
@@ -117,7 +119,17 @@ STATIC_FEATURES: dict[str, Lane] = {
     "m_new_category_for_agent": Lane.MANDATE,
     "m_hour_shift": Lane.MANDATE,
     "m_day_spend_vs_agent": Lane.MANDATE,
+    # M10: the merchant's own page. The mandate specialist is the buyer's advocate, so it owns the
+    # evidence about the store the agent is reading.
+    "m_page_injection": Lane.MANDATE,
+    "m_page_price_ratio": Lane.MANDATE,
 }
+
+# Features that describe the *merchant*, not this payment: they have the same value for every payer
+# at that store, honest ones included, so a learned rule may not rest on them alone (see
+# FeatureCatalog.about_payer). The seed rules may, deliberately, because they pair them with a
+# payer-side signal or only ever ask for a step-up.
+MERCHANT_FEATURES = frozenset({"m_page_injection"})
 
 # Which side of a feature looks like fraud. Reflection may only write rules in this direction, so a
 # rule can't latch onto something that drifts with time (in round 1 every honest agent is young, so
@@ -131,6 +143,7 @@ SUSPICIOUS_WHEN: dict[str, str] = {
     "m_over_cap_ratio": "high", "m_daily_spend_ratio": "high", "m_category_allowed": "low", "m_merchant_allowed": "low",
     "m_request_match": "low", "m_amount_vs_agent": "high", "m_new_merchant_for_agent": "high",
     "m_new_category_for_agent": "high", "m_hour_shift": "high", "m_day_spend_vs_agent": "high",
+    "m_page_injection": "high", "m_page_price_ratio": "high",
 }
 BASELINE_MIN = 3  # payments an agent needs before its baseline means anything
 BASELINE_KEEP = 50
@@ -147,6 +160,40 @@ SEED_PRIMITIVES: dict[str, tuple[Lane, Primitive]] = {
     "g_principals_per_merchant_600s": (Lane.GRAPH, Primitive("merchant_id", "principal_id", "distinct", 600)),
     "g_new_agent_tx_merchant_600s": (Lane.GRAPH, Primitive("merchant_id", "new_agent", "sum", 600)),
 }
+
+
+class PageRisk:
+    """Cached merchant-page scans for the merchant-risk features (spec 3.2, M10).
+
+    `of()` reads the cache and nothing else, so a payment decision never waits on a page fetch:
+    pages are scanned by `prime()` between rounds. A URL that was never primed has no scan, and the
+    merchant-risk features are then *absent* rather than zero, so a rule on them does not fire for a
+    store whose page nobody has looked at.
+    """
+
+    def __init__(self, scanner, page_url_for: Callable[[Transaction], str | None]):
+        self.scanner = scanner
+        self.page_url_for = page_url_for
+        self.scans: dict[str, PageScan] = {}
+
+    def prime(self, urls: Iterable[str]) -> list[PageScan]:
+        """Scan any of these URLs not already cached. Returns the new scans, for logging."""
+        fresh = []
+        for url in urls:
+            if url in self.scans:
+                continue
+            self.scans[url] = scan = self.scanner.scan(url)
+            fresh.append(scan)
+        return fresh
+
+    def forget(self, urls: Iterable[str]) -> None:
+        """Drop cached scans for pages whose content changed."""
+        for url in urls:
+            self.scans.pop(url, None)
+
+    def of(self, tx: Transaction) -> PageScan | None:
+        url = self.page_url_for(tx)
+        return self.scans.get(url) if url else None
 
 
 class FeatureCatalog:
@@ -178,6 +225,8 @@ class FeatureCatalog:
     def about_payer(self, name: str) -> bool:
         """False for a feature that describes a merchant's recent traffic rather than this payment: it has
         the same value for every payer at that merchant, honest ones included."""
+        if name in MERCHANT_FEATURES:
+            return False
         primitive = self.primitives.get(name)
         return primitive is None or primitive.entity != "merchant_id"
 
@@ -187,8 +236,9 @@ class FeatureService:
     remembering the transaction (chat-submitted checks must not change the defense's state)."""
 
     def __init__(self, catalog: FeatureCatalog | None = None, identities: dict[str, IdentityStatus] | None = None,
-                 product_text: dict[str, str] | None = None):
+                 product_text: dict[str, str] | None = None, page_risk: PageRisk | None = None):
         self.catalog = catalog or FeatureCatalog()
+        self.page_risk = page_risk  # set by FraudEngine once it knows the world's pages (M10)
         self.identities = identities if identities is not None else {}
         self.product_text = product_text if product_text is not None else {}  # product id -> title and category
         self.baseline: dict[str, deque] = defaultdict(lambda: deque(maxlen=BASELINE_KEEP))  # agent -> past payments
@@ -272,11 +322,33 @@ class FeatureService:
         values["m_merchant_allowed"] = 0.0 if m and m.allowed_merchants and tx.merchant_id not in m.allowed_merchants else 1.0
         product = self.product_text.get(tx.product_id or "", tx.category or "")
         values["m_request_match"] = mandates.request_match(m.request_text, product) if m else 1.0
+        values.update(self._page(tx))
         values.update(self._baseline(tx))
 
         if commit:
             self._commit(tx, record, gap)
         return FeatureVector(tx_id=tx.tx_id, values=values)
+
+    def _page(self, tx: Transaction) -> dict[str, float]:
+        """What the merchant's own product page says (M10). Missing when no page has been scanned."""
+        scan = self.page_risk.of(tx) if self.page_risk is not None else None
+        if scan is None:
+            return {}
+        out = {"m_page_injection": float(scan.injection_score)}
+        # The price-consistency check, and only where it means what it says. The page prices *one
+        # unit*, so amount / page price is partly a quantity: on honest traffic its median is 1.0
+        # but 20% of payments sit at or above 1.5 and 15% at or above 3 (bulk orders, up to 40x).
+        # Carried on every payment it stops measuring overcharge and starts measuring basket size,
+        # which the velocity lane already covers (`v_amount_cents`, `v_price_ratio`) — and measured
+        # on seed 42 it swamped the learning loop: reflection had nothing left to add.
+        #
+        # It is a *merchant-risk* feature, so it is present only where merchant risk is: at a store
+        # whose page hides instructions aimed at shopping agents. There, an agent that pays well
+        # over the advertised price is an agent that followed them. The threshold is the detector's
+        # own, computed from the page and never from any label.
+        if scan.listed_price_cents and scan.injection_score >= PAGE_RISK_THRESHOLD:
+            out["m_page_price_ratio"] = tx.amount_cents / scan.listed_price_cents
+        return out
 
     def _baseline(self, tx: Transaction) -> dict[str, float]:
         """How this payment compares with the agent's own history (spec 3.2: the hijacker signal). With

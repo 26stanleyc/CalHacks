@@ -1,0 +1,21 @@
+{
+  "ran_at": "2026-10-25T07:17:49.950202+00:00",
+  "actor": "apify/website-content-crawler",
+  "threshold": 0.5,
+  "results": [
+    {
+      "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+      "ok": true,
+      "chars": 1288,
+      "verdict": "clean",
+      "scan": {
+        "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+        "merchant_id": null,
+        "injection_score": 0.0,
+        "findings": [],
+        "listed_price_cents": 5177,
+        "scanned_at": "2026-10-25T07:17:49.948209Z"
+      }
+    }
+  ]
+}

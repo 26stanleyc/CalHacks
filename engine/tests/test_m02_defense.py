@@ -72,7 +72,7 @@ def test_hot_path_p95_latency_is_at_most_50ms():
 def test_check_payment_returns_a_decision_with_a_vote_per_specialist_and_rule_ids():
     # four specialists at M2; the mandate specialist made it five in M9 (spec: "every 4 becomes 5")
     world = World(seed=42)
-    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False, merchants=False)
     suite = fraud(world, "prompt_injection", 5)
     decision = engine.check_payment(suite[0][0])
     assert decision.action != Action.ALLOW
@@ -84,7 +84,7 @@ def test_check_payment_returns_a_decision_with_a_vote_per_specialist_and_rule_id
 def test_explain_returns_the_logged_rule_ids():
     world = World(seed=42)
     store = MemoryStore()
-    engine = FraudEngine(store=store, world=world, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(store=store, world=world, allowlist={"team"}, hijacker=False, merchants=False)
     engine.run_round(requested_by="team")
     blocked = next(d for d in store.decisions if d.action == Action.BLOCK and any(v.rule_ids for v in d.votes))
     logged_votes = {v.voter: v.rule_ids for v in store.votes if v.tx_id == blocked.tx_id}  # the separate votes rows
@@ -97,7 +97,7 @@ def test_explain_returns_the_logged_rule_ids():
 
 def test_explain_finds_an_outside_check_by_the_callers_tx_id():
     world = World(seed=42)
-    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False, merchants=False)
     tx = fraud(world, "prompt_injection", 5)[0][0]
     decision = engine.check_payment(tx)
     explained = engine.explain(tx.tx_id)
@@ -146,11 +146,13 @@ def test_specialists_only_see_their_own_lane():
     features = pipeline.featurize(tx)
     for lane in pipeline.lanes:
         sliced = pipeline.lane_slice(lane, features)
-        # a lane's slice holds only its own features; only agent baselines may be missing (no history yet)
+        # a lane's slice holds only its own features. Two kinds may legitimately be missing: the
+        # agent baselines (no history yet) and the merchant-page ones (this bare pipeline has no
+        # PageRisk, so no page has been scanned).
         missing = set(pipeline.catalog.lane_features(lane)) - set(sliced.values)
         assert set(sliced.values) <= set(pipeline.catalog.lane_features(lane))
         assert missing <= {"m_amount_vs_agent", "m_new_merchant_for_agent", "m_new_category_for_agent", "m_hour_shift",
-                           "m_day_spend_vs_agent"}
+                           "m_day_spend_vs_agent", "m_page_injection", "m_page_price_ratio"}
 
 
 def test_features_never_read_the_hidden_attacker_id():
@@ -177,7 +179,7 @@ def test_chat_sourced_checks_do_not_change_defense_state():
 
 def test_over_cap_payment_is_hard_vetoed():
     world = World(seed=42)
-    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False, merchants=False)
     tx = legit(world, 1)[0][0]
     tight = Mandate(mandate_id="md-tight", principal_id=tx.principal_id, per_payment_cap_cents=1, daily_cap_cents=1)
     decision = engine.check_payment(tx.model_copy(update={"mandate": tight, "tx_id": "over-cap"}))
@@ -185,12 +187,12 @@ def test_over_cap_payment_is_hard_vetoed():
 
 
 def test_engine_passes_the_contract_conformance_check():
-    conformance.check_engine(FraudEngine(allowlist={"team"}, hijacker=False), team_sender="team")
+    conformance.check_engine(FraudEngine(allowlist={"team"}, hijacker=False, merchants=False), team_sender="team")
 
 
 def test_run_round_logs_traffic_and_metrics():
     store = MemoryStore()
-    engine = FraudEngine(store=store, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(store=store, allowlist={"team"}, hijacker=False, merchants=False)
     metrics = engine.run_round(requested_by="team")
     assert metrics.round == 1 and metrics.false_positive_rate <= 0.02
     assert engine.get_metrics() == metrics
@@ -234,7 +236,7 @@ def test_run_round_writes_to_postgres_and_reads_back():
         admin.execute(f"set search_path to {schema}")
         admin.execute(DB_SQL.read_text())
         store = PostgresStore(schema=schema)
-        engine = FraudEngine(store=store, run_id="test-m02", allowlist={"team"}, hijacker=False)
+        engine = FraudEngine(store=store, run_id="test-m02", allowlist={"team"}, hijacker=False, merchants=False)
         started = time.perf_counter()
         metrics = engine.run_round(requested_by="team")
         elapsed = time.perf_counter() - started
@@ -304,7 +306,7 @@ def test_blocked_attempts_do_not_use_up_the_daily_limit():
 
 def test_a_cap_of_zero_allows_nothing():
     world = World(seed=42)
-    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False, merchants=False)
     tx = legit(world, 1)[0][0]
     zero = Mandate(mandate_id="md-zero", principal_id=tx.principal_id, per_payment_cap_cents=0, daily_cap_cents=0)
     decision = engine.check_payment(tx, mandate=zero)
@@ -313,7 +315,7 @@ def test_a_cap_of_zero_allows_nothing():
 
 def test_an_explicit_mandate_overrides_the_one_on_the_transaction():
     world = World(seed=42)
-    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(world=world, allowlist={"team"}, hijacker=False, merchants=False)
     tx = legit(world, 1)[0][0]
     assert tx.mandate is not None
     tight = Mandate(mandate_id="md-what-if", principal_id=tx.principal_id, per_payment_cap_cents=1, daily_cap_cents=1)
@@ -322,7 +324,7 @@ def test_an_explicit_mandate_overrides_the_one_on_the_transaction():
 
 def test_outside_checks_accept_any_run_id_and_repeated_tx_ids():
     store = MemoryStore()
-    engine = FraudEngine(store=store, allowlist={"team"}, hijacker=False)
+    engine = FraudEngine(store=store, allowlist={"team"}, hijacker=False, merchants=False)
     tx = conformance.sample_tx("dup-1").model_copy(update={"run_id": "made-up-by-the-caller"})
     first = engine.check_payment(tx)
     second = engine.check_payment(tx)
@@ -347,7 +349,7 @@ def test_concurrent_rounds_and_checks_do_not_corrupt_state():
     import threading
 
     store = MemoryStore()
-    engine = FraudEngine(store=store, allowlist={"team"}, arena=False, hijacker=False)
+    engine = FraudEngine(store=store, allowlist={"team"}, arena=False, hijacker=False, merchants=False)
     errors = []
     sample = [tx for tx, _ in legit(World(seed=7), 40)]
 
@@ -377,9 +379,9 @@ def test_concurrent_rounds_and_checks_do_not_corrupt_state():
 
 def test_restarting_on_an_existing_run_resumes_the_round_count():
     store = MemoryStore()
-    first = FraudEngine(store=store, run_id="resume-me", allowlist={"team"}, hijacker=False)
+    first = FraudEngine(store=store, run_id="resume-me", allowlist={"team"}, hijacker=False, merchants=False)
     first.run_round(requested_by="team")
-    second = FraudEngine(store=store, run_id="resume-me", allowlist={"team"}, hijacker=False)
+    second = FraudEngine(store=store, run_id="resume-me", allowlist={"team"}, hijacker=False, merchants=False)
     assert second.run_round(requested_by="team").round == 2
 
 
@@ -413,7 +415,7 @@ def test_engine_conformance_and_outside_checks_on_postgres():
         admin.execute(f"set search_path to {schema}")
         admin.execute(DB_SQL.read_text())
         store = PostgresStore(schema=schema)
-        engine = FraudEngine(store=store, run_id="test-conformance", allowlist={"team"}, hijacker=False)
+        engine = FraudEngine(store=store, run_id="test-conformance", allowlist={"team"}, hijacker=False, merchants=False)
         conformance.check_engine(engine, team_sender="team")
         conformance.check_engine(engine, team_sender="team")  # same tx_ids again: must not collide
         assert engine.explain("tx-over-cap").tx_id == "tx-over-cap"

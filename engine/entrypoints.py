@@ -28,19 +28,32 @@ from contracts.api import team_allowlist
 from contracts.config import flag, use_mock_llm  # also loads .env
 from engine.brains import Brain, MockBrains
 from engine.engine import FraudEngine
+from engine.sim.world import World
 from engine.store import MemoryStore, PostgresStore
 
 log = logging.getLogger(__name__)
 
 
-def _scanner():
+def _scanner(world):
+    """The page scanner, layered so each kind of URL is fetched the cheapest correct way (M10).
+
+    The simulated marketplace serves its own pages, including the malicious merchants' poisoned
+    ones, and those must be read out of the world rather than over the network: they are not real
+    URLs, and handing them to Apify would mean hundreds of failed scrapes a round. Real URLs - the
+    Merchant Scanner chat agent's, or a store someone asks about - fall through to Apify, with the
+    fixture pages behind that for when a fetch fails.
+    """
     try:
         import integrations.page_scanner as page_scanner
     except ImportError:
         log.warning("integrations.page_scanner is unavailable; using the stub page scanner")
         return None
-    # The fixture pages stay available as the fallback when an Apify fetch fails.
-    return page_scanner.make_page_scanner(fixtures=Path(page_scanner.__file__).resolve().parent / "fixtures" / "pages")
+    outside = page_scanner.make_page_scanner(fixtures=Path(page_scanner.__file__).resolve().parent / "fixtures" / "pages")
+    if getattr(world, "pages", None) is None:
+        return outside
+    from engine.sim.pages import WorldPageScanner
+
+    return WorldPageScanner(world.pages, fallback=outside)
 
 
 def _settlements():
@@ -106,7 +119,8 @@ def build_engine() -> FraudEngine:
     run_id = os.environ.get("ENGINE_RUN_ID") or "dev-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     seed = int(os.environ.get("ENGINE_SEED", 42))
     settlement, live = _settlements()
-    engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(),
-                         settlement=settlement, live_settlement=live, world=_world(seed), brain=_brain(), voters=_voters(), held_out=_held_out(), threat_intel=True,
+    world = _world(seed) or World(seed=seed)  # built first: the page scanner reads its pages
+    engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(world),
+                         settlement=settlement, live_settlement=live, world=world, brain=_brain(), voters=_voters(), held_out=_held_out(), threat_intel=True,
                          transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
     return engine.start()

@@ -297,6 +297,113 @@ same commits.
   (missed fraud, false blocks, step-up friction and abandoned purchases). `recall_at_1pct_fpr` and
   `pr_auc` stay in `bench/metrics.py` for now.
 
+
+## From Eric (P2), M10: malicious merchants and page scans
+
+These are changes I made in `engine/`, not requests. Flagged here because three of them change
+behaviour Stanley wrote, and one is a question for the team.
+
+### M10-a. A poisoned merchant page alone no longer blocks (changed behaviour)
+
+`engine/investigator.py` blocked whenever `scan_page` came back at or over `INJECTION_GUARD`, and
+`_guard` turned any ALLOW into a STEP_UP on the same evidence. Once honest shoppers started buying
+from poisoned stores (M10 emits both), that flagged **every** payment at such a store and put the
+false-positive rate at **2.46%**, over the 2% cap, while catching nobody extra: a poisoned page is
+true of every shopper there, so it cannot single out one payer.
+
+**Now:** a new `followed_the_page(features, page_ratio)` requires payer-side agreement before a
+page-driven block — the payment is at least 1.5x the price the page itself advertises, or it is
+outside the owner's mandate. With neither, the agent demonstrably read the hidden text and ignored
+it, and the payment is allowed. The memo half of `_guard` is unchanged (a memo *is* about the payer).
+`scan_page` now also returns `listed_price_cents` and `amount_vs_page_price`.
+
+**Test changed:** `test_a_poisoned_merchant_page_is_scanned_and_cited` asserted BLOCK on the page
+alone; it now asserts STEP_UP, and `test_a_poisoned_page_blocks_when_the_purchase_is_off_mandate`
+covers the block. Stanley: if you want the old behaviour back, the cost is the FP cap — numbers in
+`evidence/m10/README.md`.
+
+### M10-b. `OutsiderAttacker.shelf_of`, so a lineage keeps its side (bug fix)
+
+`_challenge()` rebuilt the challenger's shelf with `shelf_for(params)`, which defaults to
+`Side.MERCHANT`. Any lineage living on the buyer side silently flipped to merchant-side on its first
+re-tune, and `bench/metrics.py` reads `playbook.shelf.side`, so its losses were then counted on the
+wrong side. There is now one `shelf_of(params)` hook used by both `_playbook` and `_challenge`;
+the default is exactly `shelf_for(params)`, so nothing else changes.
+
+### M10-c. `about_payer` now covers static merchant features
+
+`FeatureCatalog.about_payer` only knew about windowed primitives on `merchant_id`. `m_page_injection`
+is a static feature with the same property — identical for every payer at that store — so there is
+now a `MERCHANT_FEATURES` set it consults. Reflection and the watchlist already refuse rules that
+rest only on non-payer features, which is what we want here.
+
+### M10-d. Question: which side does the hijacker belong on?
+
+The hijacker (M9) spends stolen *buyer* credentials, so economically the buyer loses the money, but
+its `playbook.shelf.side` is `Side.MERCHANT`, so both `FraudEngine` and `bench/metrics.py` count its
+losses as merchant-side. I left it alone rather than shift numbers under Stanley's and Ryan's
+existing evidence: the malicious merchant is the only buyer-side lineage for now. If the team wants
+the hijacker moved, it is one `shelf_of` override in `engine/arena/hijacker.py` and both places
+follow, because of M10-b.
+
+### M10-f. `m_page_price_ratio` is present only at stores whose page is flagged
+
+The page advertises **one unit**, so amount / page price is partly a basket size, not an overcharge.
+On seed 42's honest traffic the median is 1.0 but **20% of payments sit at or above 1.5 and 15% at
+or above 3**, up to 40x (bulk orders). Two things went wrong when it was carried on every payment:
+
+- a learned rule on it alone would have flagged a sixth of all honest shoppers, and `about_payer`
+  returns True for it (correctly — it does describe the payment), so nothing would have stopped one;
+- measured: it **swamped the learning loop**. As a strong amount-relative-to-product-price signal for
+  the XGBoost voter it pushed round-10 cost to 0 on seed 42, and reflection then deployed **no rules
+  at all over 10 rounds** — `test_the_defense_actually_learned` and
+  `test_freezing_lets_losses_climb_and_unfreezing_recovers` both failed, because there was nothing
+  left to learn and freezing changed nothing.
+
+**Now:** it is computed only where merchant risk actually is — at a store whose page scores at or
+above the detector's threshold (`PAGE_RISK_THRESHOLD` in `engine/features.py`). That is a judgement
+about the page, computed from the page and never from a label. Basket size at honest stores stays
+with the velocity lane, which already has `v_amount_cents` and `v_price_ratio`. Reflection deploys
+rules again and every M10 number is unchanged (the subtle hijacks are at poisoned stores by
+definition, which is where the feature lives).
+
+**For Stanley:** this is worth knowing as a general hazard — a feature that is informative *and*
+always present can quietly end the learning story the demo is built on. Worth a test that asserts
+reflection still has something to do.
+
+### M10-g. `build_engine` handed simulated URLs to Apify
+
+`engine/entrypoints.py` built the page scanner with `make_page_scanner(...)`, which is an
+`ApifyPageScanner` whenever `APIFY_TOKEN` is set. Once every merchant had a page (M10) that meant
+the engine would try to scrape `https://m-voltmart.shop.example/...` and the malicious merchants'
+storefronts over the network: a few hundred failed scrapes a round, on a paid actor, on the
+decision path's warm-up.
+
+**Now:** `_scanner(world)` returns `WorldPageScanner(world.pages, fallback=make_page_scanner(...))`,
+so simulated pages are read out of the world and only real URLs reach Apify, with the fixture pages
+behind that. `build_engine` builds the world first so the scanner can read it. Covered by
+`test_simulated_pages_never_reach_the_apify_fallback` and
+`test_the_production_engine_reads_simulated_pages_locally`.
+
+### M10-h. `PageScan` has no currency, so a foreign price is shown as dollars
+
+`PageScan.listed_price_cents` is a bare integer. The live scrape of a real store read `£51.77`
+correctly as 5177, and the Merchant Scanner then told the user "Listed price: $51.77". Harmless in
+the simulation (everything is USDC) and wrong on any real non-US storefront, which is exactly what
+the Merchant Scanner is pointed at.
+
+**Suggested:** `currency: str = "USD"` on `PageScan`, set by the parser from the symbol it matched.
+**Doing instead:** nothing; the parser knows the symbol and throws it away. Flagged rather than
+worked around, because a wrong currency on screen is worse than no price.
+
+### M10-e. `merchant_pages` has no `run_id`, so `get_rows` cannot read it back
+
+`ROW_TABLES["merchant_pages"]` is `("url", "merchant_id", "payload")` and `LogStore.get_rows`
+filters on `run_id`, so `get_rows("merchant_pages", run)` always returns `[]`. That is arguably
+right — a URL's scan is not run-specific — but it means the only way to read scans back is
+`store.rows["merchant_pages"]` on a `MemoryStore`. The dashboard will want a query that does not
+filter by run. No change made.
+
 ### S8 and M11 (Stanley)
 
 No schema changes. M11 uses the existing `ThreatReport`, `ThreatPattern`, `ThreatIntelItem` and

@@ -25,7 +25,7 @@ TEAM = "agent1qteam"
 
 @pytest.fixture(scope="module")
 def ten_rounds():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], arena=False, hijacker=False)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], arena=False, hijacker=False, merchants=False)
     metrics = [engine.run_round(requested_by=TEAM) for _ in range(10)]
     return engine, metrics
 
@@ -59,7 +59,7 @@ def test_the_escalation_rate_falls_by_round_10(ten_rounds):
 
 def test_the_precompute_cap_holds_when_it_binds():
     engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()], escalation_cap=5,
-                         arena=False, hijacker=False)
+                         arena=False, hijacker=False, merchants=False)
     for _ in range(3):
         m = engine.run_round(requested_by=TEAM)
         assert m.escalation_rate * 400 <= 5
@@ -161,6 +161,13 @@ def test_a_code_block_is_never_relaxed_straight_to_allow():
 
 
 def test_a_poisoned_merchant_page_is_scanned_and_cited():
+    """M10: the page is scanned and cited, but on its own it only buys a step-up.
+
+    Every shopper at a store reads the same page, so a poisoned page says nothing about *this*
+    payer: honest people do buy from bad stores, and blocking them all put the false-positive rate
+    over its cap. A block needs the page plus something about this payment showing the hidden text
+    actually worked on the agent.
+    """
     pipeline = DefensePipeline()
     investigator = Investigator(Brain(), pipeline, StubPageScanner(),
                                 page_url_for=lambda tx: f"https://{tx.merchant_id}.example/poison-widget")
@@ -170,6 +177,19 @@ def test_a_poisoned_merchant_page_is_scanned_and_cited():
     final, _ = investigator.investigate(tx, features, decision)
     tools = [c.tool for c in final.investigator.tool_calls]
     assert "scan_page" in tools
+    assert final.action == Action.STEP_UP and "page" in final.investigator.reasons.lower()
+
+
+def test_a_poisoned_page_blocks_when_the_purchase_is_off_mandate():
+    """The same poisoned page, plus a purchase outside what the owner authorized: that blocks."""
+    pipeline = DefensePipeline()
+    investigator = Investigator(Brain(), pipeline, StubPageScanner(),
+                                page_url_for=lambda tx: f"https://{tx.merchant_id}.example/poison-widget")
+    tx, features, decision = _close_call()
+    hijacked = features.model_copy(update={"values": {**features.values, "m_category_allowed": 0.0}})
+    other = sample_tx("tx-past")
+    investigator.remember(other, FeatureVector(tx_id=other.tx_id, values={"b_memo_injection": 0.0}), decision, False)
+    final, _ = investigator.investigate(tx, hijacked, decision)
     assert final.action == Action.BLOCK and "page" in final.investigator.reasons.lower()
 
 

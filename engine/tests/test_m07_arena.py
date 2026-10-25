@@ -146,7 +146,7 @@ TEAM = "agent1qteam"
 @pytest.fixture(scope="module")
 def run():
     engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, voters=[XGBoostVoter()],
-                         held_out=held_out_attackers(), hijacker=False)
+                         held_out=held_out_attackers(), hijacker=False, merchants=False)
     held_before_round_1 = len(engine.arena.held_out_records) + len(engine.arena.held_out_attackers)
     metrics = [engine.run_round(requested_by=TEAM) for _ in range(10)]
     return engine, metrics, held_before_round_1
@@ -295,10 +295,10 @@ def test_a_restart_picks_the_arena_back_up():
     from engine.store import MemoryStore
 
     store = MemoryStore()
-    first = FraudEngine(store=store, run_id="arena-resume", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False)
+    first = FraudEngine(store=store, run_id="arena-resume", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False)
     for _ in range(3):
         first.run_round(requested_by=TEAM)
-    again = FraudEngine(store=store, run_id="arena-resume", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False)
+    again = FraudEngine(store=store, run_id="arena-resume", world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False)
     before = {sid: sorted(s.entries) for sid, s in first.archive.shelves.items() if s.entries}
     after = {sid: sorted(s.entries) for sid, s in again.archive.shelves.items() if s.entries}
     assert after == before and again.arena.last_spawn == first.arena.last_spawn
@@ -310,7 +310,7 @@ def test_seeded_arena_runs_are_reproducible_across_processes():
 
     script = ("from engine.arena import sandbox; sandbox.TUNING_TRIES = 10\n"
               "from engine.engine import FraudEngine\nfrom engine.sim.marketplace import MarketplaceWorld\n"
-              "e = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={'t'}, hijacker=False)\n"
+              "e = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={'t'}, hijacker=False, merchants=False)\n"
               "print([(m.loss_merchant_side_cents, m.exploitability_cents) for m in [e.run_round(requested_by='t') for _ in range(3)]])")
     outputs = set()
     for hash_seed in ("0", "1"):

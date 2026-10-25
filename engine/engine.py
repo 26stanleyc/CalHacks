@@ -40,22 +40,25 @@ from contracts.api import team_allowlist
 from contracts.entrypoints import NotAllowed
 from contracts.interfaces import PageScanner, Settlement
 from contracts.schemas import (Action, AttackerRecord, AttackFeedback, Decision, FeatureVector, GroundTruth, Lane, Mandate,
-                               PageScan, RoundMetrics,
+                               PageScan, RoundMetrics, Side,
                                ThreatIntelItem, Transaction)
 from contracts.stubs import StubPageScanner, StubSettlement
 from engine.arena.archive import Archive
 from engine.arena.arena import Arena
 from engine.arena.hijacker import HijackerAttacker
+from engine.arena.merchant import MaliciousMerchantAttacker
 from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain, parallel
+from engine.features import PageRisk
 from engine.intel.corpus import CorpusSource
 from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
 from engine.investigator import Investigator
 from engine.learning.labels import Record, realized_cost
 from engine.learning.loop import LearningLoop
 from engine.pipeline import DefensePipeline
+from engine.sim.pages import WorldPageScanner
 from engine.sim.world import World
 from engine.store import LogStore, MemoryStore, log_bundle
 
@@ -99,6 +102,10 @@ def with_tx_id(decision: Decision, tx_id: str) -> Decision:
 
 
 class FraudEngine:
+    """`hijacker` and `merchants` switch the M9 and M10 lineages on; both default to on. A test
+    written before a lineage existed passes it False, so its traffic mix keeps the meaning it had
+    when its numbers were chosen."""
+
     def __init__(self, store: LogStore | None = None, pipeline: DefensePipeline | None = None, run_id: str | None = None,
                  seed: int = 42, allowlist: set[str] | None = None, scanner: PageScanner | None = None,
                  settlement: Settlement | None = None, live_settlement: Settlement | None = None,
@@ -106,8 +113,8 @@ class FraudEngine:
                  fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
-                 arena: bool = True, hijacker: bool = True, drafts: bool = False, threat_intel: bool = False,
-                 intel_watch: bool = True, threat_source=None, stacking: bool = True):
+                 arena: bool = True, hijacker: bool = True, merchants: bool = True, drafts: bool = False,
+                 threat_intel: bool = False, intel_watch: bool = True, threat_source=None, stacking: bool = True):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -118,7 +125,10 @@ class FraudEngine:
         self.pipeline = pipeline or DefensePipeline(identities=self.world.identities, voters=voters,
                                                     product_text=self.world.product_text)
         self.allowlist = allowlist if allowlist is not None else team_allowlist()
-        self.scanner = scanner or StubPageScanner()
+        # The world serves a product page for every product (M10), so the default scanner reads
+        # those. It scores them with the same detector that scores a real scraped page.
+        self.scanner = scanner or (WorldPageScanner(self.world.pages) if hasattr(self.world, "pages")
+                                   else StubPageScanner())
         self.settlement = settlement or StubSettlement()  # every allowed round payment; must be a stub
         # The demo's live tail: at most `live_per_round` honest allowed payments per round also go
         # through real x402, at a token amount within the testnet cap (spec M13).
@@ -133,7 +143,11 @@ class FraudEngine:
                              role=("outsider_a", "outsider_b")[i % 2], mandate_for=self.world.fraud_mandate)
             for i, persona in enumerate(PERSONAS)] + ([  # the hijacker lineage joined in M9
             HijackerAttacker(self.brain, self.world.products, self.world.identities, self.world.round_seconds,
-                             self.world.victims(), role="outsider_a")] if hijacker else [])
+                             self.world.victims(), role="outsider_a")] if hijacker else []) + ([
+            # the malicious merchant joined in M10: the only buyer-side lineage
+            MaliciousMerchantAttacker(self.brain, self.world.products, self.world.identities,
+                                      self.world.round_seconds, self.world.victims(), self.scanner,
+                                      role="outsider_b")] if merchants and hasattr(self.world, "pages") else [])
         self.frozen = False
         self.paused: str | None = None
         self.round_budget_usd = round_budget_usd
@@ -143,8 +157,12 @@ class FraudEngine:
         self.learning = LearningLoop(self.pipeline, self.brain, self.store, self.run_id, FP_CAP, lock=self._lock,
                                      drafts=drafts, stacking=stacking)
         self.escalation_cap = escalation_cap
-        self.investigator = Investigator(self.brain, self.pipeline, self.scanner,
-                                         page_url_for=getattr(self.world, "page_url_for", lambda tx: None))
+        self.page_url_for = getattr(self.world, "page_url_for", lambda tx: None)
+        self.investigator = Investigator(self.brain, self.pipeline, self.scanner, page_url_for=self.page_url_for)
+        # Merchant-risk features read cached page scans only (spec 3.2): pages are scanned once per
+        # round in _prime_pages, never on a payment's decision path.
+        self.page_risk = PageRisk(self.scanner, self.page_url_for)
+        self.pipeline.features.page_risk = self.page_risk
         self.escalation_seconds: list[float] = []  # every escalated case's decision time
         # The threat-intel watchlist (M11, bonus): needs the arena (its attackers join the archive).
         # intel_watch=False is the "intel off" ablation: the attackers still arrive, no watch rules.
@@ -291,6 +309,7 @@ class FraudEngine:
                 round_no = self.round
                 frozen = self.frozen
             costs = self.pipeline.orchestrator.costs
+            page_rows = self._prime_pages()  # malicious storefronts' pages, then every page's scan
             extras = self.arena.attackers_for_round(round_no, self.pipeline) if self.arena else []  # spawned and archive
             intel = [(a, INTEL_PAYMENTS) for a in self.watchlist.running(round_no)] if self.watchlist else []
             running = [(a, self.fraud_per_persona) for a in self.attackers] + intel + extras
@@ -334,6 +353,8 @@ class FraudEngine:
                     parallel(lambda attacker: attacker.observe(feedback[attacker.attacker_id]), [a for a, _ in running])
                     for attacker, _ in running:
                         self._log_wave(attacker, round_no)
+                self.store.log_rows("merchant_pages", page_rows)
+                self.store.log_rows("shopper_sessions", self._session_rows(round_no, running))
                 if self.arena:
                     self.arena.after_waves(round_no, records, self.attackers + [a for a, _ in intel])
                 if not frozen:  # labeled cases for the investigator's similar_cases (a frozen defense keeps no labels)
@@ -350,9 +371,13 @@ class FraudEngine:
                 spend = self._log_spend(round_no, spend_before, self.brain.spend())
                 legit = [r for r in records if not r.truth.is_fraud and not r.truth.breaches_mandate]  # see CONTRACT_NOTES
                 learned = self.last_learning
+                losses = self._losses_by_side(records, running)
+                sessions = self._session_rows(round_no, running)
+                hijacked = [row for row in sessions if row["hijacked"]]
                 metrics = RoundMetrics(
                     run_id=self.run_id, seed=self.seed, round=round_no, defense="full",
-                    loss_merchant_side_cents=sum(r.tx.amount_cents for r in records if r.truth.is_fraud and r.settled),
+                    loss_merchant_side_cents=losses[Side.MERCHANT], loss_buyer_side_cents=losses[Side.BUYER],
+                    hijack_rate=sum(self._got_through(row, records) for row in hijacked) / len(sessions) if sessions else 0.0,
                     false_positive_rate=sum(r.decision.action != Action.ALLOW for r in legit) / max(1, len(legit)),
                     escalation_rate=escalated / max(1, len(records)), frozen=frozen,
                     total_attacker_profit_cents=self.archive.total_profit(),
@@ -373,6 +398,65 @@ class FraudEngine:
             with self._lock:
                 self._round_decisions = {}
         return metrics
+
+    def _prime_pages(self) -> list[dict]:
+        """Publish every malicious storefront's current pages into the world, then scan whatever is
+        not already cached (spec 3.2, M10). Returns merchant_pages rows for the scans taken now.
+
+        This is the whole reason merchant risk is affordable on the decision path: the page is
+        fetched and scored once here, and every payment at that store then reads a number.
+        """
+        store = getattr(self.world, "pages", None)
+        for attacker in self.attackers:
+            pages = getattr(attacker, "pages", None)
+            if pages is None or store is None:
+                continue
+            published = pages()
+            for url, (html, merchant_id) in published.items():
+                store.put(url, html, merchant_id)
+            # A rewritten playbook hides different text, so the old scan is stale.
+            self.page_risk.forget(published)
+            attacker.forget_pages()
+        urls = self.world.page_urls() if hasattr(self.world, "page_urls") else []
+        fresh = self.page_risk.prime(urls)
+        return [{"url": scan.url, "merchant_id": scan.merchant_id, "payload": scan.model_dump(mode="json")}
+                for scan in fresh]
+
+    @staticmethod
+    def _losses_by_side(records: list, running: list) -> dict:
+        """Settled fraud, split by which side of the market lost the money (M10).
+
+        The side comes from the attacker's own playbook shelf, which is what bench/metrics.py reads,
+        so the engine's live number and Ryan's recomputed one agree. Merchant-side is every other
+        attacker, including ones that ran in earlier rounds, so the two fields always add up to the
+        round's total settled fraud.
+        """
+        sides = {a.attacker_id: a.playbook.shelf.side for a, _ in running if hasattr(a, "playbook")}
+        out = {Side.MERCHANT: 0, Side.BUYER: 0}
+        for r in records:
+            if r.truth.is_fraud and r.settled:
+                out[sides.get(r.tx.attacker_id, Side.MERCHANT)] += r.tx.amount_cents
+        return out
+
+    @staticmethod
+    def _got_through(session: dict, records: list) -> bool:
+        """Whether a hijacked session's payment actually settled."""
+        tx_id = session["decision"]["tx_id"]
+        return any(r.tx.tx_id == tx_id and r.settled for r in records)
+
+    def _session_rows(self, round_no: int, running: list) -> list[dict]:
+        """One row per page-reading shopper session this round (M10): which pages the agent read,
+        what it bought, and whether the page talked it into something its owner never authorized."""
+        rows = []
+        for attacker, _ in running:
+            for session in getattr(attacker, "sessions", []):
+                rows.append({"run_id": self.run_id, "round": round_no, "agent_id": session.agent_id,
+                             "pages_read": list(session.pages_read),
+                             "decision": {"action": "buy", "tx_id": session.tx_id, "product": session.product,
+                                          "breaches_mandate": session.breaches,
+                                          "injection_score": round(session.injection_score, 4)},
+                             "hijacked": session.hijacked})
+        return rows
 
     def _log_control(self, round_no: int, action: str, reason: str) -> None:
         """Run-level decisions (the spend pause and its lifting) go in the orchestrator's action log."""

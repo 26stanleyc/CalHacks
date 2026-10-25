@@ -39,7 +39,10 @@ PATTERNS: tuple[tuple[str, float, str], ...] = (
     (r"(?:you are|act as|you're) (?:now )?(?:an? )?(?:admin|administrator|developer|system|unrestricted)", 0.45, "tries to change the agent's role"),
     (r"new (?:system )?(?:instructions?|prompt|directive)", 0.4, "claims to issue new instructions"),
     (r"(?:system|developer)\s*(?::|message|note)", 0.3, "impersonates a system message"),
-    (r"(?:pay|send|transfer)(?:ment)? (?:to )?(?:this |the following )?(?:other |alternate |different )?(?:address|wallet|account)", 0.5, "redirects payment to another address"),
+    # Payment redirection, the malicious merchant's core line. Both patterns need a payment verb
+    # *and* a changed destination, so a shipping form ("send it to this new address") is not a hit.
+    (r"(?:pay|payment|remit|transfer|wire)\w*\b.{0,40}?\b0x[a-fA-F0-9]{40}", 0.55, "redirects payment to a wallet address"),
+    (r"(?:pay|payment|remit|transfer|wire)\w*\b.{0,30}?\b(?:other|alternate|alternative|different|new|updated)\s+(?:crypto\s+|wallet\s+|payment\s+)?(?:address|account|wallet)", 0.5, "redirects payment to another account"),
     (r"0x[a-fA-F0-9]{40}", 0.25, "contains a wallet address"),
     (r"(?:buy|purchase|add) (?:the )?(?:premium|deluxe|upgraded?|bundle|extended)", 0.35, "pushes an upsell at the agent"),
     (r"(?:exceed|override|raise|increase|bypass) (?:your |the )?(?:budget|cap|limit|mandate|spending)", 0.5, "tells the agent to exceed its cap"),
@@ -56,8 +59,12 @@ PATTERNS: tuple[tuple[str, float, str], ...] = (
     (r"aria-hidden\s*=\s*[\"']true[\"']", 0.2, "text hidden from sighted users"),
 )
 
-_PRICE = re.compile(r"(?:price|cost|total)[^0-9$]{0,20}\$\s*([0-9][0-9,]*(?:\.[0-9]{2})?)", re.IGNORECASE)
-_ANY_PRICE = re.compile(r"\$\s*([0-9][0-9,]*(?:\.[0-9]{2})?)")
+# Real storefronts price in more than dollars, and a page whose price we cannot read loses the
+# price-consistency check, so the symbol class matters. Amounts are still read as major units.
+_CURRENCY = r"[$\u00a3\u20ac\u00a5]|USD|EUR|GBP"
+_PRICE = re.compile(rf"(?:price|cost|total)[^0-9]{{0,20}}(?:{_CURRENCY})\s*([0-9][0-9,]*(?:\.[0-9]{{2}})?)",
+                    re.IGNORECASE)
+_ANY_PRICE = re.compile(rf"(?:{_CURRENCY})\s*([0-9][0-9,]*(?:\.[0-9]{{2}})?)", re.IGNORECASE)
 
 
 def _now() -> datetime:
@@ -112,8 +119,13 @@ def listed_price_cents(text: str) -> int | None:
     match = _PRICE.search(text) or _ANY_PRICE.search(text)
     if match is None:
         return None
+    raw = match.group(1)
+    # A comma before exactly two final digits, with no dot anywhere, is a decimal comma
+    # ("19,99" is 19.99); otherwise it separates thousands ("1,299" is 1299).
+    if "." not in raw and re.fullmatch(r"\d+,\d{2}", raw):
+        raw = raw.replace(",", ".")
     try:
-        return round(float(match.group(1).replace(",", "")) * 100)
+        return round(float(raw.replace(",", "")) * 100)
     except ValueError:
         return None
 

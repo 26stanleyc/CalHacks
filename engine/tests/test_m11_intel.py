@@ -26,7 +26,7 @@ SOURCE_REPORTS = sorted(REPORTS, key=lambda r: (r.report_id not in ORDER, ORDER.
 
 
 def _run(intel_on: bool):
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, threat_intel=True,
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False, threat_intel=True,
                          intel_watch=intel_on, threat_source=CorpusSource(SOURCE_REPORTS))
     return engine, [engine.run_round(requested_by=TEAM) for _ in range(ROUNDS)]
 
@@ -111,7 +111,7 @@ def test_a_watch_rule_never_relaxes_a_block_that_holds_without_it():
 
 
 def test_promotion_waits_for_room_under_the_rule_cap():
-    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, threat_intel=True)
+    engine = FraudEngine(world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False, threat_intel=True)
     loop, wl = engine.learning, engine.watchlist
     filler = [Rule(id=f"velocity.fill_{i}", when={"feature": "v_sum_agent_3600s", "op": ">=", "value": 100 + i},
                    score=0.1, description="filler") for i in range(MAX_RULES)]
@@ -169,7 +169,7 @@ def test_watch_rules_catch_fraud(on):
 
 def test_a_restarted_run_picks_the_watchlist_back_up():
     store = MemoryStore()
-    make = lambda: FraudEngine(store=store, world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False,
+    make = lambda: FraudEngine(store=store, world=MarketplaceWorld(seed=42), allowlist={TEAM}, hijacker=False, merchants=False,
                                threat_intel=True, run_id="intel-resume", tuning_tries=5)
     first = make()
     for _ in range(3):
