@@ -420,11 +420,20 @@ blockquote {
 .phish-score .tagteam dd { color: var(--seraph); }
 .phish-score .xgb dd { color: var(--model); }
 .phish-log { min-height: 0; display: grid; grid-template-rows: auto 1fr; background: #0a1b17; border: 2px solid var(--edge); border-radius: 18px; overflow: hidden; }
-.phish-cols, .phish-log li:not(.night) {
-  display: grid; grid-template-columns: 112px 120px 150px 96px minmax(0, 1.6fr) minmax(0, 0.8fr); gap: 12px; align-items: baseline;
-  padding: 5px 16px; font: 13px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+.phish-cols, .phish-log li { display: grid; grid-template-columns: 1fr 1fr; }
+.phish-log .side {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr) 72px minmax(0, 1.05fr); gap: 10px; align-items: baseline;
+  padding: 5px 14px; font: 12.5px/1.45 ui-monospace, "SF Mono", Menlo, monospace; min-width: 0;
 }
-.phish-cols { font-family: var(--text); font-size: 11.5px; font-weight: 700; color: var(--ink-soft); border-bottom: 1px solid var(--edge); padding-top: 8px; padding-bottom: 7px; }
+.phish-log .side.tagteam { border-left: 2px solid var(--edge); }
+.phish-cols .side { font: 700 11.5px var(--text); color: var(--ink-soft); border-bottom: 1px solid var(--edge); padding-top: 8px; padding-bottom: 7px; }
+.phish-cols .side b { grid-column: 1 / -1; font: 800 15px var(--display); }
+.phish-cols .side.xgb b { color: var(--model); }
+.phish-cols .side.tagteam b { color: var(--seraph); }
+.phish-log li.caught.caught { box-shadow: inset 3px 0 0 var(--imp), inset -3px 0 0 #7fe3a1; }
+.phish-log li.caught .side.tagteam { background: rgba(127, 227, 161, 0.08); }
+.phish-log .caught-tag { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 6px; background: #7fe3a1; color: var(--on-light); font: 700 10.5px var(--text); font-style: normal; }
+.phish-log li.night .side { display: block; font: 13px/1.45 var(--text); padding: 9px 14px; }
 .phish-log ol { margin: 0; padding: 4px 0 10px; list-style: none; overflow-y: auto; }
 .phish-log { position: relative; }
 .phish-log .latest {
@@ -438,16 +447,14 @@ blockquote {
 .phish-log li .amount { text-align: right; font-variant-numeric: tabular-nums; }
 .phish-log li.scam { background: rgba(229, 56, 59, 0.13); box-shadow: inset 3px 0 0 var(--imp); }
 .phish-log li.other-scam { background: rgba(229, 56, 59, 0.06); }
-.phish-log .tag { margin-left: 8px; padding: 1px 6px; border-radius: 6px; background: var(--imp); color: #fff; font: 700 10.5px var(--text); font-style: normal; text-transform: uppercase; letter-spacing: 0.04em; }
+.phish-log .tag { display: table; margin-top: 2px; padding: 1px 6px; border-radius: 6px; background: var(--imp); color: #fff; font: 700 10.5px var(--text); font-style: normal; text-transform: uppercase; letter-spacing: 0.04em; }
 .phish-log .verdict { color: var(--ink-soft); }
 .phish-log .verdict small { display: block; font-size: 11.5px; color: var(--ink-soft); }
 .phish-log .verdict.fraud.stopped { color: #7fe3a1; font-weight: 700; }
 .phish-log .verdict.fraud.through { color: #ff8a7a; font-weight: 700; }
 .phish-log .verdict:not(.fraud).stopped { color: #f4c26b; }
-.phish-log li.night {
-  margin: 10px 16px; padding: 9px 14px; border-radius: 12px; background: rgba(125, 156, 245, 0.12); box-shadow: inset 0 0 0 1px rgba(125, 156, 245, 0.35);
-  font-size: 13.5px; color: var(--ink);
-}
+.phish-log li.night { margin: 8px 0; background: rgba(125, 156, 245, 0.1); color: var(--ink); }
+.phish-log li.night .side.xgb { color: var(--ink-soft); }
 .phish-log li.night b { color: #b4c8ff; }
 .phish-controls { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; background: var(--paper); border: 2px solid var(--edge); border-radius: 22px; padding: 10px 16px; }
 .phish-controls .source { margin: 0; font-size: 12px; color: var(--ink-soft); }
@@ -455,6 +462,5 @@ blockquote {
   .phishing { padding: 60px 12px 12px; }
   .phish-head { grid-template-columns: 1fr; }
   .phish-score { grid-column: 1; grid-row: auto; }
-  .phish-cols { display: none; }
-  .phish-log li:not(.night) { grid-template-columns: 1fr 1fr; }
+  .phish-log .side { grid-template-columns: 1fr; gap: 0; }
 }

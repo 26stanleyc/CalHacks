@@ -170,45 +170,71 @@ export function PhishingLog() {
       </header>
 
       <section className="phish-log" aria-label="Payment log">
+        {/* Two logs on one scroll: the same payments, row for row, XGBoost's decisions left and TagTeam's right. */}
         <div className="phish-cols" aria-hidden="true">
-          <span>Time (UTC)</span>
-          <span>From</span>
-          <span>To</span>
-          <span>Amount</span>
-          <span>TagTeam</span>
-          <span>XGBoost</span>
+          {(["xgb", "tagteam"] as const).map((side) => (
+            <div key={side} className={`side ${side}`}>
+              <b>{side === "xgb" ? "XGBoost, trained once" : "TagTeam"}</b>
+              <span>Time (UTC)</span>
+              <span>From → to</span>
+              <span>Amount</span>
+              <span>Decision</span>
+            </div>
+          ))}
         </div>
         <ol ref={feed} aria-live="polite" onScroll={onScroll}>
           {rows.slice(0, shown).map((r) =>
             r.kind === "night" ? (
               <li key={r.key} className="night">
-                <b>Night after {r.day}.</b> The day's payments are confirmed. TagTeam learns them: {short(log.address)} now has{" "}
-                <b>
-                  {r.reports} confirmed phishing {r.reports === 1 ? "report" : "reports"}
-                </b>{" "}
-                in its memory. XGBoost was trained once, before this week: its memory still holds {r.frozen}.
+                <div className="side xgb">
+                  <b>Night after {r.day}.</b> XGBoost was trained once, before this week, and stays frozen: it learns nothing
+                  from today. Its memory of {short(log.address)}: <b>{r.frozen} reports</b>.
+                </div>
+                <div className="side tagteam">
+                  <b>Night after {r.day}.</b> The day's payments are confirmed and TagTeam learns them: {short(log.address)} now
+                  has{" "}
+                  <b>
+                    {r.reports} confirmed phishing {r.reports === 1 ? "report" : "reports"}
+                  </b>{" "}
+                  in its memory.
+                </div>
               </li>
             ) : (
-              <li key={r.line.tx_id} className={r.line.scam ? "scam" : r.line.phishing ? "other-scam" : ""}>
-                <span className="time">{when(r.line.ts)}</span>
-                <span className="addr">{short(r.line.from)}</span>
-                <span className="addr">
-                  {short(r.line.to)}
-                  {r.line.scam && <i className="tag">scam</i>}
-                </span>
-                <span className="amount">{money(r.line.amount_cents)}</span>
-                <span className={`verdict ${r.line.tagteam.settled ? "through" : "stopped"}${r.line.phishing ? " fraud" : ""}`}>
-                  {verb(r.line.tagteam)}
-                  {!r.line.tagteam.settled && r.line.phishing && (
-                    <small>
-                      {r.line.reports} prior {r.line.reports === 1 ? "report" : "reports"}
-                      {reasons(r.line.tagteam.why).length ? `: ${reasons(r.line.tagteam.why).join(", ")}` : ""}
-                    </small>
-                  )}
-                </span>
-                <span className={`verdict ${r.line.xgboost.settled ? "through" : "stopped"}${r.line.phishing ? " fraud" : ""}`}>
-                  {verb(r.line.xgboost)}
-                </span>
+              <li
+                key={r.line.tx_id}
+                className={[
+                  r.line.scam ? "scam" : r.line.phishing ? "other-scam" : "",
+                  r.line.phishing && !r.line.tagteam.settled && r.line.xgboost.settled ? "caught" : "",
+                ].join(" ")}
+              >
+                {(["xgb", "tagteam"] as const).map((side) => {
+                  const v = side === "xgb" ? r.line.xgboost : r.line.tagteam;
+                  return (
+                    <div key={side} className={`side ${side}`}>
+                      <span className="time">
+                        {when(r.line.ts)}
+                        {r.line.scam && <i className="tag">scam</i>}
+                      </span>
+                      <span className="addr">
+                        {short(r.line.from)} → {short(r.line.to)}
+                      </span>
+                      <span className="amount">{money(r.line.amount_cents)}</span>
+                      <span className={`verdict ${v.settled ? "through" : "stopped"}${r.line.phishing ? " fraud" : ""}`}>
+                        {verb(v)}
+                        {r.line.phishing && v.settled && <small>{money(r.line.amount_cents)} lost</small>}
+                        {side === "tagteam" && !v.settled && r.line.phishing && (
+                          <small>
+                            {r.line.reports} prior {r.line.reports === 1 ? "report" : "reports"}
+                            {reasons(v.why).length ? `: ${reasons(v.why).join(", ")}` : ""}
+                          </small>
+                        )}
+                        {side === "tagteam" && r.line.phishing && !v.settled && r.line.xgboost.settled && (
+                          <i className="caught-tag">XGBoost missed this</i>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </li>
             ),
           )}
