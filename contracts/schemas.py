@@ -153,7 +153,7 @@ class Vote(BaseModel):
 
 class ToolCall(BaseModel):
     tool: str  # graph_lookup | scan_page | identity_check | similar_cases | specialist_detail,
-    # or a CRS check: crs_data_prefill | crs_identity_verification | crs_fraud_finder
+    # or a CRS check: crs_data_prefill | crs_data_append | crs_identity_verification | crs_fraud_finder
     input: dict = Field(default_factory=dict)
     output_summary: str = ""
 
@@ -172,11 +172,12 @@ class CrsReport(BaseModel):
     tx_id: str
     score: float  # the Decision's weighted_score that put it in the band
     band: tuple[float, float]  # (low, high), inclusive
-    tool_calls: list[ToolCall] = Field(default_factory=list, max_length=3)  # prefill, identity, FraudFinder, in order
+    tool_calls: list[ToolCall] = Field(default_factory=list, max_length=3)  # data append (either way), identity, FraudFinder
     decision: Action
     reasons: str
     mocked: bool = True  # False only when the calls went to the real CRS API
     watch: Literal["added", "on_list"] | None = None  # FraudFinder flagged this person now, or earlier
+    hidden: list[str] = Field(default_factory=list)  # details the payer didn't send: name_address, phone, email
 
 
 class Decision(BaseModel):

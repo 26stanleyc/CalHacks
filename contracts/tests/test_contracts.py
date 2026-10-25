@@ -164,6 +164,6 @@ def test_decision_carries_an_optional_crs_report():
                                tool_calls=[schemas.ToolCall(tool="crs_identity_verification", output_summary="review")])
     checked = plain.model_copy(update={"crs": report})
     assert schemas.Decision.model_validate_json(checked.model_dump_json()).crs == report
-    assert report.watch is None
+    assert report.watch is None and report.hidden == []
     watched = report.model_copy(update={"watch": "on_list", "tool_calls": []})
     assert schemas.CrsReport.model_validate_json(watched.model_dump_json()).watch == "on_list"

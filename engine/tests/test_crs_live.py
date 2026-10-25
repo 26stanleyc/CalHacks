@@ -179,3 +179,11 @@ def test_crs_escalation_picks_the_client(monkeypatch):
     monkeypatch.setenv("CRS_PASSWORD", "p")
     live = crs_from_env({}, set()).client
     assert isinstance(live, HttpCrs) and live._token is None  # no login until the first in-band payment
+
+
+def test_forward_append_is_answered_locally_and_never_sent():
+    sandbox = FakeSandbox()
+    crs = client(sandbox, {"farm-1": IdentityStatus.THIN_FILE})
+    out = crs.data_append("farm-1")
+    assert sandbox.requests == [] and sandbox.logins == 0 and out["simulated"]
+    assert out["status"] == ("no_match" if crs.persona("farm-1") in ("P04", "P13") else "found")

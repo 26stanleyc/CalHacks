@@ -1,21 +1,31 @@
 """CRS escalation for uncertain payments (spec 11, CRS; added after M0).
 
 A payment whose combined score (`Decision.weighted_score`) falls inside the uncertain band
-[CRS_BAND_LOW, CRS_BAND_HIGH] gets three CRS checks, in this order:
+[CRS_BAND_LOW, CRS_BAND_HIGH] gets up to three CRS checks, in this order:
 
-1. Data Prefill, only when there's too little data on the principal (a thin or unknown identity
-   profile, or under a day of history): pull what CRS has on them.
-2. Identity Verification on that data (or on the profile we already hold).
-3. FraudFinder, CRS's email-centric fraud score, when identity verification didn't settle it. A
-   passed identity check only says the person exists, not that they authorized this payment.
+1. Data Append (AccurateAppend), to fill in what the payer didn't send or what we don't know:
+   - Reverse (phone or email in, name and address out; `data_prefill`): when the payer hid their
+     name and address, or there's too little data on them (a thin or unknown identity profile, or
+     under a day of history).
+   - Forward (name and address in, phone and email out; `data_append`): when the payer sent no
+     phone and no email, and only if the score is at least CRS_APPEND_MIN_SCORE (default 0.5).
+2. Identity Verification, when there's a name and address to verify (sent or appended).
+3. FraudFinder, CRS's email-centric fraud score, when there's an email (sent or appended) and
+   identity verification didn't fail. A passed identity check only says the person exists, not that
+   they authorized this payment.
+
+Honest shoppers send all their details. Some attacker-made accounts hide them (`hidden_details`):
+throwaway accounts often send no phone or email, or no name and address; bought identities sometimes
+send no contact details. That tests whether CRS still works on partial data.
 
 How the results fold into the decision:
-| CRS result                                 | Action  |
-|--------------------------------------------|---------|
-| identity verification fails                | block   |
-| FraudFinder risk is high                   | block   |
-| identity passes and FraudFinder risk is low| allow   |
-| anything else (review, medium risk, ...)   | step_up |
+| CRS result                                       | Action  |
+|--------------------------------------------------|---------|
+| identity verification fails                      | block   |
+| FraudFinder risk is high                         | block   |
+| identity passes and FraudFinder risk is low      | allow   |
+| anything else (review, medium risk, a check that | step_up |
+| couldn't run for missing details, ...)           |         |
 The investigator's guards apply too: never allow a payment whose memo reads as an injection, and
 a code block can only be relaxed to a step-up. Hard vetoes never reach CRS.
 
@@ -29,9 +39,12 @@ restarted run picks the list back up.
 
 Two clients behind the `CrsClient` interface, picked by CRS_ESCALATION (see `crs_from_env`):
 - `HttpCrs`, the real CRS sandbox (https://api-sandbox.stitchcredit.com/api): AccurateAppend reverse
-  lookup as the prefill, TransUnion TruValidate identity verification, and AtData FraudFinder. The
-  sandbox only answers for CRS's 20 test persons, so each simulated principal is played by one of
-  them, picked by what a bureau would know about that principal (`PERSONA_GROUPS`).
+  lookup, TransUnion TruValidate identity verification, and AtData FraudFinder. The sandbox only
+  answers for CRS's 20 test persons, so each simulated principal is played by one of them, picked by
+  what a bureau would know about that principal (`PERSONA_GROUPS`). Once Data Append has filled in a
+  hidden detail, the person's full canned request is sent (a partial one wouldn't match a test
+  person and would go to the live vendor). Forward append has no sandbox data, so `HttpCrs` answers
+  it locally from the test person and never sends it.
 - `MockCrs`, a simulated bureau for tests, benchmarks and offline runs.
 Both see the principal the same way: the bureau has files on the world's real people (everyone who
 exists when the engine starts) and not on accounts attackers make later. A hijacked real person
@@ -44,6 +57,7 @@ account), the payment keeps its code decision, stepping up instead of allowing, 
 import hashlib
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -68,7 +82,9 @@ class CrsClient(Protocol):
 
     mocked: bool
 
-    def data_prefill(self, principal_id: str) -> dict: ...
+    def data_prefill(self, principal_id: str) -> dict: ...  # reverse append: phone or email in, name and address out
+
+    def data_append(self, principal_id: str) -> dict: ...  # forward append: name and address in, phone and email out
 
     def identity_verification(self, principal_id: str, prefill: dict | None) -> dict: ...
 
@@ -88,6 +104,17 @@ def bureau_kind(identities: dict[str, IdentityStatus], on_file: set[str], princi
     if identity == IdentityStatus.VERIFIED:
         return "real_full" if real else "bought_full"  # a bought "verified" identity is a stolen real one
     return "real_thin" if real else "synthetic"
+
+
+def hidden_details(identities: dict[str, IdentityStatus], on_file: set[str], principal_id: str) -> tuple[str, ...]:
+    """What a payer leaves out of the identity details sent with a payment. Honest shoppers send
+    everything; some attacker-made accounts hide their contact details, or their name and address."""
+    kind, u = bureau_kind(identities, on_file, principal_id), _unit(principal_id, "hidden")
+    if kind == "synthetic":  # throwaway accounts
+        return ("phone", "email") if u < 0.35 else ("name_address",) if u < 0.55 else ()
+    if kind == "bought_full":  # a stolen identity, without the victim's contact details
+        return ("phone", "email") if u < 0.5 else ()
+    return ()
 
 
 def risk_level(score: int) -> str:
@@ -113,6 +140,12 @@ class MockCrs:
         fields = ["name", "address"] + ([] if thin else ["dob", "phone", "ssn_last4"])
         years = round((0.2 + 1.8 * u) if thin else (3 + 27 * u), 1)
         return {"status": "found", "fields": fields, "record_age_years": years}
+
+    def data_append(self, principal_id: str) -> dict:
+        kind, u = self._kind(principal_id), _unit(principal_id, "append")
+        if u < {"real_full": 0.95, "real_thin": 0.85, "bought_full": 0.8}.get(kind, 0.35):  # throwaways rarely link up
+            return {"status": "found", "found": ["email", "phone"]}
+        return {"status": "no_match", "found": []}
 
     def identity_verification(self, principal_id: str, prefill: dict | None) -> dict:
         kind, u = self._kind(principal_id), _unit(principal_id, "idv")
@@ -143,6 +176,7 @@ PERSONA_GROUPS = {
     "bought_full": ("P14", "P16"),  # a stolen real identity: deceased SSN, fraud alert on file
     "bad": ("P12", "P14"),
 }
+NO_CONTACT_RECORD = {"P04", "P13"}  # the test persons the reverse lookup has no record of
 FAIL_CODES = {"2201", "2202", "2301"}  # TruValidate: SSN issued to another name, SSN issued before the DOB, deceased SSN
 
 
@@ -241,6 +275,14 @@ class HttpCrs:
         persona, body = self._ask("data_prefill", "/accurate-append/reverse", principal_id)
         return {"persona": persona} | parse_prefill(body)
 
+    def data_append(self, principal_id: str) -> dict:
+        """Forward append has no sandbox test data (calls would go to the live AccurateAppend service),
+        so it's answered here from the test person and never sent."""
+        persona = self.persona(principal_id)
+        found = [] if persona in NO_CONTACT_RECORD else ["email", "phone"]
+        return {"persona": persona, "status": "found" if found else "no_match", "found": found,
+                "simulated": "no sandbox data for forward append; not sent"}
+
     def identity_verification(self, principal_id: str, prefill: dict | None) -> dict:
         persona, body = self._ask("identity_verification", "/transunion/identity-manager-verification/basic", principal_id)
         return {"persona": persona} | parse_identity(body)
@@ -258,6 +300,8 @@ class CrsEscalation:
     low: float = field(default_factory=lambda: _env_float("CRS_BAND_LOW", 0.30))
     high: float = field(default_factory=lambda: _env_float("CRS_BAND_HIGH", 0.70))
     max_per_round: int = field(default_factory=lambda: int(_env_float("CRS_MAX_PER_ROUND", MAX_PER_ROUND)))
+    append_min: float = field(default_factory=lambda: _env_float("CRS_APPEND_MIN_SCORE", 0.50))  # forward append from here
+    hidden: Callable[[str], tuple[str, ...]] | None = None  # what a payer didn't send (None: everyone sends everything)
     watched: dict[str, dict] = field(default_factory=dict)  # principal -> the FraudFinder flag that put them there
     new_watches: list[dict] = field(default_factory=list)  # additions the engine hasn't logged yet
 
@@ -286,52 +330,80 @@ class CrsEscalation:
     def check(self, tx: Transaction, features: FeatureVector, decision: Decision) -> Decision:
         """The decision after the CRS checks (call only for in-band payments)."""
         v = features.values
-        calls: list[ToolCall] = []
-        prefill = None
+        hidden = list(self.hidden(tx.principal_id)) if self.hidden else []
+        has_contact = not {"phone", "email"} <= set(hidden)
+        has_email, has_name = "email" not in hidden, "name_address" not in hidden
         thin = v.get("i_identity_status", 1.0) >= 1.0 or v.get("i_principal_age_s", 0.0) < THIN_HISTORY_S
-        risk = None
+        calls: list[ToolCall] = []
+        notes: list[str] = []
+        idv = risk = None
         try:
-            if thin:
+            if has_contact and (thin or not has_name):  # 1. Data Append, reverse
                 prefill = self.client.data_prefill(tx.principal_id)
                 calls.append(_call("crs_data_prefill", tx, prefill))
-            idv = self.client.identity_verification(tx.principal_id, prefill)
-            calls.append(_call("crs_identity_verification", tx, idv))
-            if idv["result"] != "fail":
+                if prefill.get("status") == "found":
+                    has_name = True
+                else:
+                    notes.append("CRS has no record of this person")
+            elif not has_contact:  # 1. Data Append, forward
+                if decision.weighted_score >= self.append_min:
+                    appended = self.client.data_append(tx.principal_id)
+                    calls.append(_call("crs_data_append", tx, appended))
+                    has_email = "email" in appended.get("found", [])
+                    if not has_email:
+                        notes.append("data append found no email for them")
+                else:
+                    notes.append(f"score under {self.append_min:.2f}, so no data append")
+            if has_name:  # 2. Identity Verification
+                idv = self.client.identity_verification(tx.principal_id, None)
+                calls.append(_call("crs_identity_verification", tx, idv))
+            if has_email and (idv is None or idv["result"] != "fail"):  # 3. FraudFinder
                 risk = self.client.fraud_finder(tx.principal_id)
                 calls.append(_call("crs_fraud_finder", tx, risk))
         except (CrsUnavailable, httpx.HTTPError) as exc:  # an unreachable CRS never stops a round
             action = Action.STEP_UP if decision.action == Action.ALLOW else decision.action
-            return self._report(tx, decision, calls, action, f"CRS unavailable ({str(exc)[:120]}); kept the code decision")
+            return self._report(tx, decision, calls, action, f"CRS unavailable ({str(exc)[:120]}); kept the code decision",
+                                hidden=hidden)
 
-        if idv["result"] == "fail":
+        if idv and idv["result"] == "fail":
             action, reasons = Action.BLOCK, f"identity verification failed ({idv['reason']})"
-        elif risk["risk_level"] == "high":
+        elif risk and risk["risk_level"] == "high":
             action, reasons = Action.BLOCK, f"FraudFinder risk is high ({risk['risk_score']}); added to the CRS watch list"
             entry = {"principal_id": tx.principal_id, "tx_id": tx.tx_id, "risk_score": risk["risk_score"]}
             self.watched[tx.principal_id] = entry
             self.new_watches.append(entry)
-        elif idv["result"] == "pass" and risk["risk_level"] == "low":
+        elif idv and idv["result"] == "pass" and risk and risk["risk_level"] == "low":
             action, reasons = Action.ALLOW, f"identity verified and FraudFinder risk is low ({risk['risk_score']})"
         else:
-            action, reasons = Action.STEP_UP, (f"identity verification: {idv['result']}, "
-                                               f"FraudFinder risk {risk['risk_level']} ({risk['risk_score']})")
-        if prefill is not None and prefill.get("status") == "no_record":
-            reasons = f"CRS has no record of this person; {reasons}"
+            action = Action.STEP_UP
+            reasons = ", ".join([f"identity verification: {idv['result']}" if idv else "identity not verified (no name and address)",
+                                 f"FraudFinder risk {risk['risk_level']} ({risk['risk_score']})" if risk
+                                 else "no FraudFinder (no email)"])
+        if hidden:
+            notes.insert(0, f"payer didn't send their {_details_text(hidden)}")
+        if notes:
+            reasons = f"{'; '.join(notes)}; {reasons}"
         if action == Action.ALLOW and v.get("b_memo_injection", 0.0) >= INJECTION_GUARD:
             action = Action.STEP_UP if decision.action == Action.ALLOW else decision.action
             reasons += " (not allowed: the memo reads as an injection)"
         if action == Action.ALLOW and decision.action == Action.BLOCK:
             action = Action.STEP_UP
             reasons += " (a code block can only be relaxed to a step-up)"
-        return self._report(tx, decision, calls, action, reasons, watch="added" if tx.principal_id in self.watched else None)
+        return self._report(tx, decision, calls, action, reasons, watch="added" if tx.principal_id in self.watched else None,
+                            hidden=hidden)
 
     def _report(self, tx: Transaction, decision: Decision, calls: list[ToolCall], action: Action, reasons: str,
-                watch: str | None = None) -> Decision:
+                watch: str | None = None, hidden: list[str] | None = None) -> Decision:
         report = CrsReport(tx_id=tx.tx_id, score=decision.weighted_score, band=(self.low, self.high), tool_calls=calls,
-                           decision=action, reasons=reasons, mocked=self.client.mocked, watch=watch)
+                           decision=action, reasons=reasons, mocked=self.client.mocked, watch=watch, hidden=hidden or [])
         tag = "CRS check (mocked)" if self.client.mocked else "CRS check"
         return decision.model_copy(update={"action": action, "crs": report,
                                            "explanation": f"{tag}: {reasons[:1].upper()}{reasons[1:]}."})
+
+
+def _details_text(hidden: list[str]) -> str:
+    names = {"name_address": "name and address", "phone": "phone", "email": "email"}
+    return " or ".join(names[h] for h in hidden)
 
 
 def _call(tool: str, tx: Transaction, output: dict) -> ToolCall:
@@ -345,10 +417,11 @@ def crs_from_env(identities: dict[str, IdentityStatus], on_file: set[str]) -> Cr
     mode = os.environ.get("CRS_ESCALATION", "").strip().lower()
     if mode in ("", "0", "off", "false", "no"):
         return None
+    hidden = lambda principal_id: hidden_details(identities, on_file, principal_id)  # noqa: E731
     if mode != "live":
-        return CrsEscalation(MockCrs(identities, on_file))
+        return CrsEscalation(MockCrs(identities, on_file), hidden=hidden)
     missing = [k for k in ("CRS_BASE_URL", "CRS_USERNAME", "CRS_PASSWORD") if not os.environ.get(k)]
     if missing:
         raise ValueError(f"CRS_ESCALATION=live needs {', '.join(missing)} in .env")
     return CrsEscalation(HttpCrs(os.environ["CRS_BASE_URL"], os.environ["CRS_USERNAME"], os.environ["CRS_PASSWORD"],
-                                 identities, on_file))
+                                 identities, on_file), hidden=hidden)

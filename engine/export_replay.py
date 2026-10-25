@@ -44,7 +44,7 @@ def crs_entry(report: dict | None) -> dict | None:
     if not report:
         return None
     return {"action": report["decision"], "reasons": report["reasons"], "mocked": report.get("mocked", True),
-            "watch": report.get("watch"),
+            "watch": report.get("watch"), "hidden": report.get("hidden", []),
             "calls": [{"tool": c["tool"], "summary": c["output_summary"]} for c in report["tool_calls"]]}
 
 

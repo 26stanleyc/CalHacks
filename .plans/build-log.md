@@ -537,6 +537,28 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** "once CRS flags someone, they stay flagged": a payment card showing "on the CRS watch list" on an attacker's next try.
 
+### Sat Oct 24, 21:45 · CRS on partial details: Data Append both ways · Stanley
+**Did:**
+- **Hidden details.** Honest shoppers send all their details. Some attacker-made accounts hide them:
+  - throwaway accounts: 35% send no phone or email, 20% send no name and address;
+  - bought (stolen) identities: half send no phone or email.
+- **Pipeline for an in-band payment: Data Append, then Identity Verification, then FraudFinder.**
+  - No name and address, or too little data → reverse append (phone or email in, name and address out).
+  - No phone and no email → forward append (name and address in, phone and email out), only if the score is at least `CRS_APPEND_MIN_SCORE` (0.50 in `.env`). Below that, no lookup.
+  - Identity Verification runs when there's a name and address, sent or appended. FraudFinder runs when there's an email, sent or appended, and identity didn't fail.
+  - Allowing still needs both: identity passed and FraudFinder low. A check that couldn't run steps the payment up.
+- **Live sandbox:**
+  - Forward append has no CRS sandbox test data, so `HttpCrs` answers it locally from the test person and never sends it to the live AccurateAppend service.
+  - After a detail is appended, the test person's full canned request is sent, because a partial one would go to the live vendor.
+- **Records:** `CrsReport.hidden` lists what the payer didn't send. The new tool `crs_data_append` is the forward lookup. The replay's `crs.hidden` has the same list.
+- **First look** (mock, seed 42, 3 rounds, no cap):
+  - 13 of 16 in-band payments came from attacker accounts hiding their phone and email. All went through forward append and identity verification; 5 also went through FraudFinder.
+  - False positives unchanged.
+
+**Proof:** `engine/tests/test_crs.py` (hidden-details section: the append threshold edge, each path, a 2-round run with hiders) and `engine/tests/test_crs_live.py::test_forward_append_is_answered_locally_and_never_sent`.
+
+**Demo angle:** "an attacker hiding their phone and email doesn't escape the check: CRS looks them up from name and address, then verifies".
+
 ---
 
 ## Entry template

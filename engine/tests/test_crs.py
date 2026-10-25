@@ -7,7 +7,7 @@ import pytest
 
 from contracts.conformance import sample_tx
 from contracts.schemas import Action, Decision, FeatureVector, IdentityStatus
-from engine.crs import THIN_HISTORY_S, CrsEscalation, MockCrs
+from engine.crs import THIN_HISTORY_S, CrsEscalation, MockCrs, hidden_details
 from engine.engine import FraudEngine
 from engine.sim.marketplace import MarketplaceWorld
 
@@ -23,12 +23,17 @@ class FakeCrs:
     prefill: dict = field(default_factory=lambda: {"status": "found", "fields": ["name", "address"]})
     idv: str = "pass"
     risk: str = "low"
+    append_found: tuple = ("email", "phone")
     mocked: bool = True
     called: list = field(default_factory=list)
 
     def data_prefill(self, principal_id):
         self.called.append("prefill")
         return self.prefill
+
+    def data_append(self, principal_id):
+        self.called.append("append")
+        return {"status": "found" if self.append_found else "no_match", "found": list(self.append_found)}
 
     def identity_verification(self, principal_id, prefill):
         self.called.append("idv")
@@ -162,7 +167,9 @@ def test_mock_bureau_is_deterministic_and_tells_real_people_from_made_up_ones():
 @pytest.fixture(scope="module")
 def crs_round():
     world = MarketplaceWorld(seed=42)
-    crs = CrsEscalation(MockCrs(world.identities, set(world.identities)), low=0.3, high=0.7, max_per_round=10)
+    on_file = set(world.identities)
+    crs = CrsEscalation(MockCrs(world.identities, on_file), low=0.3, high=0.7, max_per_round=10,
+                        hidden=lambda p: hidden_details(world.identities, on_file, p))
     engine = FraudEngine(world=world, allowlist={TEAM}, arena=False, hijacker=False, crs=crs)
     for _ in range(2):  # round 1's scores sit at the ends; close calls show up once the defense has learned
         engine.run_round(requested_by=TEAM)
@@ -292,3 +299,92 @@ def test_the_replay_says_who_is_on_the_watch_list(watch_round):
     replay = build(memory_tables(watch_round.store, watch_round.run_id), watch_round.run_id)
     marks = {p["crs"]["watch"] for r in replay["rounds"] for w in r["waves"] for p in w["payments"] if p["crs"]}
     assert {"added", "on_list"} <= marks
+
+
+# --- payers who hide details: Data Append, then identity, then FraudFinder ------------------------
+
+def run_hidden(client, hidden, score=0.5, code_action=Action.STEP_UP, features=VERIFIED_OLD):
+    tx = sample_tx()
+    crs = CrsEscalation(client, low=0.3, high=0.7, append_min=0.5, hidden=lambda p: hidden)
+    return crs.check(tx, FeatureVector(tx_id=tx.tx_id, values=features), decision(score, code_action))
+
+
+def test_no_phone_or_email_above_the_threshold_appends_then_verifies_then_scores():
+    client = FakeCrs()
+    out = run_hidden(client, ("phone", "email"))
+    assert client.called == ["append", "idv", "fraudfinder"]
+    assert [c.tool for c in out.crs.tool_calls] == ["crs_data_append", "crs_identity_verification", "crs_fraud_finder"]
+    assert out.action == Action.ALLOW and out.crs.hidden == ["phone", "email"]
+    assert "didn't send their phone or email" in out.crs.reasons
+
+
+@pytest.mark.parametrize("score, appended", [(0.4999, False), (0.5, True), (0.7, True)])
+def test_the_append_threshold_is_inclusive(score, appended):
+    client = FakeCrs()
+    run_hidden(client, ("phone", "email"), score=score)
+    assert ("append" in client.called) is appended
+
+
+def test_no_phone_or_email_below_the_threshold_verifies_identity_only_and_steps_up():
+    client = FakeCrs()
+    out = run_hidden(client, ("phone", "email"), score=0.4, code_action=Action.ALLOW)
+    assert client.called == ["idv"] and out.action == Action.STEP_UP
+    assert "no data append" in out.crs.reasons and "no FraudFinder" in out.crs.reasons
+
+
+def test_append_finding_no_email_skips_fraudfinder_and_steps_up():
+    client = FakeCrs(append_found=())
+    out = run_hidden(client, ("phone", "email"), code_action=Action.ALLOW)
+    assert client.called == ["append", "idv"] and out.action == Action.STEP_UP
+
+
+def test_a_failed_identity_check_still_blocks_a_payer_with_no_contact_details():
+    out = run_hidden(FakeCrs(idv="fail"), ("phone", "email"), code_action=Action.ALLOW)
+    assert out.action == Action.BLOCK
+
+
+def test_appended_email_can_flag_them_for_the_watch_list():
+    out = run_hidden(FakeCrs(risk="high"), ("phone", "email"), code_action=Action.ALLOW)
+    assert out.action == Action.BLOCK and out.crs.watch == "added"
+
+
+def test_hidden_name_and_address_are_looked_up_from_the_phone_or_email():
+    client = FakeCrs()
+    out = run_hidden(client, ("name_address",))
+    assert client.called == ["prefill", "idv", "fraudfinder"] and out.action == Action.ALLOW
+
+
+def test_hidden_name_with_no_reverse_record_skips_identity_verification():
+    client = FakeCrs(prefill={"status": "no_record"}, risk="low")
+    out = run_hidden(client, ("name_address",), code_action=Action.ALLOW)
+    assert client.called == ["prefill", "fraudfinder"] and out.action == Action.STEP_UP
+    assert "identity not verified" in out.crs.reasons
+
+
+def test_only_attacker_made_accounts_hide_details():
+    real = {f"real-{i}": IdentityStatus.VERIFIED for i in range(100)} | {f"thin-{i}": IdentityStatus.THIN_FILE for i in range(100)}
+    made = {f"farm-{i}": IdentityStatus.THIN_FILE for i in range(200)}
+    identities = real | made
+    assert all(hidden_details(identities, set(real), p) == () for p in real)
+    hiding = [hidden_details(identities, set(real), p) for p in made]
+    assert 0.2 < sum(h == ("phone", "email") for h in hiding) / len(made) < 0.5
+    assert 0.1 < sum(h == ("name_address",) for h in hiding) / len(made) < 0.3
+
+
+def test_attackers_hiding_contact_details_get_data_append_on_a_round():
+    """Every attacker-made account hides its phone and email here, so each in-band attacker payment
+    goes through forward append (at or above 0.5), or verifies identity only (below)."""
+    world = MarketplaceWorld(seed=42)
+    on_file = set(world.identities)
+    crs = CrsEscalation(MockCrs(world.identities, on_file), low=0.3, high=0.7, max_per_round=10,
+                        hidden=lambda p: () if p in on_file else ("phone", "email"))
+    engine = FraudEngine(world=world, allowlist={TEAM}, arena=False, hijacker=False, crs=crs)
+    for _ in range(2):
+        engine.run_round(requested_by=TEAM)
+    hiding = [d for d in engine.store.decisions if d.crs and d.crs.hidden and d.crs.watch != "on_list"]
+    assert hiding, "no attacker payment reached CRS on the test round"
+    for d in hiding:
+        tools = [c.tool for c in d.crs.tool_calls]
+        assert "crs_data_prefill" not in tools
+        assert ("crs_data_append" in tools) == (d.crs.score >= crs.append_min)
+        assert d.action != Action.ALLOW or tools[-1] == "crs_fraud_finder"  # allowing needs a low FraudFinder score
