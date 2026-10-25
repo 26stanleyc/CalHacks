@@ -72,6 +72,7 @@ current setup there was run, once, on the test week. All attempts:
 | + 1-day receiver features (distinct payers, new payers) | Ξ787,714 | Ξ787,724 | n/a | 1 / 50 | rejected: XGBoost gains more |
 | + LLM investigator on close calls | Ξ787,713 | Ξ787,717 | 0 / 15 | 0 / 28 | no effect: no close calls, 0 escalations |
 | **+ receiver memory** | **Ξ788,040** | **Ξ787,969** | **414 / 331** | **0 / 0** | **passed; run on the test week** |
+| + receiver memory + LLM investigator | Ξ788,040 | Ξ787,969 | 419 / 331 | 0 / 0 | not adopted: 20 escalations, Ξ0.05 better than memory alone |
 
 The receiver memory (`--memory`) is one graph-lane feature: how many labelled phishing payments this receiver got
 before, like a blocklist of reported scam addresses. 54% of the validation week's phishing payments (43% of the test
