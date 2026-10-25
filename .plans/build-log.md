@@ -73,7 +73,7 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 
 | Sponsor | One-line pitch | Proof on screen | Status |
 |---|---|---|---|
-| **Fetch.ai** (uAgents, Agentverse, ASI:One) | Every defender, attacker and shopper is a uAgent; two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat, verified over the real mailbox (M8, `evidence/m08/`); ASI:One screenshot and recording still to do |
+| **Fetch.ai** (uAgents, Agentverse, ASI:One) | The orchestrator and the 5 specialists are uAgents that vote by message (attackers and shoppers are plain code); two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat, verified over the real mailbox (M8, `evidence/m08/`); ASI:One screenshot and recording still to do |
 | **Bitdeer** | Every AI in the system is an open-weight model on Bitdeer, a different model per role | Model-per-role table; a rulebook rewritten by its model | 🟡 all 5 answered at E3, credits now in doubt; agents get their brains at S4–S6 |
 | **Coinbase x402** | Fraud check inside the facilitator, before settlement | Live Base Sepolia tx on basescan | ✅ (E4) |
 | **Apify** | Scans merchant pages for hidden instructions (core); scrapes news of new scams (bonus) | Merchant Scanner flags the poisoned page | ✅ M10 live page scan (`evidence/m10/`); M11 live crawl of FTC alerts → watch rules (`evidence/threat-intel/bitdeer-live.md`) |
