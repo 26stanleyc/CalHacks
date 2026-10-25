@@ -128,6 +128,29 @@ The run is short: the learned combiner skips 2 warm-up rounds, and only round 4 
 (4 of them, so that column isn't meaningful). It's for showing the system at work, not for the
 headline numbers; section 4 is the better measurement.
 
+## 6. The 20-round demo run: merged design on real models (seed 42, 20 rounds)
+
+In the team database as **`h2h-real-42-202610241732`**, and exported as the arena's replay.json and
+baseline.json. It took 1,401 model calls, 8.8M tokens and 7 answers that didn't parse, at 7.9 minutes a
+round. The spawn fix was in: 2 to 4 granted spawns built per round, against 11 of 16 failing before.
+See [bitdeer-recorded-20.md](bitdeer-recorded-20.md).
+
+| contender | new attacks, first round | total cost | mean FP | max FP |
+|---|---|---|---|---|
+| **full (merged design)** | $11.5k | $76.5k | **0.80%** | **2.01%** |
+| xgboost_retrained | $11.1k | $81.5k | 1.02% | 7.00% |
+| rules_plus_xgboost | **$8.6k** | **$68.2k** | 1.96% | 7.00% |
+| xgboost_frozen | $67.8k | $478.9k | 6.73% | 9.33% |
+| static_rules | $62.8k | $474.3k | 0.95% | 2.35% |
+
+- **Beats retrained XGBoost on total cost** ($76.5k vs $81.5k) and is level with it on new attacks.
+- **About 6x cheaper** than a model trained once or fixed rules over 20 rounds ($76.5k vs about $475k).
+  The gap widens the longer attackers adapt.
+- **12% behind rules + XGBoost on cost**, while flagging under half as many honest shoppers on
+  average (0.80% vs 1.96%). Its worst round is 2.01% against their 7.00%.
+- **Per round,** losses fall from $13-14k in rounds 3-4 to under $1k from round 9 on. FP stayed at or
+  under 2.01% in every round.
+
 ## What this means for the pitch
 
 - Supported: "it adapts to new attacks faster than a model trained on yesterday's fraud," and "real
