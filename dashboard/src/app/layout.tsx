@@ -12,16 +12,17 @@ const NAV = [
   { href: "/", label: "Overview" },
   { href: "/stream", label: "Transaction stream" },
   { href: "/attackers", label: "Attacker drift" },
+  { href: "/arena-3d", label: "3D arena" },
 ];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
-        <header className="border-b border-line bg-surface">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-            <span className="font-semibold">Fraud defense</span>
-            <nav className="flex gap-4 text-sm text-ink-2">
+        <header className="h-12 border-b border-line bg-surface">
+          <div className="mx-auto flex h-full max-w-6xl items-center gap-x-6 px-4">
+            <span className="shrink-0 font-semibold">Fraud defense</span>
+            <nav className="flex gap-4 overflow-x-auto whitespace-nowrap text-sm text-ink-2">
               {NAV.map((n) => (
                 <Link key={n.href} href={n.href} className="hover:text-ink">
                   {n.label}
