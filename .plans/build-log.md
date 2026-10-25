@@ -466,6 +466,37 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** honest slide: "adapts faster than a model trained on yesterday's fraud, at a third of the false positives of ML-only stacks." Don't claim it beats retrained ML.
 
+### Sat Oct 24, 19:30 · CRS escalation for uncertain payments (spec 11, mocked) · Stanley
+**Did:**
+- **Uncertain band.** A payment whose combined score (`Decision.weighted_score`) lands in `[CRS_BAND_LOW, CRS_BAND_HIGH]` (default 0.30–0.70, inclusive, set in `.env`) gets three CRS checks, in order:
+  - Data Prefill, only when there's too little data on the person (thin or unknown profile, or under a day of history);
+  - Identity Verification;
+  - FraudFinder, unless identity verification already failed.
+- **Folding into the decision:**
+  - identity fails → block;
+  - FraudFinder high → block;
+  - identity passes and FraudFinder low → allow;
+  - anything else → step up.
+  - The investigator's guards apply: never allow an injection memo, and a code block relaxes only to a step-up.
+- **Where it sits:** CRS runs before the investigator, as fixed code rather than an investigator tool, because the order is fixed and the investigator's report caps tool calls at 4. Payments CRS allows or blocks aren't escalated. A step-up can still go to the investigator, which sees the CRS results.
+- **Limits:** at most `CRS_MAX_PER_ROUND` checks per round (default 20, per spec 11). It's off unless `CRS_ESCALATION=1` or `FraudEngine(crs=...)` is set, so the mock's answers don't leak into benchmark numbers.
+- **Mocked.** `CRS_API_KEY` and `CRS_BASE_URL` are empty, and CRS publishes no endpoint reference we could build against.
+  - `MockCrs` plays a credit bureau. It has files on the world's real people and not on accounts attackers make later.
+  - Its answers are deterministic and noisy: a hijacked real person always verifies, and a bought identity often does.
+  - A real client implements `engine.crs.CrsClient`.
+- **Records:** the checks go on the decision as `Decision.crs` (`CrsReport`: score, band, up to 3 `ToolCall`s named `crs_data_prefill`, `crs_identity_verification` and `crs_fraud_finder`, plus the decision, reasons and a `mocked` flag). They're stored in the `decisions` payload, and the explanation starts "CRS check (mocked): ...". The arena replay gets a per-payment `crs` field.
+- **First look** (seed 42, 3 rounds, no cap):
+  - 17 of 1,200 payments landed in the band, all fraud.
+  - CRS blocked 6. It stepped up 11, which then went to the investigator.
+  - False-positive rate unchanged (0.33% / 5.0% / 0.67%).
+  - Escalation rate rose from 3.0 / 4.5 / 3.0% to 3.0 / 6.75 / 6.25%, because a block CRS relaxes to a step-up now counts as a split vote.
+
+**Proof:**
+- `engine/tests/test_crs.py`: band edges, each outcome changing the decision, the guards, the cap, and a 2-round run through to the replay export;
+- `contracts/tests/test_contracts.py::test_decision_carries_an_optional_crs_report`.
+
+**Demo angle:** "for the close calls, we ask a credit bureau": a payment card in the arena showing the three CRS calls. Always say it's mocked until sandbox access exists. CRS confirms a person exists, not that they authorized the payment; that stays the mandate specialist's job.
+
 ---
 
 ## Entry template

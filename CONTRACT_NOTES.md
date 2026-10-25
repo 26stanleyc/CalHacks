@@ -321,3 +321,10 @@ No schema changes. M11 uses the existing `ThreatReport`, `ThreatPattern`, `Threa
   - `MODEL_ROLES`: `graph` moves to GLM-5.3-Flash, `velocity` to GLM-5.3 and `critic_second` to
     GLM-5.3-Flash. The spawn roles still use the other family from their parent, and `held_out`
     stays reserved.
+
+### CRS escalation (Stanley, Oct 24 evening)
+
+Additive, with defaults, so nothing existing breaks. The contract test covers the round trip. `stubs.py` needs no change, because stub decisions just leave the field `None`.
+- New `CrsReport` and `Decision.crs: CrsReport | None = None`: the CRS checks run on a payment whose score fell in the uncertain band (engine/crs.py, mocked until sandbox access exists). `ToolCall.tool` can now also be `crs_data_prefill`, `crs_identity_verification` or `crs_fraud_finder`.
+- **For Ryan:** no `db.sql` change. The report sits inside the `decisions.payload` JSON, next to the investigator report.
+- **For Eric:** if CRS sandbox access arrives, a real client implements the `engine.crs.CrsClient` protocol (`data_prefill`, `identity_verification`, `fraud_finder`, `mocked = False`) and is passed as `FraudEngine(crs=CrsEscalation(client))`.

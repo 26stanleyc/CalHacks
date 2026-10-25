@@ -151,7 +151,8 @@ class Vote(BaseModel):
 
 
 class ToolCall(BaseModel):
-    tool: str  # graph_lookup | scan_page | identity_check | similar_cases | specialist_detail
+    tool: str  # graph_lookup | scan_page | identity_check | similar_cases | specialist_detail,
+    # or a CRS check: crs_data_prefill | crs_identity_verification | crs_fraud_finder
     input: dict = Field(default_factory=dict)
     output_summary: str = ""
 
@@ -164,6 +165,18 @@ class InvestigatorReport(BaseModel):
     timed_out: bool = False
 
 
+class CrsReport(BaseModel):
+    """The CRS checks run on a payment whose combined score fell in the uncertain band."""
+
+    tx_id: str
+    score: float  # the Decision's weighted_score that put it in the band
+    band: tuple[float, float]  # (low, high), inclusive
+    tool_calls: list[ToolCall] = Field(default_factory=list, max_length=3)  # prefill, identity, FraudFinder, in order
+    decision: Action
+    reasons: str
+    mocked: bool = True  # False only when the calls went to the real CRS API
+
+
 class Decision(BaseModel):
     tx_id: str
     action: Action
@@ -173,6 +186,7 @@ class Decision(BaseModel):
     vetoed_by: str | None = None  # e.g. "mandate:over_cap", "identity:failed"
     escalated: bool = False
     investigator: InvestigatorReport | None = None
+    crs: CrsReport | None = None  # set when the score fell in the CRS band
     explanation: str = ""
 
 
