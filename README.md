@@ -1,5 +1,8 @@
 # Self-Red-Teaming Fraud Defense for Agentic Payments
 
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
 AI agents now shop and pay on their own over Coinbase's **x402**. That brings two new kinds of fraud:
 
 - **Bad buyer agents attack stores:** card testing, splitting payments to stay under limits, account farms.
