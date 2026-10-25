@@ -77,6 +77,7 @@ export function PhishingLog() {
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   const feed = useRef<HTMLOListElement>(null);
+  const [following, setFollowing] = useState(true); // the log keeps up with new entries only while you're at the bottom
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}eth/log.json`)
@@ -99,8 +100,13 @@ export function PhishingLog() {
   }, [playing, shown, speed, rows.length]);
 
   useEffect(() => {
-    feed.current?.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [shown]);
+    const el = feed.current;
+    if (el && following) el.scrollTop = el.scrollHeight; // instant: a smooth scroll would fire scroll events mid-way and read as you scrolling up
+  }, [shown, following]);
+  const onScroll = () => {
+    const el = feed.current;
+    if (el) setFollowing(el.scrollHeight - el.scrollTop - el.clientHeight < 60);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -124,6 +130,7 @@ export function PhishingLog() {
   const stoppedTT = scam.filter((l) => !l.tagteam.settled).length;
   const stoppedX = scam.filter((l) => !l.xgboost.settled).length;
   const restart = () => {
+    setFollowing(true);
     setShown(0);
     setPlaying(true);
   };
@@ -171,7 +178,7 @@ export function PhishingLog() {
           <span>TagTeam</span>
           <span>XGBoost</span>
         </div>
-        <ol ref={feed} aria-live="polite">
+        <ol ref={feed} aria-live="polite" onScroll={onScroll}>
           {rows.slice(0, shown).map((r) =>
             r.kind === "night" ? (
               <li key={r.key} className="night">
@@ -206,6 +213,11 @@ export function PhishingLog() {
             ),
           )}
         </ol>
+        {!following && (
+          <button className="latest" onClick={() => setFollowing(true)}>
+            Jump to latest
+          </button>
+        )}
       </section>
 
       <footer className="phish-controls">

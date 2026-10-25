@@ -426,6 +426,11 @@ blockquote {
 }
 .phish-cols { font-family: var(--text); font-size: 11.5px; font-weight: 700; color: var(--ink-soft); border-bottom: 1px solid var(--edge); padding-top: 8px; padding-bottom: 7px; }
 .phish-log ol { margin: 0; padding: 4px 0 10px; list-style: none; overflow-y: auto; }
+.phish-log { position: relative; }
+.phish-log .latest {
+  position: absolute; right: 18px; bottom: 14px; border: none; border-radius: 999px; padding: 7px 14px;
+  background: var(--ink); color: var(--solid); font-weight: 700; font-size: 13px; box-shadow: var(--lift);
+}
 .phish-log li { animation: log-in 0.35s ease-out; border-bottom: 1px solid rgba(236, 229, 210, 0.04); }
 @keyframes log-in { from { opacity: 0; transform: translateY(6px); } }
 .phish-log li .time { color: var(--ink-soft); }
