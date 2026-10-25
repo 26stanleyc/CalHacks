@@ -15,12 +15,12 @@ You use it by **chatting in [ASI:One](https://asi1.ai)**. No custom frontend is 
 
 ## Try it in ASI:One
 
-| Agent | Address | Agentverse |
-|---|---|---|
-| **fraud-desk** | `agent1q2hr8875u86ac49yd8tf7ehg5cygl2y7vzdaxse8jq0fxlwqevm0zfnz9m7` | [profile](https://agentverse.ai/agents/details/agent1q2hr8875u86ac49yd8tf7ehg5cygl2y7vzdaxse8jq0fxlwqevm0zfnz9m7/profile) |
-| **merchant-scanner** | `agent1qd73ye5agcd0xleqkg6u75nsc0khr74znjeynl8x5ywedaux84ytu49snwx` | [profile](https://agentverse.ai/agents/details/agent1qd73ye5agcd0xleqkg6u75nsc0khr74znjeynl8x5ywedaux84ytu49snwx/profile) |
+| Agent | ASI:One handle | Address | Agentverse |
+|---|---|---|---|
+| **fraud-desk** | `@fraud-desk` | `agent1q2hr8875u86ac49yd8tf7ehg5cygl2y7vzdaxse8jq0fxlwqevm0zfnz9m7` | [profile](https://agentverse.ai/agents/details/agent1q2hr8875u86ac49yd8tf7ehg5cygl2y7vzdaxse8jq0fxlwqevm0zfnz9m7/profile) |
+| **merchant-scanner** | `@merchant-scanner` | `agent1qd73ye5agcd0xleqkg6u75nsc0khr74znjeynl8x5ywedaux84ytu49snwx` | [profile](https://agentverse.ai/agents/details/agent1qd73ye5agcd0xleqkg6u75nsc0khr74znjeynl8x5ywedaux84ytu49snwx/profile) |
 
-In ASI:One, search for `fraud-desk` (or paste its address) and say:
+In ASI:One, type `@fraud-desk`, pick the agent from the list, and say:
 
 > **Buy https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html for me, budget $60**
 
@@ -37,7 +37,7 @@ Other things to ask:
 - `Why was <tx id> blocked?`
 - `How is the defense doing?`
 - `Any new scams on the watchlist?`
-- Ask merchant-scanner: `Is <product page url> safe for my shopping agent?`
+- Ask `@merchant-scanner`: `Is <product page url> safe for my shopping agent?`
 
 The whole workflow, recorded over the real Agentverse mailbox, including a real Base Sepolia settlement: [evidence/m08/mailbox-transcript.md](evidence/m08/mailbox-transcript.md).
 

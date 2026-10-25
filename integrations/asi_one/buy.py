@@ -212,9 +212,13 @@ class Purchases:
         if result is None or not result.settled:
             with self._lock:
                 self.settled -= 1
+                # Keep it open: the facilitator fails now and then, and a retry is safe because a
+                # failed authorization moved nothing and the next attempt signs a fresh one.
+                self.pending[purchase.purchase_id] = purchase
             reason = getattr(result, "reason", "") or "the facilitator didn't answer"
-            return ToolResult("buy", f"The payment didn't go through ({reason}). Nothing was charged; "
-                                     f"you can ask me to buy it again.", ok=False, data=result)
+            return ToolResult("buy", f"The payment didn't go through ({reason}). Nothing was charged. "
+                                     f"Approve again to retry, or cancel {purchase.purchase_id}.",
+                              ok=False, data=result)
         price = purchase.tx.amount_cents / 100
         if result.tx_hash:
             from integrations.x402_settlement import explorer_url
