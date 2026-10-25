@@ -627,6 +627,121 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** "an attacker hiding their phone and email doesn't escape the check: CRS looks them up from name and address, then verifies".
 
+### Sat Oct 24, 03:27 · Arena replay (3D battle view) · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- New standalone app in `arena/` (Vite, React Three Fiber). It's separate from Ryan's `dashboard/`, so neither steps on the other.
+- The layout puts the x402 gate at the centre with the 5 specialists and the orchestrator as angels around it. The 24 arena shelves are the outer ring of hex tiles: attacks on stores on one half, attacks on shoppers on the other.
+- Devils throw payment coins at the gate. Angels zap the ones they block, and stolen coins flash in the vault.
+- Each round plays as spawn beams (a defender building an attacker), then 3 waves with devils rethinking between them, then learning, when the shelf tiles recolour.
+- Clicking anything opens a card: an attacker's origin, model, plan, tuned numbers and wave-by-wave results; a defender's question, rulebook, this round's move and next move; a shelf's catch rate and top attackers; the gate's round metrics.
+- The timeline doubles as the exploitability chart.
+- It plays a deterministic mock run until the engine exports a run. The replay format (`arena/src/data/types.ts`) maps field by field onto `contracts/db.sql` tables, and `arena/README.md` lists the mapping.
+
+- The mock draws a fixed attack budget each round, like the spec: every outsider, the new attackers, 6 from the shakiest shelves and 2 at random. Archived attackers that weren't drawn wait on their shelves. An earlier version ran every archived attacker, so traffic grew 10× and losses rose even as the catch rate improved.
+- The mock run (seed 7) now tells the spec's story:
+  - losses fall from $1,744 in round 1 to $695 in round 20, under the M5 target of 60% (numbers updated in the shelf map entry below)
+  - the catch rate climbs from 29% to the low 80s
+  - the round 13 news scam spikes losses
+  - the freeze lifts exploitability from $163 to $457 by round 16, and it recovers after
+- The mock's payment shuffle is now deterministic across JS engines; it used `sort()` with a random comparator before.
+
+**Proof:** `npm run build` passes. Checked in the browser at 1280×800, 1000×700 and on a phone: 120 fps, every card type opens, and the HUD doesn't overlap. Node and Chrome produce identical per-round losses from the same seed. Screenshots are in `evidence/arena/` (round 16 frozen mid-wave; round 13 Velocity angel card).
+
+**Demo angle:** ⭐ the 40 s "arms race" beat. Play rounds 1→20 at 4–8×: shelves go red to green, the timeline bars fall, a news scam drops at round 6, and the freeze at 15–16 makes them jump while the scoreboard's catch rate drops. Then pause and click a devil to show its plan, and an angel to show its rules. 🔜 Needs an exporter from the real run tables to `arena/public/replay.json`.
+
+### Sat Oct 24, ~04:30 · Arena shelf map · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- Added a flat 4×6 shelf grid at the top right of the arena, the Rainbow Teaming figure. Rows are attack styles; columns are amount bands, split into attacks on stores and attacks on shoppers.
+- Cells share the 3D tiles' colours and recolour with them during learning. A gold halo marks each shelf a defender built an attacker for that round (orange for a news scam). Clicking a cell opens the shelf card.
+- The first version drew arrows from 7 badges to the cells, which was too cluttered. The 3D beams already show who aimed where.
+- Mock tweaks:
+  - a shelf's catch rate now uses the last 3 rounds, so more shelves pass the 20-attempt bar
+  - a freeze is gentler (the defense falls behind but keeps what it learned)
+- The mock run now goes:
+  - round 1: $1,744 stolen, $501 still stealable
+  - round 14: $163 still stealable
+  - freeze peak in round 16: $457
+  - round 20: $695 stolen, $182 still stealable
+
+**Proof:** `npm run build` passes. Checked in the browser at the pane's own size, at 1280×800 and on a phone (map hidden, card fits, no sideways scroll).
+
+**Demo angle:** ⭐ the "arena grid" beat from the demo script. Pause during learning and point at cells turning green; the halos show where the defenders aimed this round.
+
+### Sat Oct 24, ~05:30 · TagTeam overview page · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- New landing page at `/` with the 3D arena moved to `/demo/`. Both pages share a nav and the TagTeam mark.
+- The design borrows from security printing, since anti-counterfeiting is literally fraud defense: a banknote-green ground and engraved wave lines. The hero is a payment slip that the five specialists stamp one by one, ending in a "Blocked" stamp. It's the spec's hijacked-shopper example: $99.99 against a mandate of "a charger under $30".
+- Sections:
+  - **Why it matters:** the agent is the real credential holder, so the questions become "who's responsible?" and "is this what they asked for?"
+  - **How it works:** check every payment, attack itself, read the news.
+  - **What it saves:** two bar charts with a table view, and a method note.
+  - **Built on:** Fetch.ai uAgents, Bitdeer, Coinbase x402 and Apify.
+- The arena's panels switched to the same dark green; the island stays daylight.
+
+**Numbers on the page and their sources:**
+- **Results** come from `evidence/head-to-head/bitdeer-stacking.md` (real Bitdeer models, seeds 100–102, 6 rounds each):
+  - 48% lower total cost than static rules ($58.3k vs $111.2k)
+  - 45% less lost to never-seen attacks in their first round ($11.9k vs $21.6k)
+  - honest shoppers flagged at 1.14% vs 4.23% for rules + XGBoost
+- **The page says plainly** that rules + XGBoost is about level with us on total cost ($55.5k), and that these are first readings.
+- **Industry figures:**
+  - $1.5T agentic commerce spending by 2030 (Juniper Research via Retail Systems, 29 Jun 2026)
+  - about half of x402 transactions artificial (Artemis via Forkast, 10 Jul 2026)
+  - $206B merchant online payment fraud losses 2021–2025 (Juniper via Fintech Global, 2 Jul 2021)
+
+**Proof:** `npm run build` passes for both pages, and the overview doesn't load three.js. Checked in the browser at 1280×800 and on a phone with no sideways scroll; chart labels stay inside their panels.
+
+**Demo angle:** ⭐ open on the overview for the 30 s "problem" beat: the stamped slip shows a hijacked agent being stopped. The "What it saves" section is the proof slide. Then click **Live arena**.
+
+### Sat Oct 24, ~17:15 · Arena plays a real run · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- The arena now plays `arena/public/replay.json`: run `h2h-real-42-202610241623` on real Bitdeer models, 4 rounds and 2,056 payments. It was exported by `engine/export_replay.py` on `stanley/core-engine` (the sister session).
+- Adapted the arena to real data:
+  - the engine's playbook parameter names
+  - rule ids shown as plain words
+  - tidier news-attacker names
+  - one devil per attacker even when the export lists it twice
+  - room for 7 devils on a shelf
+  - honest coins sampled to 24 per wave
+  - a legend entry for held-out exam attackers
+  - "Profit so far" shown with a minus sign when negative
+- Sent the exporter cleanups upstream: duplicate attackers, raw names, spawns without an attacker id, and engine bookkeeping in reasons.
+- Page transitions: the overview and arena cross-fade with the browser's View Transitions, the TagTeam header glides between pages, and hovering a link prerenders the other page.
+
+**Proof:** `npm run build` passes. In a visible tab, every round of the real run renders, with no React key errors. Both transition directions run to completion, and the header is captured on both pages.
+
+**Demo angle:** ⭐ "this is a real run": every devil, rule and payment on screen came from GLM and DeepSeek on Bitdeer. The real run shows learning: 38% of attack payments caught in round 1, 57% in round 4. Say it plainly: 4 rounds, one seed.
+
+### Sat Oct 24, ~18:20 · Step 0, net scoring, overview chapters · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- **Arena step 0.** The demo opens with XGBoost trained once deciding the same recorded payments, using real per-payment decisions from `engine/export_baseline.py` (sister session). There are no angels, just one XGBoost pillar, and the screen edges pulse red when money gets through. It flows straight into TagTeam: the team deploys and a short note carries step 0's result across.
+- **Net scoring.** Net is honest payments through minus money stolen. On the real run (h2h-real-42-202610241623):
+
+  | Round | XGBoost net | TagTeam net |
+  |---|---|---|
+  | 1 | $10.6k | $13.9k |
+  | 2 | $12.8k | $10.8k |
+  | 3 | $2.4k | $11.2k |
+  | 4 | −$5.9k | $9.2k |
+  | **Total** | **$19,775** | **$45,137 (2.3×)** |
+
+  - TagTeam let $38,710 of fraud through, XGBoost $64,129.
+  - TagTeam flagged 25 honest shoppers, XGBoost 62.
+- **One continuous timeline** shows XGBoost's rounds, then TagTeam's, with XGBoost's net outlined on TagTeam's bars.
+- **Smaller side panels**, and a quiet closing note instead of a dialog.
+- **Tried a dark restyle (night scene, glow) and reverted it at the user's request.** The daylight colours are back. A backup of the pre-redesign arena is at tag `arena-daylight-v1` and branch `stanley/arena-viz-daylight-backup`.
+- **Overview:**
+  - The hero slip now tells the story in order: the human asked for a charger under $30, the store page said to ignore the budget, and the agent tried to pay $99.99.
+  - The page became a hero plus four chapters, with cross-fade, wipe, title-morph and swipe transitions (View Transitions API) and `#hash` routes.
+
+**Proof:**
+- `npm run build` passes.
+- In the browser, all three overview transition types run, and the title morphs into and out of the right tile.
+- Step 0 auto-deploys into TagTeam round 1.
+- Net totals on screen match a direct calculation from the two JSON files.
+
+**Demo angle:** ⭐ the before/after. Play from the start at 4×. XGBoost's net collapses to negative by round 4, TagTeam deploys, and the outline bars show it holding steady on the same payments. Say plainly: 4 rounds, one seed, XGBoost untrained in round 1.
+
 ---
 
 ## Entry template

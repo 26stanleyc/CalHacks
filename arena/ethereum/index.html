@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TagTeam on real data</title>
+    <!-- Stylesheets are linked here, not imported from JS, so the page is styled on its first
+         frame: the frame the page transition animates in. -->
+    <link rel="stylesheet" href="/node_modules/@fontsource/bricolage-grotesque/600.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/bricolage-grotesque/800.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/atkinson-hyperlegible/400.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/atkinson-hyperlegible/700.css" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/site/transitions.css" />
+    <style>
+      html { background: #c7d3f4; }
+    </style>
+    <script type="speculationrules">
+      { "prerender": [{ "source": "document", "where": { "href_matches": "/" }, "eagerness": "moderate" }] }
+    </script>
+  </head>
+  <body data-data-set="eth">
+    <!-- The header is static HTML so it exists on the first frame and can glide between pages. -->
+    <header class="arena-nav">
+      <a class="wordmark" href="/"><svg class="mark" width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><circle cx="10.5" cy="14" r="7.5" class="mark-defense" /><circle cx="17.5" cy="14" r="7.5" class="mark-attack" /></svg>TagTeam</a>
+      <nav aria-label="Pages"><a href="/">Overview</a><a href="/demo/">Live arena</a><a href="/ethereum/" aria-current="page">Real data</a><a href="/phishing/">Phishing log</a></nav>
+    </header>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx" blocking="render"></script>
+  </body>
+</html>
