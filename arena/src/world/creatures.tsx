@@ -1,6 +1,6 @@
 import { useMemo, useRef, type ReactNode } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { Billboard } from "@react-three/drei";
+import { Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Actor, AttackerSource } from "../data/types";
 import { C, M } from "../palette";
@@ -156,7 +156,8 @@ function LaneProp({ actor }: { actor: Actor }) {
   }
 }
 
-export function Angel({ actor, pos, zaps, learns }: { actor: Actor; pos: Vec3; zaps: number[]; learns: boolean }) {
+export function Angel({ actor, pos, zaps, learns, order = 0 }: { actor: Actor; pos: Vec3; zaps: number[]; learns: boolean; order?: number }) {
+  const root = useRef<THREE.Group>(null);
   const body = useRef<THREE.Group>(null);
   const halo = useRef<THREE.Mesh>(null);
   const wingL = useRef<THREE.Mesh>(null);
@@ -168,9 +169,15 @@ export function Angel({ actor, pos, zaps, learns }: { actor: Actor; pos: Vec3; z
   const haloMat = useMemo(() => M.halo.clone(), []);
 
   useFrame(({ clock }) => {
-    const t = useArena.getState().t;
+    const { t, deployedAt } = useArena.getState();
     const now = clock.elapsedTime;
     const zapping = recently(zaps, t, 0.35);
+    // When TagTeam is deployed, the team materializes one by one around the checkpoint.
+    if (root.current) {
+      const since = deployedAt === null ? Infinity : (performance.now() - deployedAt) / 1000 - order * 0.18;
+      const k = clamp01(since / 0.6);
+      root.current.scale.setScalar(Math.max(0.0001, since === Infinity ? 1 : easeOutBack(k)));
+    }
     if (body.current) {
       body.current.position.y = 0.42 + Math.sin(now * 2 + phase) * 0.05 + (zapping ? 0.08 : 0);
       body.current.rotation.y = Math.sin(now * 0.6 + phase) * 0.25;
@@ -193,7 +200,7 @@ export function Angel({ actor, pos, zaps, learns }: { actor: Actor; pos: Vec3; z
   });
 
   return (
-    <group position={pos}>
+    <group ref={root} position={pos}>
       <SelectionRing active={selected} radius={0.5} />
       <mesh rotation-x={-Math.PI / 2} position-y={0.015}>
         <ringGeometry args={[0.32, 0.4, 6]} />
@@ -226,6 +233,38 @@ export function Angel({ actor, pos, zaps, learns }: { actor: Actor; pos: Vec3; z
           </group>
         </group>
       </Pickable>
+    </group>
+  );
+}
+
+// Step 0's defender: one XGBoost model trained once, standing alone at the checkpoint.
+const xgbBody = new THREE.MeshStandardMaterial({ color: "#1a2430", metalness: 0.7, roughness: 0.25, emissive: "#0b2c3a", emissiveIntensity: 0.6 });
+const xgbStripe = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 1.6, 2.0), toneMapped: false });
+export function XgbNode({ pos }: { pos: Vec3 }) {
+  const ring = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (!ring.current) return;
+    ring.current.rotation.z = clock.elapsedTime * 0.8;
+    ring.current.position.y = 1.55 + Math.sin(clock.elapsedTime * 1.6) * 0.05;
+  });
+  return (
+    <group position={pos}>
+      <Pickable sel={{ kind: "gate" }} label="XGBoost, trained once">
+        <mesh position-y={0.7} material={xgbBody} castShadow>
+          <boxGeometry args={[0.5, 1.4, 0.5]} />
+        </mesh>
+        {[0.35, 0.7, 1.05].map((y) => (
+          <mesh key={y} position-y={y} material={xgbStripe}>
+            <boxGeometry args={[0.52, 0.035, 0.52]} />
+          </mesh>
+        ))}
+      </Pickable>
+      <mesh ref={ring} rotation-x={Math.PI / 2} material={xgbStripe}>
+        <torusGeometry args={[0.32, 0.02, 8, 40]} />
+      </mesh>
+      <Html position={[0, 2.05, 0]} center zIndexRange={[12, 0]} style={{ pointerEvents: "none" }}>
+        <div className="plaque model">XGBoost, trained once</div>
+      </Html>
     </group>
   );
 }

@@ -127,3 +127,23 @@ export interface Rulebook {
   added: number;
   retired: number;
 }
+
+// public/baseline.json: another defense's real decisions on the same payments, for the demo's
+// step 0 ("without TagTeam"). Exported by the engine; see arena/README.md.
+export interface Baseline {
+  run_id: string;
+  contender: string;
+  label: string;
+  trained_on: string;
+  decisions: Record<string, { action: Action; settled: boolean }>;
+  totals: BaselineTotals;
+  ours_totals: BaselineTotals;
+}
+
+export interface BaselineTotals {
+  total_cost_cents: number;
+  fraud_cost_cents: number;
+  honest_cost_cents: number;
+  mean_fp: number;
+  max_fp: number;
+}

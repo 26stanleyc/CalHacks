@@ -329,6 +329,36 @@ The engine suite passed: 58 passed, 3 skipped.
 
 **Demo angle:** ⭐ "this is a real run": every devil, rule and payment on screen came from GLM and DeepSeek on Bitdeer. The real run shows learning: 38% of attack payments caught in round 1, 57% in round 4. Say it plainly: 4 rounds, one seed.
 
+### Sat Oct 24, ~18:20 · Step 0, net scoring, overview chapters · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- **Arena step 0.** The demo opens with XGBoost trained once deciding the same recorded payments, using real per-payment decisions from `engine/export_baseline.py` (sister session). There are no angels, just one XGBoost pillar, and the screen edges pulse red when money gets through. It flows straight into TagTeam: the team deploys and a short note carries step 0's result across.
+- **Net scoring.** Net is honest payments through minus money stolen. On the real run (h2h-real-42-202610241623):
+
+  | Round | XGBoost net | TagTeam net |
+  |---|---|---|
+  | 1 | $10.6k | $13.9k |
+  | 2 | $12.8k | $10.8k |
+  | 3 | $2.4k | $11.2k |
+  | 4 | −$5.9k | $9.2k |
+  | **Total** | **$19,775** | **$45,137 (2.3×)** |
+
+  - TagTeam let $38,710 of fraud through, XGBoost $64,129.
+  - TagTeam flagged 25 honest shoppers, XGBoost 62.
+- **One continuous timeline** shows XGBoost's rounds, then TagTeam's, with XGBoost's net outlined on TagTeam's bars.
+- **Smaller side panels**, and a quiet closing note instead of a dialog.
+- **Tried a dark restyle (night scene, glow) and reverted it at the user's request.** The daylight colours are back. A backup of the pre-redesign arena is at tag `arena-daylight-v1` and branch `stanley/arena-viz-daylight-backup`.
+- **Overview:**
+  - The hero slip now tells the story in order: the human asked for a charger under $30, the store page said to ignore the budget, and the agent tried to pay $99.99.
+  - The page became a hero plus four chapters, with cross-fade, wipe, title-morph and swipe transitions (View Transitions API) and `#hash` routes.
+
+**Proof:**
+- `npm run build` passes.
+- In the browser, all three overview transition types run, and the title morphs into and out of the right tile.
+- Step 0 auto-deploys into TagTeam round 1.
+- Net totals on screen match a direct calculation from the two JSON files.
+
+**Demo angle:** ⭐ the before/after. Play from the start at 4×. XGBoost's net collapses to negative by round 4, TagTeam deploys, and the outline bars show it holding steady on the same payments. Say plainly: 4 rounds, one seed, XGBoost untrained in round 1.
+
 ---
 
 ## Entry template

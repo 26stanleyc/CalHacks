@@ -66,6 +66,7 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 .button {
   display: inline-block; padding: 13px 22px; border-radius: 10px; font-weight: 700; font-size: 16px;
   text-decoration: none; color: var(--paper); border: 1.5px solid rgba(236, 229, 210, 0.35);
+  background: none; font-family: var(--text); line-height: inherit; cursor: pointer; /* same look as a link or a <button> */
 }
 .button:hover { border-color: var(--paper); }
 .button.primary { background: var(--paper); color: var(--ink); border-color: var(--paper); }
@@ -101,15 +102,20 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
   border-bottom: 1.5px solid rgba(18, 48, 42, 0.25); font: 800 18px var(--display);
 }
 .slip-head .serial { font: 400 13px var(--text); color: #4a6359; }
-.slip-fields { margin: 14px 0 16px; display: grid; grid-template-columns: 1fr auto; gap: 10px 24px; }
-.slip-fields div { min-width: 0; }
-.slip-fields dt { font-size: 12.5px; color: #4a6359; }
-.slip-fields dd { margin: 0; font-size: 15px; font-weight: 700; }
-.slip-fields .amount { grid-row: span 2; grid-column: 2; text-align: right; }
-.slip-fields .amount dd { font: 800 34px/1.1 var(--display); font-variant-numeric: tabular-nums; }
-.slip-fields div:nth-child(4) { grid-column: 1 / -1; }
-.slip-fields .injected { font-weight: 400; font-style: italic; color: #7a2a1f; }
-.seals { list-style: none; margin: 0; padding: 12px 0 0; border-top: 1.5px solid rgba(18, 48, 42, 0.25); display: grid; gap: 7px; }
+.story { list-style: none; counter-reset: step; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.story li { counter-increment: step; display: grid; grid-template-columns: 22px 1fr; column-gap: 10px; }
+.story li::before {
+  content: counter(step); grid-row: span 2; width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; font: 800 12.5px var(--display); background: var(--ink); color: var(--paper);
+}
+.story .who { font-size: 12.5px; color: #4a6359; }
+.story .said { font-size: 15px; font-weight: 700; }
+.story .hijack::before { background: #c23a28; }
+.story .hijack .said { font-weight: 400; font-style: italic; color: #7a2a1f; }
+.story .pay { font-size: 15px; }
+.story .pay b { font: 800 30px/1.1 var(--display); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.slip .checks { margin: 16px 0 8px; padding-top: 12px; border-top: 1.5px solid rgba(18, 48, 42, 0.25); font-size: 12.5px; color: #4a6359; }
+.seals { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
 .seals li {
   display: grid; grid-template-columns: 22px 92px 1fr; align-items: center; gap: 10px; font-size: 14.5px;
   animation: seal-in 0.35s ease-out both;
@@ -233,10 +239,87 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
   .hero-engraving { opacity: 0.5; }
   .slip { padding: 20px 18px 92px; }
   .seals li { grid-template-columns: 22px 80px 1fr; font-size: 13.5px; }
-  .slip-fields .amount dd { font-size: 28px; }
+  .story .pay b { font-size: 26px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .seals li, .stamp { animation: none; }
+}
+
+/* Chapters: the home view ends in four tiles; each opens a full chapter. */
+.chapter-tiles {
+  max-width: 1180px; margin: 56px auto 0; padding: 0 40px 88px;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
+  border-top: 1px solid var(--engrave);
+}
+.chapter-tile {
+  display: grid; gap: 6px; align-content: start; text-align: left; padding: 22px 22px 26px 0; margin-right: 22px;
+  background: none; border: none; border-bottom: 2px solid transparent; color: var(--paper); cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+.chapter-tile:hover { border-bottom-color: var(--defense); }
+.chapter-tile .tile-title { font: 800 22px/1.15 var(--display); letter-spacing: -0.01em; width: fit-content; }
+.chapter-tile .tile-teaser { font-size: 15px; color: var(--paper-dim); }
+.chapter-tile:hover .tile-title { color: var(--defense-text); }
+
+.chapter { max-width: 1180px; margin: 0 auto; padding: 32px 40px 80px; }
+.chapter-top { display: flex; justify-content: space-between; align-items: center; }
+.chapter-top .back {
+  background: none; border: none; color: var(--defense-text); font: 700 15px var(--text); padding: 6px 0; cursor: pointer;
+}
+.chapter-top .back::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-left: 2px solid; border-bottom: 2px solid; transform: rotate(45deg) translateY(-1px); }
+.chapter-top .count { font-size: 14px; color: var(--paper-dim); font-variant-numeric: tabular-nums; }
+.chapter-title { font: 800 clamp(40px, 5vw, 60px)/1.02 var(--display); letter-spacing: -0.025em; margin: 28px 0 32px; width: fit-content; }
+.chapter-lead { font: 800 30px/1.15 var(--display); color: var(--paper) !important; margin: 0 0 6px !important; max-width: 20ch; }
+.chapter .steps, .chapter .headline-figures, .chapter .results-chart { margin-top: 32px; }
+.chapter .built dl { margin-top: 0; }
+.closing-note { margin-top: 40px; color: var(--paper-dim); max-width: 60ch; }
+.chapter-pager { margin-top: 72px; padding-top: 22px; border-top: 1px solid var(--engrave); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.pager { display: grid; gap: 2px; background: none; border: none; color: var(--paper); font: 800 20px var(--display); cursor: pointer; padding: 4px 0; }
+.pager span { font: 700 13px var(--text); color: var(--paper-dim); }
+.pager.next { text-align: right; }
+.pager:hover { color: var(--defense-text); }
+
+/* Transitions inside the overview (same page). "in": the chapter wipes in left to right through a
+   soft gradient edge while its title morphs out of the tile. "out": the wipe runs the other way.
+   "next"/"prev": a horizontal swipe. Cross-page transitions to the arena are in transitions.css. */
+html[data-nav="in"] .chapter-tile.focus .tile-title,
+html[data-nav="in"] .chapter-title,
+html[data-nav="out"] .chapter-tile.focus .tile-title,
+html[data-nav="out"] .chapter-title { view-transition-name: chapter-title; }
+::view-transition-group(chapter-title) { animation-duration: 620ms; animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+html:active-view-transition-type(in)::view-transition-old(root) { animation: 620ms ease both vt-dim; }
+html:active-view-transition-type(in)::view-transition-new(root) {
+  animation: 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both vt-wipe;
+  mask-image: linear-gradient(90deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
+}
+html:active-view-transition-type(out)::view-transition-old(root) { animation: 620ms ease both vt-dim; }
+html:active-view-transition-type(out)::view-transition-new(root) {
+  animation: 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both vt-wipe-back;
+  mask-image: linear-gradient(270deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
+}
+html:active-view-transition-type(next)::view-transition-old(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-out-left; }
+html:active-view-transition-type(next)::view-transition-new(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-in-right; }
+html:active-view-transition-type(prev)::view-transition-old(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-out-right; }
+html:active-view-transition-type(prev)::view-transition-new(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-in-left; }
+
+@keyframes vt-wipe { from { mask-position: 100% 0; } to { mask-position: 0 0; } }
+@keyframes vt-wipe-back { from { mask-position: 0 0; } to { mask-position: 100% 0; } }
+@keyframes vt-dim { to { opacity: 0.25; filter: blur(2px); } }
+@keyframes vt-out-left { to { transform: translateX(-28%); opacity: 0; } }
+@keyframes vt-in-right { from { transform: translateX(28%); opacity: 0; } }
+@keyframes vt-out-right { to { transform: translateX(28%); opacity: 0; } }
+@keyframes vt-in-left { from { transform: translateX(-28%); opacity: 0; } }
+
+@media (max-width: 900px) {
+  .chapter-tiles { grid-template-columns: 1fr 1fr; padding: 0 20px 64px; }
+  .chapter { padding: 24px 20px 64px; }
+}
+@media (max-width: 480px) {
+  .chapter-tiles { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

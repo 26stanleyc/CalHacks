@@ -55,15 +55,15 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 .arena-nav nav a[aria-current="page"] { color: var(--ink); background: rgba(236, 229, 210, 0.12); }
 /* Title and scoreboard share one column, so they can't collide at any width. */
 .hud-left {
-  position: absolute; top: 20px; left: 24px; width: min(340px, calc(100vw - 48px));
-  display: flex; flex-direction: column; gap: 14px; pointer-events: none;
+  position: absolute; top: 18px; left: 20px; width: min(280px, calc(100vw - 40px));
+  display: flex; flex-direction: column; gap: 10px; pointer-events: none;
 }
 .round-title {
-  background: var(--paper); border: 2px solid var(--edge); border-radius: 20px; box-shadow: var(--lift); padding: 14px 18px 14px;
+  background: var(--paper); border: 2px solid var(--edge); border-radius: 16px; box-shadow: var(--lift); padding: 10px 14px 11px;
 }
-.round-title h1 { margin: 0; font: 800 44px/1 var(--display); letter-spacing: -0.02em; }
-.round-title h1 span { font-weight: 600; font-size: 22px; color: var(--ink-soft); letter-spacing: 0; }
-.round-title p { margin: 8px 0 0; font-size: 15px; }
+.round-title h1 { margin: 0; font: 800 30px/1 var(--display); letter-spacing: -0.02em; }
+.round-title h1 span { font-weight: 600; font-size: 16px; color: var(--ink-soft); letter-spacing: 0; }
+.round-title p { margin: 6px 0 0; font-size: 13px; line-height: 1.35; }
 .round-title .frozen {
   display: inline-block; padding: 3px 10px; border-radius: 999px;
   background: rgba(125, 156, 245, 0.2); color: #b4c8ff; font-weight: 700;
@@ -75,20 +75,20 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
   background: var(--paper); border: 2px solid var(--edge); border-radius: 20px; box-shadow: var(--lift);
   overflow: hidden;
 }
-.scoreboard .side { padding: 10px 18px 8px; text-align: center; }
+.scoreboard .side { padding: 7px 10px 5px; text-align: center; }
 .scoreboard .angels { background: rgba(125, 156, 245, 0.14); }
 .scoreboard .devils { background: rgba(229, 83, 63, 0.14); }
-.scoreboard .label { display: block; font-size: 13px; font-weight: 700; }
+.scoreboard .label { display: block; font-size: 11.5px; font-weight: 700; }
 .scoreboard .angels .label { color: var(--seraph); }
 .scoreboard .devils .label { color: #f4a092; }
-.scoreboard strong { font: 800 32px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.scoreboard strong { font: 800 22px/1.15 var(--display); font-variant-numeric: tabular-nums; }
 .scoreboard .angels strong { color: var(--seraph); }
 .scoreboard .devils strong { color: var(--imp); }
-.scoreboard .fine { grid-column: 1 / -1; margin: 0; padding: 6px 14px 8px; font-size: 13px; text-align: center; color: var(--ink-soft); }
+.scoreboard .fine { grid-column: 1 / -1; margin: 0; padding: 5px 12px 6px; font-size: 11.5px; text-align: center; color: var(--ink-soft); }
 
 /* Event feed, newest on top. */
 .feed {
-  position: absolute; left: 24px; bottom: 136px; margin: 0; padding: 0; list-style: none;
+  position: absolute; left: 24px; bottom: 158px; margin: 0; padding: 0; list-style: none;
   width: min(400px, calc(100vw - 48px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none;
 }
 .feed li {
@@ -108,7 +108,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 
 .hud-right:has(.card) + .legend { display: none; }
 .legend {
-  position: absolute; right: 24px; bottom: 136px; background: var(--paper);
+  position: absolute; right: 24px; bottom: 158px; background: var(--paper);
   border-radius: 14px; padding: 8px 12px; font-size: 12.5px; display: grid; grid-template-columns: auto auto; gap: 2px 14px;
 }
 .legend p { margin: 0; display: flex; align-items: center; gap: 7px; }
@@ -273,17 +273,90 @@ blockquote {
   .arena-nav { top: 10px; }
   .arena-nav .wordmark { display: none; }
   .hud-left { top: 62px; left: 16px; width: calc(100vw - 32px); gap: 10px; }
-  .round-title h1 { font-size: 30px; }
-  .round-title p { font-size: 13px; }
-  .scoreboard strong { font-size: 24px; }
+  .round-title h1 { font-size: 26px; }
+  .round-title p { font-size: 12.5px; }
+  .scoreboard strong { font-size: 20px; }
   .feed, .legend { display: none; }
   .timeline { left: 16px; right: 16px; grid-template-columns: auto 1fr; height: auto; }
   .speeds { grid-column: 1 / -1; justify-self: center; }
   .caption { display: none; }
   .shelf-map { display: none; }
+  .arena .deploy-note, .arena .final-note { top: auto; bottom: 172px; }
   .hud-right { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; max-height: 60%; z-index: 45; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .feed li, .card, .arena > div:has(canvas) { animation: none; }
 }
+
+/* Step 0: the same traffic with a baseline defense alone. Red at the screen's edge, pulsing each
+   time money gets through, so the breach is felt rather than read. */
+.threat-tint {
+  position: fixed; inset: 0; z-index: 30; pointer-events: none;
+  box-shadow: inset 0 0 220px rgba(229, 56, 59, 0.22);
+}
+.alarm {
+  position: fixed; inset: 0; z-index: 31; pointer-events: none;
+  box-shadow: inset 0 0 140px rgba(255, 60, 60, 0.55);
+  animation: alarm 0.7s ease-out forwards;
+}
+@keyframes alarm { to { opacity: 0; } }
+.stage-badge {
+  display: inline-block; margin: 0 0 6px !important; padding: 2px 8px; border-radius: 6px;
+  font-size: 11.5px !important; font-weight: 700; letter-spacing: 0.01em;
+}
+.stage-badge.before { background: rgba(229, 56, 59, 0.18); color: #ff9c90; box-shadow: inset 0 0 0 1px rgba(229, 56, 59, 0.45); }
+.stage-badge.after { background: rgba(125, 156, 245, 0.16); color: #b4c8ff; box-shadow: inset 0 0 0 1px rgba(125, 156, 245, 0.4); }
+.scoreboard.breach { border-color: rgba(229, 56, 59, 0.55); box-shadow: 0 0 0 1px rgba(229, 56, 59, 0.25), 0 10px 30px -10px rgba(229, 56, 59, 0.45); }
+.scoreboard .run-total {
+  grid-column: 1 / -1; margin: 0; padding: 6px 12px 6px; border-top: 1px solid var(--edge);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.scoreboard .run-total span { font-size: 11.5px; color: var(--ink-soft); font-weight: 700; }
+.scoreboard .run-total b { font: 800 19px/1 var(--display); color: #7fe3a1; font-variant-numeric: tabular-nums; }
+.scoreboard .run-total.negative b { color: #ff6b5e; }
+.scoreboard .breakdown { grid-column: 1 / -1; margin: -2px 0 0; padding: 0 12px 8px; font-size: 11.5px; color: var(--ink-soft); }
+.scoreboard .versus { grid-column: 1 / -1; margin: 0; padding: 0 12px 9px; font-size: 11.5px; color: var(--ink-soft); }
+.scoreboard .versus b { color: var(--ink); }
+.scoreboard .versus .saved { display: block; margin-top: 4px; color: #7fe3a1; font-weight: 700; }
+.scoreboard .versus .behind { display: block; margin-top: 4px; color: #f4c26b; font-weight: 700; }
+.deploy-note {
+  position: fixed; top: 74px; left: 50%; transform: translateX(-50%); z-index: 45; margin: 0; pointer-events: none;
+  max-width: min(420px, calc(100vw - 32px)); padding: 9px 16px; border-radius: 10px; font-size: 14px; text-align: center;
+  background: var(--paper); color: var(--ink); border: 1px solid rgba(125, 156, 245, 0.55);
+  box-shadow: 0 0 24px rgba(99, 139, 240, 0.35); animation: note 5s ease-out forwards;
+}
+.deploy-note b { color: #b4c8ff; }
+@keyframes note { 0% { opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+/* The closing line of the run: as quiet as the deploy note, and it stays until playback moves on. */
+.final-note {
+  position: fixed; top: 74px; left: 50%; transform: translateX(-50%); z-index: 45; margin: 0;
+  width: max-content; max-width: min(420px, calc(100vw - 32px)); padding: 9px 16px; border-radius: 10px;
+  font-size: 14px; line-height: 1.45; text-align: center; color: var(--ink);
+  background: var(--paper); border: 1px solid rgba(125, 156, 245, 0.45); animation: summary-in 0.4s ease-out;
+}
+.final-note b { color: #b4c8ff; }
+.final-note .replay {
+  border: none; background: none; padding: 0; margin-left: 4px; font-weight: 700; color: #b4c8ff;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.legend .dot.model { background: #1a2430; box-shadow: inset 0 0 0 2px #5ad7f2; border-radius: 3px; }
+.plaque.model { color: #9ce8f7; border: 1px solid rgba(90, 215, 242, 0.45); }
+@keyframes summary-in { from { opacity: 0; } }
+.bar .ghost {
+  position: absolute; left: 0; right: 0; border: 1.5px solid #ff6b5e; border-radius: 4px;
+  background: rgba(229, 56, 59, 0.12); pointer-events: none;
+}
+.bar .fill { position: relative; }
+.bars.net .bar .fill { position: absolute; left: 0; right: 0; border-radius: 4px; }
+.bars.net .bar .zero { position: absolute; left: 0; right: 0; height: 1px; background: rgba(236, 229, 210, 0.45); z-index: 1; }
+/* One continuous bar: the baseline's section, then TagTeam's, each bracketed underneath. */
+.group-mark {
+  position: relative; border-top: 2px solid; font-size: 12px; font-weight: 700; text-align: center;
+  white-space: nowrap; line-height: 16px;
+}
+.group-mark::before, .group-mark::after { content: ""; position: absolute; top: -6px; width: 2px; height: 6px; background: currentColor; }
+.group-mark::before { left: 0; }
+.group-mark::after { right: 0; }
+.group-mark.before { color: #5ad7f2; border-color: #5ad7f2; }
+.group-mark.after { color: #b4c8ff; border-color: var(--seraph); }

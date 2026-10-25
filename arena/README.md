@@ -2,7 +2,7 @@
 
 Two pages, one Vite app:
 
-- **`/`, the overview:** who TagTeam is, what it does, why it matters, and what it saves. Every figure on it is sourced. Industry numbers link to their articles. The results come from `evidence/head-to-head/bitdeer-stacking.md` on `stanley/core-engine`: real Bitdeer models, seeds 100–102, 6 rounds each.
+- **`/`, the overview:** a hero (a payment slip telling one hijacked purchase in order, then stamped by the five specialists) and four chapters: why it matters, how it works, what it saves, built on. Opening a chapter wipes it in while its title morphs out of its tile; next/previous (or the arrow keys) swipe; Escape or back wipes home. Each chapter has its own `#hash`. Every figure is sourced. Industry numbers link to their articles. The results come from `evidence/head-to-head/bitdeer-stacking.md` on `stanley/core-engine`: real Bitdeer models, seeds 100–102, 6 rounds each.
 - **`/demo/`, the live arena:** a 3D replay of a training run as a battle on a hex island. Five angel specialists and the orchestrator guard the x402 gate in the middle. Devil attackers stand on the 24 arena shelves around the edge and throw payments (coins) at the gate. Angels zap the coins they catch, and stolen coins drop into the vault.
 
 ```bash
@@ -41,6 +41,12 @@ The app plays `public/replay.json` if it exists, and otherwise a deterministic m
 
 ```bash
 uv run python -m engine.export_replay <run_id> --out ../arena-viz/arena/public/replay.json
+```
+
+**Step 0 (without TagTeam).** If `public/baseline.json` exists for the same `run_id`, the demo opens with a baseline defense deciding the same recorded payments: XGBoost trained once, on round 1's fraud, then frozen. Round 1 is decided untrained, and the screen says so. When its rounds end, TagTeam deploys on its own and the run continues on one timeline. Scoreboard, timeline and closing note compare the two by net: honest payments through minus money stolen (higher is better). Re-export both files together whenever the run changes, or step 0 disappears:
+
+```bash
+uv run python -m engine.export_baseline <run_id> --out ../arena-viz/arena/public/baseline.json
 ``` The format is `src/data/types.ts`. Every field comes from a table in `contracts/db.sql`, so an exporter needs one query per table per round:
 
 | Replay field | Source |

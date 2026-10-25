@@ -1,16 +1,51 @@
-import { useArena, phaseAt, ROUND_LEN, waveStart, THROW_WINDOW, FLIGHT, LEARN_START } from "../store";
+import { useEffect, useState } from "react";
+import { flowByRound } from "../data/baseline";
+import type { Replay } from "../data/types";
+import { useArena, phaseAt, ROUND_LEN, waveStart, THROW_WINDOW, FLIGHT, LEARN_START, type Stage } from "../store";
 import { getRoundModel, tallyAt } from "../world/roundModel";
 import { ACTOR_NAME, attackerName, money, ruleName, shelfName } from "./words";
 
-function phaseLine(t: number, spawns: number, frozen: boolean): string {
+function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string): string {
   const p = phaseAt(t);
+  if (stage === "before") {
+    // The baseline only trains after round 1's labels arrive, so round 1 is decided untrained.
+    if (round === 0 && p.kind !== "learn") return `${model} hasn't trained yet, so this round it lets every payment through`;
+    if (p.kind === "spawn") return `${model} is guarding the checkpoint alone`;
+    if (p.kind === "wave") return `Wave ${p.wave} of 3: attackers try to pay their way through the gate`;
+    return round === 0 ? `${model} trains once, on this round's fraud` : `${model} stays frozen while the attackers adapt`;
+  }
   if (p.kind === "spawn") return spawns ? "Defenders are building attackers aimed at their weak spots" : "Attackers take their places";
   if (p.kind === "wave") return `Wave ${p.wave} of 3: attackers try to pay their way through the gate`;
   return frozen ? "Learning is frozen, so the defense stays as it was" : "Defenders rewrite their rules from what got through";
 }
 
+// "XGBoost, trained once" reads as "XGBoost" inside a sentence.
+const shortName = (label: string) => label.split(",")[0];
+
+// Money that got through in a run up to this round and moment, and honest shoppers flagged.
+// Net = honest money through minus money stolen; higher is better.
+function runningTotals(replay: Replay, round: number, t: number) {
+  const model = getRoundModel(replay, round);
+  const past = flowByRound(replay).slice(0, round);
+  const now = tallyAt(model, t);
+  const stolen = past.reduce((a, f) => a + f.stolen, 0) + now.stolen;
+  const honestThrough = past.reduce((a, f) => a + f.honest, 0) + now.honest;
+  let flagged = 0;
+  replay.rounds.slice(0, round).forEach((r) =>
+    r.waves.forEach((w) => w.payments.forEach((p) => (flagged += !p.is_fraud && p.action !== "allow" ? 1 : 0))),
+  );
+  for (const c of model.coins) if (!c.attack && c.payment.action !== "allow" && c.intercept <= t) flagged++;
+  return { stolen, honest: honestThrough, net: honestThrough - stolen, flagged };
+}
+
+export function runTotals(replay: Replay) {
+  return runningTotals(replay, replay.rounds.length - 1, ROUND_LEN);
+}
+
 export function Hud() {
   const replay = useArena((s) => s.replay)!;
+  const runs = useArena((s) => s.runs);
+  const stage = useArena((s) => s.stage);
   const round = useArena((s) => s.round);
   // Quarter-second steps are plenty for the scoreboard and keep React out of the frame loop.
   const tq = useArena((s) => Math.floor(s.t * 4) / 4);
@@ -18,38 +53,118 @@ export function Hud() {
   const model = getRoundModel(replay, round);
   const tally = tallyAt(model, tq);
   const honest = model.coins.filter((c) => !c.attack && c.launch <= tq).length;
+  const flaggedNow = model.coins.filter((c) => !c.attack && c.payment.action !== "allow" && c.intercept <= tq).length;
   const spawns = r.actions.filter((a) => a.action === "spawn").length;
   const done = tq >= LEARN_START;
   const held = Math.round(r.metrics.shelves_defended * 24);
   const attacks = tally.blocked + tally.through;
+  const label = runs?.baseline?.label ?? "The baseline";
+  const before = stage === "before";
+  const ours = runningTotals(replay, round, tq);
+  const theirs = !before && runs?.before ? runningTotals(runs.before, round, tq) : null;
 
   return (
     <>
+      {before && <div className="threat-tint" aria-hidden="true" />}
+      {before && tally.stolen > 0 && <div key={tally.stolen} className="alarm" aria-hidden="true" />}
       <div className="hud-left">
       <header className="round-title">
+        {runs?.before && (
+          <p className={`stage-badge ${stage}`}>{before ? "Step 0: without TagTeam" : "TagTeam deployed"}</p>
+        )}
         <h1>
           Round {r.round} <span>of {replay.rounds.length}</span>
         </h1>
-        <p>{phaseLine(tq, spawns, r.metrics.frozen)}</p>
+        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label))}</p>
         {r.metrics.frozen && <p className="frozen">Learning frozen</p>}
       </header>
-      <section className="scoreboard" aria-label="This round's score">
+      <section className={`scoreboard${before ? " breach" : ""}`} aria-label="This round's score">
         <div className="side angels">
-          <span className="label">Blocked</span>
+          <span className="label">{before ? "Blocked by XGBoost" : "Blocked"}</span>
           <strong>{tally.blocked}</strong>
         </div>
         <div className="side devils">
-          <span className="label">Stolen</span>
+          <span className="label">Stolen this round</span>
           <strong>{money(tally.stolen)}</strong>
         </div>
         <p className="fine">
           {attacks > 0 && <>Caught {Math.round((tally.blocked / attacks) * 100)}% of attack payments<br /></>}
-          {tally.falseAlarms} false {tally.falseAlarms === 1 ? "alarm" : "alarms"} in {honest} honest payments
-          {done && <><br />{held} of 24 shelves held after learning</>}
+          {flaggedNow} honest {flaggedNow === 1 ? "shopper" : "shoppers"} flagged out of {honest}
+          {done && !runs?.before && <><br />{held} of 24 shelves held after learning</>}
         </p>
+        <p className={`run-total${ours.net < 0 ? " negative" : ""}`}>
+          <span>Net so far</span>
+          <b>{money(ours.net)}</b>
+        </p>
+        <p className="breakdown">
+          {money(ours.honest)} honest payments through, minus {money(ours.stolen)} stolen
+        </p>
+        {theirs && (
+          <p className="versus">
+            {shortName(label)} on the same payments: net <b>{money(theirs.net)}</b> ({money(theirs.stolen)} stolen,{" "}
+            {theirs.flagged} honest flagged).{" "}
+            <span className={ours.net >= theirs.net ? "saved" : "behind"}>
+              {ours.net >= theirs.net
+                ? `TagTeam is ${money(ours.net - theirs.net)} ahead so far`
+                : `TagTeam is ${money(theirs.net - ours.net)} behind so far`}
+            </span>
+          </p>
+        )}
       </section>
       </div>
       <Feed />
+    </>
+  );
+}
+
+// Step 0 flows straight into TagTeam: a passing note carries step 0's result across without
+// stopping, and a summary closes the TagTeam run.
+export function StageBanner() {
+  const runs = useArena((s) => s.runs);
+  const stage = useArena((s) => s.stage);
+  const deployedAt = useArena((s) => s.deployedAt);
+  const atEnd = useArena((s) => !!s.replay && s.round === s.replay.rounds.length - 1 && s.t >= LEARN_START);
+  const setStage = useArena((s) => s.setStage);
+  const [showDeploy, setShowDeploy] = useState(false);
+  useEffect(() => {
+    if (deployedAt === null) return;
+    setShowDeploy(true);
+    const id = setTimeout(() => setShowDeploy(false), 5000);
+    return () => clearTimeout(id);
+  }, [deployedAt]);
+  if (!runs?.before || !runs.baseline || stage === "before") return null;
+
+  const label = runs.baseline.label;
+  const them = runTotals(runs.before);
+  const us = runTotals(runs.after);
+  const worst = flowByRound(runs.before)
+    .map((f, i) => ({ net: f.net, round: i + 1 }))
+    .reduce((w, f) => (f.net < w.net ? f : w));
+  const saved = them.stolen - us.stolen;
+  const ratio = them.net > 0 ? us.net / them.net : null;
+
+  return (
+    <>
+      {showDeploy && (
+        <p className="deploy-note" role="status">
+          <b>TagTeam deployed.</b> Without it, {shortName(label)} netted {money(them.net)}
+          {worst.net < 0 ? ` and went negative in round ${worst.round}` : ""}. Same payments, same attackers.
+        </p>
+      )}
+      {atEnd && (
+        <p className="final-note" role="status">
+          <b>
+            Net {money(us.net)}
+            {ratio && ratio >= 1.1 ? `, ${ratio.toFixed(1)}× ${shortName(label)}'s.` : ` against ${money(them.net)}.`}
+          </b>{" "}
+          On the same payments, {money(us.stolen)} of fraud got through against {money(them.stolen)} (
+          {Math.round((saved / them.stolen) * 100)}% less), and {us.flagged} honest shoppers were flagged against{" "}
+          {them.flagged}.{" "}
+          <button className="replay" onClick={() => setStage("before")}>
+            Replay step 0
+          </button>
+        </p>
+      )}
     </>
   );
 }
@@ -69,6 +184,7 @@ function changingPlan(name: string, trigger: string): string {
 
 function Feed() {
   const replay = useArena((s) => s.replay)!;
+  const compare = useArena((s) => !!s.runs?.before);
   const round = useArena((s) => s.round);
   const tq = useArena((s) => Math.floor(s.t * 4) / 4);
   const r = replay.rounds[round];
@@ -113,7 +229,8 @@ function Feed() {
         }),
       );
 
-  const shown = items.filter((i) => i.at <= tq && tq < ROUND_LEN).sort((a, b) => b.at - a.at).slice(0, 3);
+  // The comparison scoreboard is taller, so the feed shows fewer lines to stay clear of it.
+  const shown = items.filter((i) => i.at <= tq && tq < ROUND_LEN).sort((a, b) => b.at - a.at).slice(0, compare ? 2 : 3);
   return (
     <ol className="feed" aria-live="polite">
       {shown.map((i) => (

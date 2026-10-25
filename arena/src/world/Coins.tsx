@@ -7,7 +7,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { C } from "../palette";
 import { useArena } from "../store";
-import { GATE, actorPos } from "./layout";
+import { GATE, actorPos, type Vec3 } from "./layout";
 import { INTERCEPT_FRAC, type CoinFlight, type RoundModel } from "./roundModel";
 
 const ARC = 2.2;
@@ -34,7 +34,8 @@ const hide = (mesh: THREE.InstancedMesh, i: number) => {
   mesh.setMatrixAt(i, tmp.matrix);
 };
 
-export function Coins({ model }: { model: RoundModel }) {
+// `soloFrom` is where a single-model defense sits (step 0); it zaps every coin it stops.
+export function Coins({ model, soloFrom }: { model: RoundModel; soloFrom?: Vec3 }) {
   const drawn = useMemo(() => model.coins.filter((c) => c.drawn), [model]);
   const coins = useRef<THREE.InstancedMesh>(null);
   const zaps = useRef<THREE.InstancedMesh>(null);
@@ -77,9 +78,9 @@ export function Coins({ model }: { model: RoundModel }) {
       // Zap beams from each objecting angel, just before and after the intercept.
       if (stops && t > c.intercept - 0.12 && t < c.intercept + 0.22) {
         const w = 1 - Math.abs(t - c.intercept) / 0.22;
-        for (const lane of c.zappers) {
+        const sources = soloFrom ? [soloFrom] : c.zappers.map(actorPos);
+        for (const p of sources) {
           if (z >= ZAP_POOL) break;
-          const p = actorPos(lane);
           b.set(p[0], p[1] + 0.95, p[2]);
           const len = b.distanceTo(a);
           tmp.position.copy(b).add(a).multiplyScalar(0.5);

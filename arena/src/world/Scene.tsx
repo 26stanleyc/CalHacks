@@ -6,7 +6,7 @@ import { C } from "../palette";
 import { useArena } from "../store";
 import { Board } from "./Board";
 import { Coins } from "./Coins";
-import { Angel, Devil, Shopper } from "./creatures";
+import { Angel, Devil, Shopper, XgbNode } from "./creatures";
 import { ACTORS, SHOPPER_SPOTS, actorPos } from "./layout";
 import { getRoundModel } from "./roundModel";
 import { Spawns } from "./Spawns";
@@ -28,8 +28,12 @@ function HoverLabel() {
   );
 }
 
+// Step 0's single model stands on the orchestrator's tile, the spot TagTeam's team later fills.
+const XGB_POS = actorPos("orchestrator");
+
 function Cast() {
   const replay = useArena((s) => s.replay)!;
+  const before = useArena((s) => s.stage === "before");
   const roundIndex = useArena((s) => s.round);
   const model = getRoundModel(replay, roundIndex);
   const round = replay.rounds[roundIndex];
@@ -53,12 +57,13 @@ function Cast() {
 
   return (
     <>
-      {ACTORS.map((a) => {
+      {before && <XgbNode pos={XGB_POS} />}
+      {!before && ACTORS.map((a, i) => {
         const p = actorPos(a);
         const learns = !round.metrics.frozen && (a === "orchestrator" || (round.rulebooks.find((r) => r.lane === a)?.added ?? 0) > 0);
         return (
           <group key={a} position={p} rotation-y={Math.atan2(p[0], p[2])}>
-            <Angel actor={a} pos={[0, 0, 0]} zaps={a === "orchestrator" ? [] : zaps.get(a) ?? []} learns={learns} />
+            <Angel actor={a} pos={[0, 0, 0]} zaps={a === "orchestrator" ? [] : zaps.get(a) ?? []} learns={learns} order={i} />
           </group>
         );
       })}
@@ -80,7 +85,7 @@ function Cast() {
       {SHOPPER_SPOTS.map((p, i) => (
         <Shopper key={i} pos={p} throws={shopperThrows[i]} />
       ))}
-      <Coins model={model} />
+      <Coins model={model} soloFrom={before ? [XGB_POS[0], XGB_POS[1] + 0.4, XGB_POS[2]] : undefined} />
       <Spawns key={roundIndex} beams={model.beams} news={model.news} />
     </>
   );

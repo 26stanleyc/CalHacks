@@ -1,10 +1,24 @@
-// The round scrubber doubles as the arms-race chart: each round's bar is how much a fresh
-// attacker could still steal from the frozen defense (exploitability). Lower is better.
+// The round scrubber doubles as a chart. With a baseline (step 0) loaded, the bar runs straight
+// through both stages: the baseline's rounds first, then TagTeam's, each bar that round's net
+// (honest payments through minus money stolen, drawn from a zero line; higher is better). TagTeam's
+// bars carry a red outline with the baseline's net on the same payments. Without a baseline, each
+// bar is how much a fresh attacker could still steal from the frozen defense (exploitability;
+// lower is better).
 
-import { useArena, ROUND_LEN } from "../store";
+import { flowByRound } from "../data/baseline";
+import { useArena, ROUND_LEN, type Stage } from "../store";
 import { money } from "./words";
 
 const SPEEDS = [1, 2, 4, 8];
+
+interface Segment {
+  stage: Stage;
+  index: number; // round index within its stage
+  round: number;
+  value: number;
+  ghost: number | null;
+  frozen: boolean;
+}
 
 export function Timeline() {
   const replay = useArena((s) => s.replay)!;
@@ -12,12 +26,46 @@ export function Timeline() {
   const progress = useArena((s) => Math.floor((s.t / ROUND_LEN) * 100));
   const playing = useArena((s) => s.playing);
   const speed = useArena((s) => s.speed);
-  const { jump, toggle, setSpeed } = useArena.getState();
-  const max = Math.max(...replay.rounds.map((r) => r.metrics.exploitability_cents));
+  const runs = useArena((s) => s.runs);
+  const stage = useArena((s) => s.stage);
+  const { jump, toggle, setSpeed, setStage } = useArena.getState();
+  const compare = !!runs?.before;
+  const label = runs?.baseline?.label ?? "";
+
+  let segments: Segment[];
+  if (compare) {
+    const before = flowByRound(runs!.before!).map((f) => f.net);
+    const after = flowByRound(runs!.after).map((f) => f.net);
+    segments = [
+      ...runs!.before!.rounds.map((r, i) => ({ stage: "before" as Stage, index: i, round: r.round, value: before[i], ghost: null, frozen: false })),
+      ...runs!.after.rounds.map((r, i) => ({ stage: "after" as Stage, index: i, round: r.round, value: after[i], ghost: before[i], frozen: false })),
+    ];
+  } else {
+    segments = replay.rounds.map((r, i) => ({
+      stage, index: i, round: r.round, value: r.metrics.exploitability_cents, ghost: null, frozen: r.metrics.frozen,
+    }));
+  }
+  const current = segments.findIndex((s) => s.stage === stage && s.index === round);
+  const beforeCount = compare ? runs!.before!.rounds.length : 0;
+
+  // Net can go negative, so in comparison mode bars hang from a zero line spanning every value.
+  const values = segments.flatMap((s) => (s.ghost === null ? [s.value] : [s.value, s.ghost]));
+  const lo = compare ? Math.min(0, ...values) : 0;
+  const span = Math.max(...values, 1) - lo;
+  const zero = ((0 - lo) / span) * 100;
+  const netBox = (v: number) => {
+    const h = Math.max((Math.abs(v) / span) * 100, 3);
+    return { bottom: `${v >= 0 ? zero : zero - h}%`, height: `${h}%` };
+  };
+  const go = (s: Segment) => {
+    if (s.stage !== stage) setStage(s.stage, s.stage === "after");
+    jump(s.index);
+  };
+
   // Consecutive frozen rounds get one label underneath, so the spike they cause explains itself.
   const frozenRuns: [number, number][] = [];
-  replay.rounds.forEach((r, i) => {
-    if (!r.metrics.frozen) return;
+  segments.forEach((s, i) => {
+    if (!s.frozen) return;
     const last = frozenRuns[frozenRuns.length - 1];
     if (last && last[1] === i - 1) last[1] = i;
     else frozenRuns.push([i, i]);
@@ -33,32 +81,49 @@ export function Timeline() {
         )}
       </button>
       <div className="track">
-        <div className="bars" role="group" aria-label="Rounds">
-          {replay.rounds.map((r, i) => {
-            const h = 18 + (r.metrics.exploitability_cents / max) * 82;
-            const level = r.metrics.exploitability_cents / max;
+        <div className={`bars${compare ? " net" : ""}`} role="group" aria-label="Rounds">
+          {segments.map((s, i) => {
+            const who = compare ? (s.stage === "before" ? `${label}, round ${s.round}` : `TagTeam, round ${s.round}`) : `Round ${s.round}`;
+            const what = compare ? `net ${money(s.value)}` : `${money(s.value)} still stealable`;
+            const extra = s.ghost !== null ? `; ${label} on the same payments: net ${money(s.ghost)}` : "";
             return (
               <button
-                key={r.round}
-                className={`bar${i === round ? " current" : ""}${i < round ? " past" : ""}${r.metrics.frozen ? " frozen" : ""}`}
-                onClick={() => jump(i)}
-                aria-label={`Round ${r.round}: a fresh attacker could still steal ${money(r.metrics.exploitability_cents)}`}
-                title={`Round ${r.round}: ${money(r.metrics.exploitability_cents)} still stealable`}
+                key={`${s.stage}-${s.index}`}
+                className={`bar${i === current ? " current" : ""}${i < current ? " past" : ""}${s.frozen ? " frozen" : ""}`}
+                onClick={() => go(s)}
+                aria-label={`${who}: ${what}${extra}`}
+                title={`${who}: ${what}${extra.replace("; ", "\n")}`}
               >
+                {compare && <span className="zero" style={{ bottom: `${zero}%` }} />}
+                {s.ghost !== null && <span className="ghost" style={netBox(s.ghost)} />}
                 <span
                   className="fill"
-                  style={{
-                    height: `${h}%`,
-                    background: `color-mix(in oklab, var(--shaky) ${Math.round(level * 100)}%, var(--held))`,
-                  }}
+                  style={
+                    compare
+                      ? { ...netBox(s.value), background: s.value < 0 ? "var(--shaky)" : s.stage === "before" ? "#5ad7f2" : "var(--seraph)" }
+                      : {
+                          height: `${18 + (s.value / span) * 82}%`,
+                          background: `color-mix(in oklab, var(--shaky) ${Math.round((s.value / span) * 100)}%, var(--held))`,
+                        }
+                  }
                 />
-                {i === round && <span className="progress" style={{ width: `${progress}%` }} />}
+                {i === current && <span className="progress" style={{ width: `${progress}%` }} />}
               </button>
             );
           })}
         </div>
-        {frozenRuns.length > 0 && (
-          <div className="marks" style={{ gridTemplateColumns: `repeat(${replay.rounds.length}, 1fr)` }}>
+        {(compare || frozenRuns.length > 0) && (
+          <div className="marks" style={{ gridTemplateColumns: `repeat(${segments.length}, 1fr)` }}>
+            {compare && (
+              <>
+                <span className="group-mark before" style={{ gridColumn: `1 / ${beforeCount + 1}` }}>
+                  {label.split(",")[0]} only
+                </span>
+                <span className="group-mark after" style={{ gridColumn: `${beforeCount + 1} / ${segments.length + 1}` }}>
+                  TagTeam
+                </span>
+              </>
+            )}
             {frozenRuns.map(([a, b]) => (
               <span key={a} className="frozen-mark" style={{ gridColumn: `${a + 1} / ${b + 2}` }}>
                 Learning frozen
@@ -66,7 +131,11 @@ export function Timeline() {
             ))}
           </div>
         )}
-        <p className="caption">Bar height: how much a fresh attacker could still steal after each round</p>
+        <p className="caption">
+          {compare
+            ? `Bar height: net each round, honest payments through minus stolen. Red outline: ${label} on the same payments`
+            : "Bar height: how much a fresh attacker could still steal after each round"}
+        </p>
       </div>
       <div className="speeds" role="group" aria-label="Playback speed">
         {SPEEDS.map((s) => (

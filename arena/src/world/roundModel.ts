@@ -166,7 +166,9 @@ export function tallyAt(model: RoundModel, t: number) {
   let stolen = 0;
   let falseAlarms = 0;
   let through = 0;
+  let honest = 0; // honest money that settled
   for (const c of model.coins) {
+    if (c.outcome === "honest" && c.land <= t) honest += c.payment.amount_cents;
     if (c.outcome === "blocked" && c.intercept <= t) blocked++;
     else if (c.outcome === "stolen" && c.land <= t) {
       stolen += c.payment.amount_cents;
@@ -174,7 +176,7 @@ export function tallyAt(model: RoundModel, t: number) {
     }
     else if (c.outcome === "false_alarm" && c.intercept <= t) falseAlarms++;
   }
-  return { blocked, stolen, falseAlarms, through };
+  return { blocked, stolen, falseAlarms, through, honest, net: honest - stolen };
 }
 
 const cache = new WeakMap<Replay, Map<number, RoundModel>>();
