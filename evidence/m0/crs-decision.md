@@ -1,6 +1,11 @@
 # CRS decision (M0)
 
-**on hold**
+**Update, Sat Oct 24 ~20:00 PT: no longer on hold.** Sandbox access arrived after M0. Live calls to
+Data Prefill, Identity Verification and FraudFinder succeeded (`evidence/crs-live-sandbox.md`), and
+`engine/crs.py` runs CRS checks on uncertain payments (`CRS_ESCALATION=1` mock, `live` sandbox).
+The original M0 decision follows.
+
+**on hold** (at M0)
 
 Checked 2026-10-24 08:45 UTC by `scripts/probe_integrations.py`.
 

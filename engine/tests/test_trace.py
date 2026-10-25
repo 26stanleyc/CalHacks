@@ -45,7 +45,8 @@ def test_trace_shows_the_card_tester_blocked_by_two_specialists(capsys):
     assert "BLOCK" in votes["specialist-timing"] and "timing.rapid_fire" in votes["specialist-timing"]
     assert "BLOCK" in votes["specialist-velocity"] and "velocity.small_burst" in votes["specialist-velocity"]
     assert "Decision: BLOCK" in out
-    assert "10 messages between 6 agents" in out
+    n = len(DefensePipeline().lanes)  # ingress + orchestrator + one agent per specialist
+    assert f"{2 + 2 * n} messages between {2 + n} agents" in out
 
 
 def test_trace_shows_an_honest_payment_allowed(capsys):

@@ -13,10 +13,10 @@ Plans: [plain-english-overview.md](plain-english-overview.md) · [technical spec
 The lines we most need judges to hear. **Say** is the sentence, **Show** is what's on screen while we say it.
 
 ### 1. "Our agents are Fetch.ai uAgents that talk to each other" ✅ (S1)
-- **Say:** "Every defender is its own uAgent. When a payment arrives, the orchestrator agent sends it to four specialist agents, each one votes back by message, and the orchestrator makes the call."
-- **Show:** `uv run python -m engine.trace` in a big terminal. It prints the 6 agents with their `agent1q...` addresses, then one card tester's payment hopping between them: `SubmitTx` → 4× `ScoreRequest` → 4× `VoteReply` → `DecisionReply`, each hop timed. Timing and velocity vote BLOCK, graph and identity vote ALLOW, the orchestrator blocks, and the whole thing takes about 1 ms. `--scenario legit` shows an honest payment for contrast: all four allow.
-- **True today:** 6 agents in one Bureau (ingress, orchestrator, timing, graph, identity and velocity specialists). A test proves the agent path gives exactly the same decisions as calling the code directly. The agents are locked down: each one drops messages from anyone but the expected agent, and the Bureau listens on localhost only.
-- **Line to add while the trace runs:** "Each specialist only sees its own facts: timing sees 6, identity sees 2. They can't copy each other, and they disagree here: two say block, two say allow."
+- **Say:** "Every defender is its own uAgent. When a payment arrives, the orchestrator agent sends it to five specialist agents, each one votes back by message, and the orchestrator makes the call."
+- **Show:** `uv run python -m engine.trace` in a big terminal. It prints the 7 agents with their `agent1q...` addresses, then one card tester's payment hopping between them: `SubmitTx` → 5× `ScoreRequest` → 5× `VoteReply` → `DecisionReply`, each hop timed. Timing and velocity vote BLOCK, graph, identity and mandate vote ALLOW, the orchestrator blocks, and the whole thing takes about 1 ms. `--scenario legit` shows an honest payment for contrast: all five allow.
+- **True today:** 7 agents in one Bureau (ingress, orchestrator, timing, graph, identity, velocity and mandate specialists). The XGBoost and anomaly voters are plain code inside the orchestrator, not agents, and all agents share one process and one `DefensePipeline` object: the votes really travel by message, but don't pitch the specialists as agents with private memory. A test proves the agent path gives exactly the same decisions as calling the code directly. The agents are locked down: each one drops messages from anyone but the expected agent, and the Bureau listens on localhost only.
+- **Line to add while the trace runs:** "Each specialist only sees its own facts: timing sees 6, identity sees 2. They can't copy each other, and they disagree here: two say block, three say allow."
 
 ### 2. "Every agent's brain is an open model on Bitdeer" 🟡
 - **Say (once S4 lands):** "Each defender is a uAgent with its own open-weight model on Bitdeer as its brain: GLM and DeepSeek for defense and attack, with Qwen kept back for the final exam. Between rounds the model rewrites its agent's rulebook. During a round the rulebook runs as code, so a payment is checked in milliseconds. AI writes the rules, code applies them, and AI steps back in for the hard cases."
@@ -55,11 +55,11 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 - **Say:** "XGBoost is strong on fixed data, but once attackers adapt it falls apart. Ours stays hard to beat."
 - **Show:** the benchmark chart: us vs fixed rules vs XGBoost vs us without self-made attackers.
 
-### 9. "It's ready before the attack" 🔜 (M11, bonus)
+### 9. "It's ready before the attack" 🟡 (M11, bonus)
 - Only if M11 ships: a news report becomes a watch rule and new attackers, and the scam is caught on first contact. Show the watchlist on vs off.
 
 ### Don't claim
-- **CRS:** on hold; we have no key (`evidence/m0/crs-decision.md`). Identities are simulated, and we're not entering the CRS track.
+- **CRS beyond what's proven:** the sandbox works live (`evidence/crs-live-sandbox.md`) and CRS checks the uncertain band when `CRS_ESCALATION=live`, but it confirms a person exists, not that they authorized the payment. Say "sandbox", never "production credit bureau".
 - **Spend numbers:** Bitdeer's API doesn't expose prices, so spend shows $0 until someone copies them from the console.
 - **Anything on the 🔜 list** until its milestone is merged and rehearsed.
 
@@ -72,7 +72,8 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 | **Fetch.ai** (uAgents, Agentverse, ASI:One) | Every defender, attacker and shopper is a uAgent; two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat at I2 |
 | **Bitdeer** | Every AI in the system is an open-weight model on Bitdeer, a different model per role | Model-per-role table; a rulebook rewritten by its model | 🟡 all 5 answered at E3, credits now in doubt; agents get their brains at S4–S6 |
 | **Coinbase x402** | Fraud check inside the facilitator, before settlement | Live Base Sepolia tx on basescan | ✅ (E4) |
-| **Apify** | Scans merchant pages for hidden instructions (core); scrapes news of new scams (bonus) | Merchant Scanner flags the poisoned page | 🟡 detector real; Apify fetch at M10 |
+| **Apify** | Scans merchant pages for hidden instructions (core); scrapes news of new scams (bonus) | Merchant Scanner flags the poisoned page | ✅ M10 live page scan (`evidence/m10/`); M11 live crawl of FTC alerts → watch rules (`evidence/threat-intel/bitdeer-live.md`) |
+| **CRS** | On close calls, a bureau checks the person behind the agent before money moves | An arena payment card with its 3 CRS calls | 🟡 live sandbox works (`evidence/crs-live-sandbox.md`); opt-in with `CRS_ESCALATION=live` |
 
 ---
 
@@ -83,7 +84,7 @@ Only numbers we can back up. Add a source for each.
 | Number | What it means | Source |
 |---|---|---|
 | 5 / 5 | Bitdeer chat models that answered a live call (Eric's probe; re-check, credits may not be live) | `evidence/m0/model-prices.md` |
-| 10 / ~1 ms | Messages between 6 uAgents to decide one payment, end to end | `uv run python -m engine.trace` |
+| 12 / ~1 ms | Messages between 7 uAgents to decide one payment, end to end | `uv run python -m engine.trace` |
 | 3 | Real x402 settlements on Base Sepolia | `evidence/m0/x402-settlement.md` |
 | 5 / 5 | Scripted chat prompts answered over the real Agentverse mailbox | commit 390d9d2 (E1–E4) |
 | 1.0 vs 0.0 | Injection score, poisoned vs clean product page | `integrations/tests/test_page_scanner.py` |
@@ -98,7 +99,7 @@ Only numbers we can back up. Add a source for each.
 
 ## 4. Open items before the demo
 
-- [x] **A visible trace of the agents messaging each other.** `uv run python -m engine.trace`. It's on branch `stanley/uagent-trace` until merged.
+- [x] **A visible trace of the agents messaging each other.** `uv run python -m engine.trace`. Merged at the integration step.
 - [ ] **Re-check Bitdeer credits** with the probe. Talking point 2 and the Bitdeer sponsor row depend on it.
 - [ ] **Add our own ASI:One sender addresses to `TEAM_ALLOWLIST_ADDRESSES`** in `.env`. Without them, "freeze learning" from chat is refused for everyone, including us, which kills a live beat (CONTRACT_NOTES item 8).
 - [ ] **ASI:One screenshot** of the hello agent → `evidence/m0/asi-one-hello.png` (manual-checks §1).

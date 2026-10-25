@@ -105,6 +105,15 @@ def _held_out() -> list:
     return held_out_attackers()
 
 
+def _intel_source():
+    try:
+        from integrations.threat_intel import make_intel_source
+    except ImportError:
+        log.warning("Eric's integrations are unavailable; threat intel comes from the pre-scraped corpus")
+        return None
+    return make_intel_source()
+
+
 def _world(seed: int):
     try:
         from engine.sim.marketplace import MarketplaceWorld
@@ -122,5 +131,5 @@ def build_engine() -> FraudEngine:
     world = _world(seed) or World(seed=seed)  # built first: the page scanner reads its pages
     engine = FraudEngine(store=store, run_id=run_id, seed=seed, allowlist=team_allowlist(), scanner=_scanner(world),
                          settlement=settlement, live_settlement=live, world=world, brain=_brain(), voters=_voters(), held_out=_held_out(), threat_intel=True,
-                         transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
+                         threat_source=_intel_source(), transport=os.environ.get("ENGINE_TRANSPORT", "inprocess"))
     return engine.start()
