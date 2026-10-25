@@ -497,6 +497,25 @@ Round 10 costs 16-53% of round 1 across 3 seeds, and FP stays under 2% every rou
 
 **Demo angle:** "for the close calls, we ask a credit bureau": a payment card in the arena showing the three CRS calls. Always say it's mocked until sandbox access exists. CRS confirms a person exists, not that they authorized the payment; that stays the mandate specialist's job.
 
+### Sat Oct 24, 20:30 · CRS live: the real sandbox client · Stanley
+**Did:**
+- **Live sandbox works.** One login as `CalhacksDev11`, then Data Prefill, Identity Verification and FraudFinder once each on CRS's test person P01. All returned 200: a verified identity, risk score 11.
+- **`HttpCrs`** (engine/crs.py) is the real client behind `CrsClient`:
+  - AccurateAppend reverse lookup as the prefill, TransUnion TruValidate, AtData FraudFinder. Never a credit pull, and it refuses any host but the sandbox.
+  - It logs in once and reuses the token. A refused login is never retried (failed logins lock the account): that payment and every later one keep the code decision, stepping up instead of allowing.
+  - Each simulated principal is played by one of CRS's 20 sandbox test persons, picked by what a bureau would know: real people get clean persons, attackers' made-up accounts get the synthetic and mismatch persons, and bought "verified" identities get the deceased-SSN and fraud-alert persons. Bodies are sent exactly as CRS gives them, so every answer is a free canned response. Answers are cached per person, so a run needs at most 60 sandbox calls.
+- **Reading the answers** follows CRS's guides:
+  - no TruValidate messages = pass; SSN-to-other-name, SSN-before-DOB or deceased = fail; anything else (address mismatch, fraud alert) = review;
+  - FraudFinder level from `risk.score`.
+- **Switch:** `CRS_ESCALATION=0|1|live` (off, mock, real sandbox). Tests force it off, so pytest never logs in, whatever `.env` says.
+
+**Proof:**
+- `evidence/crs-live-sandbox.md`;
+- `engine/tests/test_crs_live.py` (on the saved live responses);
+- `engine/crs_personas.json` (CRS's test persons, MIT).
+
+**Demo angle:** the CRS card in the arena can now say "live CRS sandbox", not "mocked", when the run is recorded with `CRS_ESCALATION=live`. The sandbox answers only for test persons, so say "CRS sandbox test identities stand in for our simulated shoppers".
+
 ---
 
 ## Entry template

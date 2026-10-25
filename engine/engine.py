@@ -52,7 +52,7 @@ from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain, parallel
-from engine.crs import CrsEscalation, MockCrs, from_env as crs_from_env
+from engine.crs import CrsEscalation, crs_from_env
 from engine.intel.corpus import CorpusSource
 from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
 from engine.investigator import Investigator
@@ -149,10 +149,9 @@ class FraudEngine:
         self.investigator = Investigator(self.brain, self.pipeline, self.scanner,
                                          page_url_for=getattr(self.world, "page_url_for", lambda tx: None))
         self.escalation_seconds: list[float] = []  # every escalated case's decision time
-        # CRS checks on uncertain payments: pass one in, or set CRS_ESCALATION=1 for the mock bureau,
-        # which has files on everyone who exists now (attackers' later accounts aren't on file).
-        self.crs = crs if crs is not None else (
-            CrsEscalation(MockCrs(self.world.identities, set(self.world.identities))) if crs_from_env() else None)
+        # CRS checks on uncertain payments: pass one in, or set CRS_ESCALATION (1 = mock, live = sandbox).
+        # The bureau has files on everyone who exists now (attackers' later accounts aren't on file).
+        self.crs = crs if crs is not None else crs_from_env(self.world.identities, set(self.world.identities))
         # The threat-intel watchlist (M11, bonus): needs the arena (its attackers join the archive).
         # intel_watch=False is the "intel off" ablation: the attackers still arrive, no watch rules.
         self.watchlist = Watchlist(self.brain, threat_source or CorpusSource(), self.world, self.run_id,
