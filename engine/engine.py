@@ -113,7 +113,7 @@ class FraudEngine:
     def __init__(self, store: LogStore | None = None, pipeline: DefensePipeline | None = None, run_id: str | None = None,
                  seed: int = 42, allowlist: set[str] | None = None, scanner: PageScanner | None = None,
                  settlement: Settlement | None = None, live_settlement: Settlement | None = None,
-                 live_per_round: int = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
+                 live_per_round: int | None = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
                  fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
@@ -136,7 +136,8 @@ class FraudEngine:
                                    else StubPageScanner())
         self.settlement = settlement or StubSettlement()  # every allowed round payment; must be a stub
         # The demo's live tail: at most `live_per_round` honest allowed payments per round also go
-        # through real x402, at a token amount within the testnet cap (spec M13).
+        # through real x402, at a token amount within the testnet cap (spec M13). None settles every
+        # allowed payment live, fraud that got through included (ENGINE_LIVE_SETTLEMENT=all).
         self.live_settlement = live_settlement
         self.live_per_round = live_per_round
         self.transport = transport
@@ -547,7 +548,8 @@ class FraudEngine:
         self._round_decisions[tx.tx_id] = decision
         outcome = resolve(tx, truth, decision, fraud_step_up_pass, costs.legit_step_up_abandon)
         if decision.action == Action.ALLOW:  # the gate: only allowed payments reach x402
-            if self.live_settlement is not None and not truth.is_fraud and self._live_sent < self.live_per_round:
+            if self.live_settlement is not None and (self.live_per_round is None or
+                                                     (not truth.is_fraud and self._live_sent < self.live_per_round)):
                 self._live_sent += 1
                 self.store.log_settlement(self._settle_live(tx, decision))
             else:
