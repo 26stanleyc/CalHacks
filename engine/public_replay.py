@@ -1,34 +1,45 @@
 """Run a public fraud dataset through TagTeam and the trained-once XGBoost baseline, and export both in
-the arena's formats (arena/src/data/types.ts), as the demo's second data set next to the simulated
-marketplace. A sandbox: the data is read from a local file outside the repo, results stay in memory,
-nothing is sent anywhere.
+the arena's formats (arena/src/data/types.ts), as extra data sets next to the simulated marketplace.
+A sandbox: the data is read from local files outside the repo, results stay in memory, nothing is sent
+anywhere.
 
-Dataset: ULB / Worldline credit-card fraud (Dal Pozzolo et al., IEEE CIDM 2015; Kaggle mlg-ulb/creditcardfraud):
+Two datasets:
+
+ethereum: XBlock's Ethereum phishing transaction network (Chen et al., "Phishing scams detection in
+Ethereum transaction network", ACM TOIT 2021; xblock.pro, Kaggle xblock/ethereum-phishing-transaction-network).
+Real Ethereum transactions, crawled two hops out from 1,165 addresses Etherscan labels as phishing, so it's
+traffic around known scams, not a random sample of Ethereum. Convert MulDiGraph.pkl once with
+engine/eth_phishing.py (a safe loader), then pass the converted folder here.
+- sender -> agent and principal, receiver -> merchant, ETH moved -> amount_cents in hundredths of an ETH
+  (the arena shows Ξ), timestamp -> ts. Each round is a slice of a time window, three waves to a round.
+- fraud = a payment into a phishing address (a victim paying a scammer). Payments sent by phishing
+  addresses are left out: they move stolen money on, they don't steal it, and they aren't honest either.
+- transfers under Ξ0.005 round to zero hundredths and are left out, as are zero-value transactions
+  (contract calls that move no ETH): they aren't payments.
+- the window: the run picks the stretch of --days days with the most phishing payments that stays under
+  --max-payments payments in all (or --start), since the 13.5M transactions are far more than a replay holds.
+- no extra features: both contenders see only what our feature service computes.
+
+ulb: ULB / Worldline credit-card fraud (Dal Pozzolo et al., IEEE CIDM 2015; Kaggle mlg-ulb/creditcardfraud).
 284,807 real card payments by European cardholders over two days of September 2013, 492 labelled fraud.
-Licensed ODbL 1.0 (database) and DbCL 1.0 (contents); the exported files are derived from it and say so.
-
-How its columns map to our feature service (and what had to be approximated):
-- Amount (EUR) -> amount_cents, in euro cents. The arena shows euros.
-- Time (seconds since the dataset's first payment) -> ts. Rounds are equal slices of the two days, each
-  split into three waves by time.
-- The data has no card, customer or merchant ids, so every payment gets its own agent, principal and
-  merchant: each payer is new to the per-account features (velocity, graph, identity, mandate), and the
-  merchant-traffic features see one payment each. Those lanes have almost nothing to go on.
+ODbL 1.0 (database) and DbCL 1.0 (contents); the exported files are derived from it and say so.
+- Amount (EUR) -> amount_cents in euro cents; Time (seconds since the first payment) -> ts.
+- No card, customer or merchant ids, so every payment gets its own agent, principal and merchant: the
+  per-account features (velocity, graph, identity, mandate) have almost nothing to go on.
 - V1..V28 (a PCA of the bank's confidential features) -> extra features x_v1..x_v28 outside every lane:
-  the XGBoost and anomaly voters (TagTeam's and the baseline's) use them; the rule-writing specialists
-  don't, since the components have no meaning to write a rule about.
-- A step-up's outcome isn't in the data, so it uses the engine's simulated rule (engine.engine.resolve:
-  a deterministic per-payment draw at the cost matrix's pass and abandon rates), for both contenders.
+  the XGBoost and anomaly voters (TagTeam's and the baseline's) use them; the rule-writing specialists don't.
+
+For both:
+- A step-up's outcome isn't in the data, so it uses the engine's simulated rule (engine.engine.resolve: a
+  deterministic per-payment draw at the cost matrix's pass and abandon rates), for both contenders.
 - Specialists reflect with the engine's mock brains (deterministic, no LLM calls), and there's no LLM
   investigator: the replay's defenders say "mock-reflection".
+- The arena shows the fraud as three groups by amount (source "dataset"). Allowed honest payments carry
+  an empty explanation (the arena doesn't show it), and baseline.json lists only the decisions that
+  aren't "allow, settled", which is what the arena assumes for a payment it doesn't find there.
 
-Fraud in the data isn't grouped by who committed it, so the arena shows it as three groups by amount
-(source "dataset"), each standing on its own tile. Allowed honest payments carry an empty explanation
-(the arena doesn't show it), and baseline.json lists only the decisions that aren't "allow, settled",
-which is what the arena assumes for a payment it doesn't find there.
-
-    uv run python -m engine.public_replay --data ~/calhacks-sandbox/ulb/creditcard.csv \\
-        --out ../arena-real-data/arena/public/real
+    uv run python -m engine.public_replay ethereum --data ~/calhacks-sandbox/eth --out ../arena-real-data/arena/public/eth
+    uv run python -m engine.public_replay ulb --data ~/calhacks-sandbox/ulb/creditcard.csv --out ../arena-real-data/arena/public/real
 """
 
 import argparse
@@ -37,39 +48,101 @@ import gzip
 import json
 import statistics
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 DAY_SECONDS = 86_400
 WAVES = 3
 V_COLUMNS = [f"V{k}" for k in range(1, 29)]
 BANDS = (("under_10", 1_000), ("10_to_100", 10_000), ("over_100", None))  # cents, as the arena's shelves
-BAND_NAME = {"under_10": "under €10", "10_to_100": "€10 to €100", "over_100": "over €100"}
-DATASET = {
-    "name": "ULB / Worldline credit-card fraud",
-    "source": "284,807 real card payments by European cardholders, September 2013 (Université Libre de Bruxelles "
-              "and Worldline; Kaggle: Credit Card Fraud Detection)",
-    "url": "https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud",
-    "license": "ODbL 1.0 / DbCL 1.0",
-    "currency": "EUR",
+DATASETS = {
+    "ulb": {
+        "name": "ULB / Worldline credit-card fraud",
+        "source": "284,807 real card payments by European cardholders, September 2013 (Université Libre de Bruxelles "
+                  "and Worldline; Kaggle: Credit Card Fraud Detection)",
+        "url": "https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud",
+        "license": "ODbL 1.0 / DbCL 1.0",
+        "currency": "EUR",
+        "fraud": "Card fraud",
+        "what": "Every payment the dataset labels as fraud {band}. The data doesn't say who made them or how, so "
+                "they're grouped by amount only.",
+    },
+    "ethereum": {
+        "name": "XBlock Ethereum phishing network",
+        "source": "Real Ethereum transactions around 1,165 addresses Etherscan labels as phishing (XBlock, Sun Yat-sen "
+                  "University; Chen et al., ACM TOIT 2021), crawled outward from those scams, so it isn't a random sample",
+        "url": "https://xblock.pro/#/dataset/13",
+        "license": "no license stated",
+        "currency": "ETH",
+        "fraud": "Payments to phishing addresses",
+        "what": "Every payment {band} into an address Etherscan labels as phishing: a victim paying a scammer. Grouped "
+                "by amount; the scammers themselves aren't drawn one by one.",
+    },
 }
+SYMBOL = {"EUR": "€", "ETH": "Ξ"}
 
 
 def band(amount_cents: int) -> str:
     return next(name for name, below in BANDS if below is None or amount_cents < below)
 
 
-def load(path: Path) -> list[tuple]:
-    """(row, seconds, amount in cents, {x_v1: ..}, is_fraud) in time order."""
+def band_name(name: str, currency: str) -> str:
+    s = SYMBOL[currency]
+    return {"under_10": f"under {s}10", "10_to_100": f"{s}10 to {s}100", "over_100": f"over {s}100"}[name]
+
+
+# A payment row: (tx_id, ts, amount_cents, payer, payee, extra features, is_fraud), in time order. Each loader
+# returns (rows, start, seconds): the span the rounds divide, and whether ts is a real date (unix time).
+
+def load_ulb(path: Path) -> tuple[list[tuple], float, float, bool]:
     rows = []
     with path.open(newline="") as f:
         for i, row in enumerate(csv.DictReader(f)):
             extra = {f"x_{c.lower()}": float(row[c]) for c in V_COLUMNS}
-            rows.append((i, float(row["Time"]), round(float(row["Amount"]) * 100), extra, row["Class"].strip('"') == "1"))
-    return sorted(rows, key=lambda r: (r[1], r[0]))
+            rows.append((f"u{i}", float(row["Time"]), round(float(row["Amount"]) * 100), f"card-{i}", f"merchant-{i}",
+                         extra, row["Class"].strip('"') == "1"))
+    rows.sort(key=lambda r: (r[1], r[0]))
+    return rows, 0.0, rows[-1][1] + 1, False  # Time counts seconds from the first payment: no date
 
 
-def run(rows: list[tuple], n_rounds: int, run_id: str) -> tuple[dict, dict]:
-    """TagTeam and the baseline on the same payments, round by round. Returns (replay, baseline)."""
+def load_ethereum(folder: Path, days: int, max_payments: int, start: str | None) -> tuple[list[tuple], float, float, bool]:
+    """The window of `days` days with the most payments into phishing addresses, at most `max_payments` in all."""
+    import numpy as np
+
+    phishing = np.fromfile(folder / "phishing.u8", dtype=np.uint8).astype(bool)
+    src = np.fromfile(folder / "src.u32", dtype=np.uint32)
+    dst = np.fromfile(folder / "dst.u32", dtype=np.uint32)
+    amount = np.fromfile(folder / "amount.f64", dtype=np.float64)
+    ts = np.fromfile(folder / "ts.f64", dtype=np.float64)
+    cents = np.round(amount * 100).astype(np.int64)
+    keep = (cents > 0) & ~phishing[src]  # payments only; a scammer moving stolen money on is neither theft nor honest
+    fraud = phishing[dst]
+    day = (ts // DAY_SECONDS).astype(np.int64)
+    first = int(day[keep].min())
+    per_day = np.bincount(day[keep] - first)
+    fraud_per_day = np.bincount(day[keep & fraud] - first, minlength=len(per_day))
+    print(f"{int(keep.sum()):,} payments ({int((keep & fraud).sum()):,} to phishing addresses) over {len(per_day):,} days; "
+          f"left out: {int((cents == 0).sum()):,} under Ξ0.005, {int(((cents > 0) & phishing[src]).sum()):,} sent by phishing addresses")
+    if start:
+        lo = int(datetime.fromisoformat(start).replace(tzinfo=timezone.utc).timestamp() // DAY_SECONDS) - first
+    else:
+        totals = np.convolve(per_day, np.ones(days, dtype=np.int64), "valid")
+        frauds = np.convolve(fraud_per_day, np.ones(days, dtype=np.int64), "valid")
+        frauds[totals > max_payments] = -1
+        lo = int(frauds.argmax())
+    when = lambda d: datetime.fromtimestamp((first + d) * DAY_SECONDS, timezone.utc).date()
+    print(f"window {when(lo)} to {when(lo + days - 1)}: {int(per_day[lo:lo + days].sum()):,} payments, "
+          f"{int(fraud_per_day[lo:lo + days].sum()):,} to phishing addresses")
+    picked = np.flatnonzero(keep & (day >= first + lo) & (day < first + lo + days))
+    picked = picked[np.lexsort((picked, ts[picked]))]
+    addresses = (folder / "addresses.txt").read_text().split("\n")
+    rows = [(f"e{i}", float(ts[i]), int(cents[i]), addresses[src[i]], addresses[dst[i]], {}, bool(fraud[i])) for i in picked]
+    return rows, float((first + lo) * DAY_SECONDS), float(days * DAY_SECONDS), True
+
+
+def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, run_id: str, meta: dict) -> tuple[dict, dict]:
+    """TagTeam and the baseline on the same payments, round by round: rounds split [t0, t0 + span) evenly.
+    Returns (replay, baseline)."""
     from bench.baselines import XGBoostDefense
     from bench.metrics import cost_cents
     from contracts.schemas import Action, FeatureVector, GroundTruth, TrafficSource, Transaction
@@ -82,7 +155,6 @@ def run(rows: list[tuple], n_rounds: int, run_id: str) -> tuple[dict, dict]:
     from engine.pipeline import DefensePipeline
     from engine.store import MemoryStore
 
-    span = rows[-1][1] + 1
     round_s = span / n_rounds
     store = MemoryStore()
     pipeline = DefensePipeline(voters=_voters())
@@ -91,12 +163,11 @@ def run(rows: list[tuple], n_rounds: int, run_id: str) -> tuple[dict, dict]:
     baseline = XGBoostDefense()
 
     by_round: dict[int, list] = defaultdict(list)
-    for i, seconds, cents, extra, fraud in rows:
-        rnd = min(n_rounds, int(seconds // round_s) + 1)
-        wave = min(WAVES, int((seconds - (rnd - 1) * round_s) // (round_s / WAVES)) + 1)
-        tx = Transaction(tx_id=f"u{i}", run_id=run_id, round=rnd, wave=wave, ts=seconds, agent_id=f"card-{i}",
-                         principal_id=f"card-{i}", merchant_id=f"merchant-{i}", category="card",
-                         amount_cents=cents, source=TrafficSource.LEGIT)
+    for tx_id, ts, cents, payer, payee, extra, fraud in rows:
+        rnd = min(n_rounds, int((ts - t0) // round_s) + 1)
+        wave = min(WAVES, int((ts - t0 - (rnd - 1) * round_s) // (round_s / WAVES)) + 1)
+        tx = Transaction(tx_id=tx_id, run_id=run_id, round=rnd, wave=wave, ts=ts, agent_id=payer, principal_id=payer,
+                         merchant_id=payee, category="payment", amount_cents=cents, source=TrafficSource.LEGIT)
         by_round[rnd].append((tx, extra, GroundTruth(tx_id=tx.tx_id, is_fraud=fraud)))
 
     t = {"seed": 0, "defense": "full", "metrics": [], "reports": [], "attackers": [], "actions": [], "votes": [],
@@ -111,7 +182,7 @@ def run(rows: list[tuple], n_rounds: int, run_id: str) -> tuple[dict, dict]:
         tried_by_band: dict[str, list] = defaultdict(lambda: [0, 0])  # attempts, caught
         for tx, extra, truth in by_round[rnd]:
             base = pipeline.featurize(tx, commit=True)
-            features = FeatureVector(tx_id=tx.tx_id, values={**base.values, **extra})
+            features = FeatureVector(tx_id=tx.tx_id, values={**base.values, **extra}) if extra else base
             ours = pipeline.score(tx, features)
             settled = resolve(tx, truth, ours, costs.fraud_step_up_pass, costs.legit_step_up_abandon).settled
             records.append(Record(tx, features, ours, truth, settled=settled))
@@ -129,7 +200,7 @@ def run(rows: list[tuple], n_rounds: int, run_id: str) -> tuple[dict, dict]:
                     totals[name]["honest_cost_cents"] += cost_cents(False, action, tx.amount_cents)
                     flagged[name].append(action != Action.ALLOW)
 
-            group = f"ulb-fraud-{band(tx.amount_cents)}" if truth.is_fraud else None
+            group = f"dataset-fraud-{band(tx.amount_cents)}" if truth.is_fraud else None
             if group:
                 tried_by_band[group][0] += 1
                 tried_by_band[group][1] += not settled
@@ -151,12 +222,12 @@ def run(rows: list[tuple], n_rounds: int, run_id: str) -> tuple[dict, dict]:
             "exploitability_cents": -1,  # not measured on a dataset: there's no attacker to re-run
             "shelves_defended": 0, "archive_coverage": 0, "frozen": False}))
         for group, (attempts, caught) in tried_by_band.items():
-            amount = group.removeprefix("ulb-fraud-")
+            amount = group.removeprefix("dataset-fraud-")
+            named = band_name(amount, meta["currency"])
             t["attackers"].append((rnd, {
-                "attacker_id": group, "name": f"Card fraud {BAND_NAME[amount]}", "source": "dataset",
+                "attacker_id": group, "name": f"{meta['fraud']} {named}", "source": "dataset",
                 "playbook": {"shelf": {"style": "dataset", "amount": amount, "side": "buyer"},
-                             "strategy": f"Every payment the dataset labels as fraud {BAND_NAME[amount]}. The data doesn't "
-                                         "say who made them or how, so they're grouped by amount only.", "params": {}},
+                             "strategy": meta["what"].format(band=named), "params": {}},
                 "profit_cents": 0}))
             t["snapshots"].append((rnd, f"dataset/{amount}/buyer", {"attacker_ids": [group], "outsider_slot": None,
                                                                    "attempts": attempts, "caught": caught}))
@@ -171,7 +242,9 @@ def run(rows: list[tuple], n_rounds: int, run_id: str) -> tuple[dict, dict]:
     replay = build(t, run_id)
     for d in replay["defenders"]:
         d["model"] = "engine/mock-reflection"
-    replay["dataset"] = {**DATASET, "round_hours": round(round_s / 3600, 2)}
+    replay["dataset"] = {k: meta[k] for k in ("name", "source", "url", "license", "currency")} | {
+        "round_hours": round(round_s / 3600, 2),
+        "start": datetime.fromtimestamp(t0, timezone.utc).isoformat() if dated else None}
 
     def summary(name: str) -> dict:
         s = totals[name]
@@ -210,14 +283,22 @@ def check(replay: dict, baseline: dict) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--data", type=Path, required=True, help="creditcard.csv")
+    parser.add_argument("dataset", choices=sorted(DATASETS))
+    parser.add_argument("--data", type=Path, required=True, help="ulb: creditcard.csv; ethereum: engine/eth_phishing.py's output folder")
     parser.add_argument("--rounds", type=int, default=6)
+    parser.add_argument("--days", type=int, default=6, help="ethereum: the window's length in days")
+    parser.add_argument("--max-payments", type=int, default=300_000, help="ethereum: the most payments the window may hold")
+    parser.add_argument("--start", help="ethereum: the window's first day (YYYY-MM-DD) instead of picking one")
     parser.add_argument("--out", type=Path, required=True, help="a directory: replay.json.gz and baseline.json go there")
     args = parser.parse_args()
 
-    rows = load(args.data.expanduser())
-    run_id = f"ulb-creditcard-{args.rounds}r"
-    replay, baseline = run(rows, args.rounds, run_id)
+    data = args.data.expanduser()
+    if args.dataset == "ulb":
+        (rows, t0, span, dated), run_id = load_ulb(data), f"ulb-creditcard-{args.rounds}r"
+    else:
+        rows, t0, span, dated = load_ethereum(data, args.days, args.max_payments, args.start)
+        run_id = f"eth-phishing-{datetime.fromtimestamp(t0, timezone.utc).date()}-{args.days}d-{args.rounds}r"
+    replay, baseline = run(rows, t0, span, dated, args.rounds, run_id, DATASETS[args.dataset])
     args.out.mkdir(parents=True, exist_ok=True)
     # Every payment is in the replay (the arena's scoreboard counts them all), so it's gzipped; the arena unzips it.
     (args.out / "replay.json.gz").write_bytes(gzip.compress(json.dumps(replay, separators=(",", ":"), ensure_ascii=False).encode(), 9, mtime=0))
