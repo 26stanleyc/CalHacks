@@ -433,7 +433,6 @@ blockquote {
 .phish-log li.caught.caught { box-shadow: inset 3px 0 0 var(--imp), inset -3px 0 0 #7fe3a1; }
 .phish-log li.caught .side.tagteam { background: rgba(127, 227, 161, 0.08); }
 .phish-log .caught-tag { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 6px; background: #7fe3a1; color: var(--on-light); font: 700 10.5px var(--text); font-style: normal; }
-.phish-log li.night .side { display: block; font: 13px/1.45 var(--text); padding: 9px 14px; }
 .phish-log ol { margin: 0; padding: 4px 0 10px; list-style: none; overflow-y: auto; }
 .phish-log { position: relative; }
 .phish-log .latest {
@@ -453,9 +452,6 @@ blockquote {
 .phish-log .verdict.fraud.stopped { color: #7fe3a1; font-weight: 700; }
 .phish-log .verdict.fraud.through { color: #ff8a7a; font-weight: 700; }
 .phish-log .verdict:not(.fraud).stopped { color: #f4c26b; }
-.phish-log li.night { margin: 8px 0; background: rgba(125, 156, 245, 0.1); color: var(--ink); }
-.phish-log li.night .side.xgb { color: var(--ink-soft); }
-.phish-log li.night b { color: #b4c8ff; }
 .phish-controls { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; background: var(--paper); border: 2px solid var(--edge); border-radius: 22px; padding: 10px 16px; }
 .phish-controls .source { margin: 0; font-size: 12px; color: var(--ink-soft); }
 @media (max-width: 760px) {

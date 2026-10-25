@@ -1,7 +1,6 @@
 // The /phishing/ page: one real phishing scam on Ethereum, payment by payment, as a scrolling log. Each line
 // is a real transaction from the test week (public/eth/log.json, made by engine/phishing_log.py from the same
-// run the arena plays), with what TagTeam and XGBoost decided. Between days, the night's learning shows: the
-// scam's confirmed reports reach TagTeam's memory; XGBoost's memory stays where its training left it.
+// run the arena plays), with what TagTeam and XGBoost decided.
 
 import { useEffect, useRef, useState } from "react";
 import type { Action, DatasetInfo } from "../data/types";
@@ -34,32 +33,12 @@ interface Log {
   lines: Line[];
 }
 
-type Row = { kind: "line"; line: Line } | { kind: "night"; day: string; reports: number; frozen: number; key: string };
-
 const SPEEDS = [1, 2, 4, 8];
 const PER_SECOND = 2.5; // log lines at 1x
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const utc = (ts: number, opts: Intl.DateTimeFormatOptions) => new Date(ts * 1000).toLocaleString("en-US", { ...opts, timeZone: "UTC" });
-const when = (ts: number) => utc(ts, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const when = (ts: number) =>
+  new Date(ts * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
 const verb = (v: Verdict) => (v.action === "block" ? "Blocked" : v.action === "step_up" ? (v.settled ? "Checked, paid" : "Checked, stopped") : "Allowed");
-
-// Rows to play: the log's lines, with a night row wherever a new day starts and TagTeam's memory of the scam grew.
-function rowsOf(log: Log): Row[] {
-  const rows: Row[] = [];
-  let day = "";
-  let known = -1;
-  for (const line of log.lines) {
-    const d = utc(line.ts, { month: "short", day: "numeric" });
-    if (d !== day) {
-      const scamLine = log.lines.find((l) => l.scam && utc(l.ts, { month: "short", day: "numeric" }) === d);
-      if (scamLine && scamLine.reports !== known && day) rows.push({ kind: "night", day, reports: scamLine.reports, frozen: scamLine.reports_frozen, key: `night-${d}` });
-      if (scamLine) known = scamLine.reports;
-      day = d;
-    }
-    rows.push({ kind: "line", line });
-  }
-  return rows;
-}
 
 // The rule ids the explanation names, in words: "Blocked: graph.receiver_reported_positive." -> "receiver reported positive".
 const reasons = (why = "") =>
@@ -73,7 +52,7 @@ const reasons = (why = "") =>
 export function PhishingLog() {
   const [log, setLog] = useState<Log | null>(null);
   const [failed, setFailed] = useState(false);
-  const [shown, setShown] = useState(0); // rows played so far
+  const [shown, setShown] = useState(0); // lines played so far
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   const feed = useRef<HTMLOListElement>(null);
@@ -88,14 +67,12 @@ export function PhishingLog() {
       })
       .catch(() => setFailed(true));
   }, []);
-  const rows = log ? rowsOf(log) : [];
+  const rows = log?.lines ?? [];
 
   useEffect(() => {
     if (!playing || !rows.length) return;
     if (shown >= rows.length) return setPlaying(false);
-    // A night pauses a moment longer, so the learning reads.
-    const wait = (rows[shown]?.kind === "night" ? 2200 : 1000 / PER_SECOND) / speed;
-    const id = setTimeout(() => setShown((n) => n + 1), wait);
+    const id = setTimeout(() => setShown((n) => n + 1), 1000 / PER_SECOND / speed);
     return () => clearTimeout(id);
   }, [playing, shown, speed, rows.length]);
 
@@ -122,7 +99,7 @@ export function PhishingLog() {
   if (failed) return <p className="loading">No phishing log yet (public/eth/log.json is missing).</p>;
   if (!log) return <p className="loading">Loading the payment log</p>;
 
-  const played = rows.slice(0, shown).flatMap((r) => (r.kind === "line" ? [r.line] : []));
+  const played = rows.slice(0, shown);
   const scam = played.filter((l) => l.scam);
   const sent = scam.reduce((a, l) => a + l.amount_cents, 0);
   const lostTT = scam.filter((l) => l.tagteam.settled).reduce((a, l) => a + l.amount_cents, 0);
@@ -183,59 +160,44 @@ export function PhishingLog() {
           ))}
         </div>
         <ol ref={feed} aria-live="polite" onScroll={onScroll}>
-          {rows.slice(0, shown).map((r) =>
-            r.kind === "night" ? (
-              <li key={r.key} className="night">
-                <div className="side xgb">
-                  <b>Night after {r.day}.</b> No learning: still <b>{r.frozen} reports</b> on {short(log.address)}.
-                </div>
-                <div className="side tagteam">
-                  <b>Night after {r.day}.</b> Learns the day's reports:{" "}
-                  <b>
-                    {r.reports} {r.reports === 1 ? "report" : "reports"}
-                  </b>{" "}
-                  on {short(log.address)}.
-                </div>
-              </li>
-            ) : (
-              <li
-                key={r.line.tx_id}
-                className={[
-                  r.line.scam ? "scam" : r.line.phishing ? "other-scam" : "",
-                  r.line.phishing && !r.line.tagteam.settled && r.line.xgboost.settled ? "caught" : "",
-                ].join(" ")}
-              >
-                {(["xgb", "tagteam"] as const).map((side) => {
-                  const v = side === "xgb" ? r.line.xgboost : r.line.tagteam;
-                  return (
-                    <div key={side} className={`side ${side}`}>
-                      <span className="time">
-                        {when(r.line.ts)}
-                        {r.line.scam && <i className="tag">scam</i>}
-                      </span>
-                      <span className="addr">
-                        {short(r.line.from)} → {short(r.line.to)}
-                      </span>
-                      <span className="amount">{money(r.line.amount_cents)}</span>
-                      <span className={`verdict ${v.settled ? "through" : "stopped"}${r.line.phishing ? " fraud" : ""}`}>
-                        {verb(v)}
-                        {r.line.phishing && v.settled && <small>{money(r.line.amount_cents)} lost</small>}
-                        {side === "tagteam" && !v.settled && r.line.phishing && (
-                          <small>
-                            {r.line.reports} prior {r.line.reports === 1 ? "report" : "reports"}
-                            {reasons(v.why).length ? `: ${reasons(v.why).join(", ")}` : ""}
-                          </small>
-                        )}
-                        {side === "tagteam" && r.line.phishing && !v.settled && r.line.xgboost.settled && (
-                          <i className="caught-tag">XGBoost missed this</i>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
-              </li>
-            ),
-          )}
+          {rows.slice(0, shown).map((line) => (
+            <li
+              key={line.tx_id}
+              className={[
+                line.scam ? "scam" : line.phishing ? "other-scam" : "",
+                line.phishing && !line.tagteam.settled && line.xgboost.settled ? "caught" : "",
+              ].join(" ")}
+            >
+              {(["xgb", "tagteam"] as const).map((side) => {
+                const v = side === "xgb" ? line.xgboost : line.tagteam;
+                return (
+                  <div key={side} className={`side ${side}`}>
+                    <span className="time">
+                      {when(line.ts)}
+                      {line.scam && <i className="tag">scam</i>}
+                    </span>
+                    <span className="addr">
+                      {short(line.from)} → {short(line.to)}
+                    </span>
+                    <span className="amount">{money(line.amount_cents)}</span>
+                    <span className={`verdict ${v.settled ? "through" : "stopped"}${line.phishing ? " fraud" : ""}`}>
+                      {verb(v)}
+                      {line.phishing && v.settled && <small>{money(line.amount_cents)} lost</small>}
+                      {side === "tagteam" && !v.settled && line.phishing && (
+                        <small>
+                          {line.reports} prior {line.reports === 1 ? "report" : "reports"}
+                          {reasons(v.why).length ? `: ${reasons(v.why).join(", ")}` : ""}
+                        </small>
+                      )}
+                      {side === "tagteam" && line.phishing && !v.settled && line.xgboost.settled && (
+                        <i className="caught-tag">XGBoost missed this</i>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </li>
+          ))}
         </ol>
         {!following && (
           <button className="latest" onClick={() => setFollowing(true)}>
