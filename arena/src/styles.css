@@ -400,3 +400,56 @@ blockquote {
 .timeline .key .ghost-key { border: 1.5px solid var(--model); background: rgba(167, 177, 173, 0.14); }
 .timeline .key .negative { background: var(--shaky); }
 .timeline .key .growth { flex-basis: 100%; color: var(--ink); }
+
+/* Phishing log page (/phishing/): one real scam as a scrolling payment log, the arena's panels around it. */
+.phishing {
+  position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 12px;
+  padding: 70px 24px 18px; background: var(--solid);
+}
+.phish-head { display: grid; grid-template-columns: 1fr auto; gap: 4px 24px; align-items: end; }
+.phish-head .kicker { grid-column: 1 / -1; margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.phish-head h1 { margin: 0; font: 800 28px/1.1 var(--display); letter-spacing: -0.02em; }
+.phish-head h1 code { font: 700 24px ui-monospace, "SF Mono", Menlo, monospace; color: #ff8a7a; }
+.phish-head .lead { grid-column: 1; margin: 2px 0 0; max-width: 760px; font-size: 14px; color: var(--ink-soft); }
+.phish-score { grid-column: 2; grid-row: 2 / 4; margin: 0; display: grid; grid-template-columns: repeat(3, auto); border: 2px solid var(--edge); border-radius: 16px; overflow: hidden; background: var(--paper); }
+.phish-score div { padding: 8px 14px 7px; }
+.phish-score div + div { border-left: 1px solid var(--edge); }
+.phish-score dt { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
+.phish-score dd { margin: 0; font: 800 24px/1.15 var(--display); font-variant-numeric: tabular-nums; }
+.phish-score dd small { display: block; font: 600 12px var(--text); color: var(--ink-soft); }
+.phish-score .tagteam dd { color: var(--seraph); }
+.phish-score .xgb dd { color: var(--model); }
+.phish-log { min-height: 0; display: grid; grid-template-rows: auto 1fr; background: #0a1b17; border: 2px solid var(--edge); border-radius: 18px; overflow: hidden; }
+.phish-cols, .phish-log li:not(.night) {
+  display: grid; grid-template-columns: 112px 120px 150px 96px minmax(0, 1.6fr) minmax(0, 0.8fr); gap: 12px; align-items: baseline;
+  padding: 5px 16px; font: 13px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+}
+.phish-cols { font-family: var(--text); font-size: 11.5px; font-weight: 700; color: var(--ink-soft); border-bottom: 1px solid var(--edge); padding-top: 8px; padding-bottom: 7px; }
+.phish-log ol { margin: 0; padding: 4px 0 10px; list-style: none; overflow-y: auto; }
+.phish-log li { animation: log-in 0.35s ease-out; border-bottom: 1px solid rgba(236, 229, 210, 0.04); }
+@keyframes log-in { from { opacity: 0; transform: translateY(6px); } }
+.phish-log li .time { color: var(--ink-soft); }
+.phish-log li .addr { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.phish-log li .amount { text-align: right; font-variant-numeric: tabular-nums; }
+.phish-log li.scam { background: rgba(229, 56, 59, 0.13); box-shadow: inset 3px 0 0 var(--imp); }
+.phish-log li.other-scam { background: rgba(229, 56, 59, 0.06); }
+.phish-log .tag { margin-left: 8px; padding: 1px 6px; border-radius: 6px; background: var(--imp); color: #fff; font: 700 10.5px var(--text); font-style: normal; text-transform: uppercase; letter-spacing: 0.04em; }
+.phish-log .verdict { color: var(--ink-soft); }
+.phish-log .verdict small { display: block; font-size: 11.5px; color: var(--ink-soft); }
+.phish-log .verdict.fraud.stopped { color: #7fe3a1; font-weight: 700; }
+.phish-log .verdict.fraud.through { color: #ff8a7a; font-weight: 700; }
+.phish-log .verdict:not(.fraud).stopped { color: #f4c26b; }
+.phish-log li.night {
+  margin: 10px 16px; padding: 9px 14px; border-radius: 12px; background: rgba(125, 156, 245, 0.12); box-shadow: inset 0 0 0 1px rgba(125, 156, 245, 0.35);
+  font-size: 13.5px; color: var(--ink);
+}
+.phish-log li.night b { color: #b4c8ff; }
+.phish-controls { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; background: var(--paper); border: 2px solid var(--edge); border-radius: 22px; padding: 10px 16px; }
+.phish-controls .source { margin: 0; font-size: 12px; color: var(--ink-soft); }
+@media (max-width: 760px) {
+  .phishing { padding: 60px 12px 12px; }
+  .phish-head { grid-template-columns: 1fr; }
+  .phish-score { grid-column: 1; grid-row: auto; }
+  .phish-cols { display: none; }
+  .phish-log li:not(.night) { grid-template-columns: 1fr 1fr; }
+}

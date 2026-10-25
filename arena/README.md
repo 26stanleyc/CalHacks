@@ -1,6 +1,6 @@
 # TagTeam site and arena
 
-Three pages, one Vite app (the third, `/ethereum/`, is the arena on real data; see Real data below):
+Four pages, one Vite app (`/ethereum/` is the arena on real data and `/phishing/` a payment log of one real scam; see Real data below):
 
 - **`/`, the overview:** a hero (a payment slip telling one hijacked purchase in order, then stamped by the five specialists) and four chapters: why it matters, how it works, what it saves, built on. Opening a chapter wipes it in while its title morphs out of its tile; next/previous (or the arrow keys) swipe; Escape or back wipes home. Each chapter has its own `#hash`. Every figure is sourced. Industry numbers link to their articles. The results come from `evidence/head-to-head/bitdeer-stacking.md` on `stanley/core-engine`: real Bitdeer models, seeds 100–102, 6 rounds each.
 - **`/demo/`, the live arena:** a 3D replay of a training run as a battle on a hex island. Five angel specialists and the orchestrator guard the x402 gate in the middle. Devil attackers stand on the 24 arena shelves around the edge and throw payments (coins) at the gate. Angels zap the coins they catch, and stolen coins drop into the vault.
@@ -71,5 +71,9 @@ The same run also has its own page, **`/ethereum/`** (nav: Real data): the arena
 The replay is gzipped because it holds every payment (the scoreboard counts them all); the app unzips it in the browser. The baseline file lists only decisions that aren't "allow, settled", which is what the app assumes for a missing payment. To re-export, see the commands in that evidence file.
 
 What differs on screen: amounts are in ether (Ξ); the data has no attack styles, so phishing payments stand on the beach in three groups by amount (teal ring) instead of on the shelves, and the shelf grid is hidden; phase lines give the real UTC dates each wave covers and don't say attackers adapt (recorded fraud doesn't).
+
+### Phishing log (`/phishing/`)
+
+One real scam followed payment by payment: the phishing address TagTeam stopped the most payments into during the test week (`0xd020…84cb`, 117 victim payments from Mar 6, 2018), each with the 3 ordinary payments just before it, scrolling as a log (time, from, to, amount) with TagTeam's and XGBoost's decisions. Between days a row shows the night's learning: the scam's confirmed reports reaching TagTeam's memory while XGBoost's stays at what it had before the week. `public/eth/log.json` comes from `engine/phishing_log.py` on the engine branch, from the same run as `public/eth/`; nothing is re-decided. Space plays and pauses.
 
 In dev builds, `window.arena` is the playback store, e.g. `arena.setState({ round: 7, t: 12, playing: false })`.

@@ -12,6 +12,7 @@ export default defineConfig({
         main: resolve(import.meta.dirname, "index.html"),
         demo: resolve(import.meta.dirname, "demo/index.html"),
         ethereum: resolve(import.meta.dirname, "ethereum/index.html"),
+        phishing: resolve(import.meta.dirname, "phishing/index.html"),
       },
     },
   },
