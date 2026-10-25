@@ -245,81 +245,82 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
   .seals li, .stamp { animation: none; }
 }
 
-/* Chapters: the home view ends in four tiles; each opens a full chapter. */
-.chapter-tiles {
-  max-width: 1180px; margin: 56px auto 0; padding: 0 40px 88px;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
-  border-top: 1px solid var(--engrave);
+/* Under the hero: a small arrow that says there's more below. Clicking it glides to the first section. */
+.scroll-cue {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: fit-content; margin: 28px auto 56px;
+  color: var(--paper-dim); text-decoration: none; font: 700 12.5px var(--text); letter-spacing: 0.16em; text-transform: uppercase;
+  transition: color 0.2s ease;
 }
-.chapter-tile {
-  display: grid; gap: 6px; align-content: start; text-align: left; padding: 22px 22px 26px 0; margin-right: 22px;
-  background: none; border: none; border-bottom: 2px solid transparent; color: var(--paper); cursor: pointer;
-  transition: border-color 0.2s ease;
+.scroll-cue:hover { color: var(--paper); }
+.scroll-cue svg {
+  width: 40px; height: 40px; padding: 9px; box-sizing: border-box; margin-top: 6px; border: 1px solid var(--engrave); border-radius: 50%;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: border-color 0.2s ease;
 }
-.chapter-tile:hover { border-bottom-color: var(--defense); }
-.chapter-tile .tile-title { font: 800 22px/1.15 var(--display); letter-spacing: -0.01em; width: fit-content; }
-.chapter-tile .tile-teaser { font-size: 15px; color: var(--paper-dim); }
-.chapter-tile:hover .tile-title { color: var(--defense-text); }
+.scroll-cue:hover svg { border-color: var(--paper-dim); }
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-cue svg { animation: cue-bob 1.8s ease-in-out infinite; }
+}
+@keyframes cue-bob { 50% { transform: translateY(6px); } }
 
-.chapter { max-width: 1180px; margin: 0 auto; padding: 32px 40px 80px; }
-.chapter-top { display: flex; justify-content: space-between; align-items: center; }
-.chapter-top .back {
-  background: none; border: none; color: var(--defense-text); font: 700 15px var(--text); padding: 6px 0; cursor: pointer;
-}
-.chapter-top .back::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-left: 2px solid; border-bottom: 2px solid; transform: rotate(45deg) translateY(-1px); }
-.chapter-top .count { font-size: 14px; color: var(--paper-dim); font-variant-numeric: tabular-nums; }
-.chapter-title { font: 800 clamp(40px, 5vw, 60px)/1.02 var(--display); letter-spacing: -0.025em; margin: 28px 0 32px; width: fit-content; }
+/* Sections, stacked down the page. Each starts with an engraved rule; anchor jumps leave a little air above. */
+.chapter { max-width: 1180px; margin: 0 auto; padding: 72px 40px 88px; border-top: 1px solid var(--engrave); scroll-margin-top: 8px; }
+.chapter-title { font: 800 clamp(40px, 5vw, 60px)/1.02 var(--display); letter-spacing: -0.025em; margin: 0 0 32px; width: fit-content; }
 .chapter-lead { font: 800 30px/1.15 var(--display); color: var(--paper) !important; margin: 0 0 6px !important; max-width: 20ch; }
 .chapter .steps, .chapter .headline-figures, .chapter .results-chart { margin-top: 32px; }
 .chapter .built dl { margin-top: 0; }
 .closing-note { margin-top: 40px; color: var(--paper-dim); max-width: 60ch; }
-/* Sticks to the bottom of the window, so Next is on screen without scrolling. */
-.chapter-pager {
-  position: sticky; bottom: 0; z-index: 2; background: var(--note);
-  margin-top: 72px; padding: 14px 0; border-top: 1px solid var(--engrave); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.pager { display: grid; gap: 2px; background: none; border: none; color: var(--paper); font: 800 20px var(--display); cursor: pointer; padding: 4px 0; }
-.pager span { font: 700 13px var(--text); color: var(--paper-dim); }
-.pager.next { text-align: right; }
-.pager:hover { color: var(--defense-text); }
+.closing-cta { display: flex; justify-content: center; padding: 8px 40px 96px; }
 
-/* Transitions inside the overview (same page). "in": the chapter wipes in left to right through a
-   soft gradient edge while its title morphs out of the tile. "out": the wipe runs the other way.
-   "next"/"prev": a horizontal swipe. Cross-page transitions to the arena are in transitions.css. */
-html[data-nav="in"] .chapter-tile.focus .tile-title,
-html[data-nav="in"] .chapter-title,
-html[data-nav="out"] .chapter-tile.focus .tile-title,
-html[data-nav="out"] .chapter-title { view-transition-name: chapter-title; }
-::view-transition-group(chapter-title) { animation-duration: 620ms; animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1); }
-
-html:active-view-transition-type(in)::view-transition-old(root) { animation: 620ms ease both vt-dim; }
-html:active-view-transition-type(in)::view-transition-new(root) {
-  animation: 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both vt-wipe;
-  mask-image: linear-gradient(90deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
+/* Scrolling into a section: it wipes in left to right through a soft gradient edge while its title
+   rises into place. Site.tsx adds .revealed the first time the section enters the window. */
+@media (prefers-reduced-motion: no-preference) {
+  .chapter {
+    mask-image: linear-gradient(90deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
+    mask-position: 100% 0;
+  }
+  .chapter.revealed { animation: section-wipe 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .chapter .chapter-title { opacity: 0; transform: translateY(28px); }
+  .chapter.revealed .chapter-title { animation: title-rise 700ms 120ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 }
-html:active-view-transition-type(out)::view-transition-old(root) { animation: 620ms ease both vt-dim; }
-html:active-view-transition-type(out)::view-transition-new(root) {
-  animation: 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both vt-wipe-back;
-  mask-image: linear-gradient(270deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
-}
-html:active-view-transition-type(next)::view-transition-old(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-out-left; }
-html:active-view-transition-type(next)::view-transition-new(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-in-right; }
-html:active-view-transition-type(prev)::view-transition-old(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-out-right; }
-html:active-view-transition-type(prev)::view-transition-new(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-in-left; }
+@keyframes section-wipe { from { mask-position: 100% 0; } to { mask-position: 0 0; } }
+@keyframes title-rise { to { opacity: 1; transform: none; } }
 
-@keyframes vt-wipe { from { mask-position: 100% 0; } to { mask-position: 0 0; } }
-@keyframes vt-wipe-back { from { mask-position: 0 0; } to { mask-position: 100% 0; } }
-@keyframes vt-dim { to { opacity: 0.25; filter: blur(2px); } }
-@keyframes vt-out-left { to { transform: translateX(-28%); opacity: 0; } }
-@keyframes vt-in-right { from { transform: translateX(28%); opacity: 0; } }
-@keyframes vt-out-right { to { transform: translateX(28%); opacity: 0; } }
-@keyframes vt-in-left { from { transform: translateX(-28%); opacity: 0; } }
+/* After the wipe, the section's pieces (paragraphs, steps, figures, cards) rise in one after another. */
+@media (prefers-reduced-motion: no-preference) {
+  .chapter :is(.section-lede, .why-copy > p, .statement > li, .steps > li, .headline-figures > li, .results-chart, .method, .built dl > div, .closing-note) {
+    opacity: 0; transform: translateY(18px);
+  }
+  .chapter.revealed :is(.section-lede, .why-copy > p, .statement > li, .steps > li, .headline-figures > li, .results-chart, .method, .built dl > div, .closing-note) {
+    animation: title-rise 650ms 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .chapter.revealed :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(2) { animation-delay: 360ms; }
+  .chapter.revealed :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(3) { animation-delay: 460ms; }
+  .chapter.revealed :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(4) { animation-delay: 560ms; }
+  .chapter.revealed :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(5) { animation-delay: 660ms; }
+  .chapter.revealed :is(.results-chart, .method, .closing-note) { animation-delay: 560ms; }
+}
+
+/* The floating section bar: hidden over the hero, slides down once you're into the sections. */
+.section-nav {
+  position: fixed; top: 14px; left: 50%; z-index: 20; display: flex; gap: 2px; padding: 5px;
+  background: rgba(15, 38, 32, 0.78); border: 1px solid var(--engrave); border-radius: 999px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 12px 32px -14px rgba(0, 0, 0, 0.7);
+  transform: translate(-50%, -140%); opacity: 0; pointer-events: none;
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.3s ease;
+}
+.section-nav.shown { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.section-nav a {
+  color: var(--paper-dim); text-decoration: none; font: 700 14px var(--text); padding: 7px 14px; border-radius: 999px; white-space: nowrap;
+  transition: color 0.25s ease, background-color 0.25s ease;
+}
+.section-nav a:hover { color: var(--paper); }
+.section-nav a.on { color: var(--note); background: var(--paper); }
+@media (max-width: 640px) {
+  .section-nav { display: none; }
+}
 
 @media (max-width: 900px) {
-  .chapter-tiles { grid-template-columns: 1fr 1fr; padding: 0 20px 64px; }
-  .chapter { padding: 24px 20px 64px; }
-}
-@media (max-width: 480px) {
-  .chapter-tiles { grid-template-columns: 1fr; }
+  .chapter { padding: 48px 20px 64px; }
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { useEffect, useState } from "react";
 import { ResultsChart } from "./ResultsChart";
 import { DEMO_HREF, Mark } from "./brand";
 import { waveBand } from "./guilloche";
@@ -107,80 +106,59 @@ const STATS: { figure: string; what: string; source: string; href: string }[] = 
   },
 ];
 
-// The overview is a hero plus four chapters. Opening a chapter wipes it in while its title morphs
-// out of the chapter tile; moving between chapters swipes; going back wipes the other way. Each
-// chapter has its own #hash, so the back button and links work.
-type ChapterId = "why" | "how" | "results" | "built";
-type View = "home" | ChapterId;
-type Nav = "in" | "out" | "next" | "prev";
+// The overview is one scrolling page: the hero, then the four sections in order. An arrow under the
+// hero says to scroll, and each section has its own #hash.
+type SectionId = "why" | "how" | "results" | "built";
 
-const CHAPTERS: { id: ChapterId; title: string; teaser: string }[] = [
-  { id: "why", title: "Why it matters", teaser: "Card fraud tools ask the wrong question about AI agents." },
-  { id: "how", title: "How it works", teaser: "Five specialists check every payment, then attack themselves." },
-  { id: "results", title: "What it saves", teaser: "About a quarter cheaper than XGBoost retrained every round, after day one." },
-  { id: "built", title: "Built on", teaser: "Fetch.ai, Bitdeer, Coinbase x402, Apify and CRS." },
+const SECTIONS: { id: SectionId; title: string }[] = [
+  { id: "why", title: "Why it matters" },
+  { id: "how", title: "How it works" },
+  { id: "results", title: "What it saves" },
+  { id: "built", title: "Built on" },
 ];
 
-const viewFromHash = (): View => {
-  const id = location.hash.slice(1);
-  return CHAPTERS.some((c) => c.id === id) ? (id as ChapterId) : "home";
-};
-
-function navKind(from: View, to: View): Nav {
-  if (to === "home") return "out";
-  if (from === "home") return "in";
-  const i = CHAPTERS.findIndex((c) => c.id === from);
-  const j = CHAPTERS.findIndex((c) => c.id === to);
-  return j > i ? "next" : "prev";
-}
-
 export function Site() {
-  const [view, setView] = useState<View>(viewFromHash);
-  // The tile a chapter opens from or returns to.
-  const [focus, setFocus] = useState<ChapterId | null>(() => (view === "home" ? null : view));
-  const viewRef = useRef(view);
-  viewRef.current = view;
-
-  const show = useCallback((to: View, push: boolean) => {
-    const from = viewRef.current;
-    if (to === from) return;
-    const kind = navKind(from, to);
-    const update = () =>
-      flushSync(() => {
-        if (to !== "home") setFocus(to);
-        setView(to);
-        window.scrollTo(0, 0);
-      });
-    if (push) history.pushState(null, "", to === "home" ? location.pathname : `#${to}`);
-    // The kind picks the animation in site.css; it also says which elements share a morph.
-    document.documentElement.dataset.nav = kind;
-    if (kind === "in") flushSync(() => setFocus(to as ChapterId));
-    const doc = document as Document & { startViewTransition?: (o: unknown) => unknown };
-    if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return update();
-    doc.startViewTransition({ update, types: [kind] });
-  }, []);
-
+  // The sections render after the browser's own jump to a #hash on load, so make that jump here.
   useEffect(() => {
-    const onPop = () => show(viewFromHash(), false);
-    const onKey = (e: KeyboardEvent) => {
-      const v = viewRef.current;
-      if (v === "home") return;
-      const i = CHAPTERS.findIndex((c) => c.id === v);
-      if (e.key === "Escape") show("home", true);
-      else if (e.key === "ArrowRight" && CHAPTERS[i + 1]) show(CHAPTERS[i + 1].id, true);
-      else if (e.key === "ArrowLeft" && CHAPTERS[i - 1]) show(CHAPTERS[i - 1].id, true);
-    };
-    window.addEventListener("popstate", onPop);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [show]);
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+  }, []);
+  // Each section wipes in the first time it scrolls into view (the animation is in site.css).
+  useEffect(() => {
+    const seen = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          e.target.classList.add("revealed");
+          seen.unobserve(e.target);
+        }),
+      { threshold: 0.12 },
+    );
+    document.querySelectorAll(".chapter").forEach((el) => seen.observe(el));
+    return () => seen.disconnect();
+  }, []);
 
   return (
     <>
-      <main>{view === "home" ? <Home focus={focus} open={(id) => show(id, true)} /> : <Chapter id={view} go={(v) => show(v, true)} />}</main>
+      <SectionNav />
+      <main>
+        <Hero />
+        {SECTIONS.map((c) => (
+          <section key={c.id} id={c.id} className={`chapter chapter-${c.id}`} aria-labelledby={`${c.id}-title`}>
+            <h2 id={`${c.id}-title`} className="chapter-title">
+              {c.title}
+            </h2>
+            {c.id === "why" && <WhyChapter />}
+            {c.id === "how" && <HowChapter />}
+            {c.id === "results" && <ResultsChapter />}
+            {c.id === "built" && <BuiltChapter />}
+          </section>
+        ))}
+        <div className="closing-cta">
+          <a className="button primary" href={DEMO_HREF}>
+            Open the live arena
+          </a>
+        </div>
+      </main>
       <footer className="site-footer">
         <span className="wordmark small">
           <Mark size={20} />
@@ -192,7 +170,45 @@ export function Site() {
   );
 }
 
-function Home({ focus, open }: { focus: ChapterId | null; open: (id: ChapterId) => void }) {
+// A slim bar that slides in once the hero is behind you: the four sections, with the one you're
+// reading lit. Clicking one glides there (html has smooth scrolling).
+function SectionNav() {
+  const [active, setActive] = useState<SectionId | null>(null);
+  useEffect(() => {
+    // The current section is the last one whose top has passed 40% of the way down the window; over
+    // the hero there's none. Worked out from the scroll position, so even a jump lands right.
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const line = innerHeight * 0.4;
+      let cur: SectionId | null = null;
+      for (const c of SECTIONS) if ((document.getElementById(c.id)?.getBoundingClientRect().top ?? Infinity) <= line) cur = c.id;
+      setActive(cur);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("resize", onScroll);
+    return () => {
+      removeEventListener("scroll", onScroll);
+      removeEventListener("resize", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+  return (
+    <nav className={`section-nav${active ? " shown" : ""}`} aria-label="Sections" aria-hidden={!active}>
+      {SECTIONS.map((c) => (
+        <a key={c.id} href={`#${c.id}`} className={active === c.id ? "on" : ""} tabIndex={active ? 0 : -1}>
+          {c.title}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function Hero() {
   return (
     <>
       <section className="hero">
@@ -210,67 +226,20 @@ function Home({ focus, open }: { focus: ChapterId | null; open: (id: ChapterId) 
             <a className="button primary" href={DEMO_HREF}>
               Open the live arena
             </a>
-            <button className="button" onClick={() => open("how")}>
+            <a className="button" href="#how">
               How it works
-            </button>
+            </a>
           </div>
         </div>
         <PaymentSlip />
       </section>
-      <nav className="chapter-tiles" aria-label="Learn more">
-        {CHAPTERS.map((c) => (
-          <button key={c.id} className={`chapter-tile${focus === c.id ? " focus" : ""}`} onClick={() => open(c.id)}>
-            <span className="tile-title">{c.title}</span>
-            <span className="tile-teaser">{c.teaser}</span>
-          </button>
-        ))}
-      </nav>
+      <a className="scroll-cue" href="#why" aria-label="Scroll to the first section">
+        <span>Scroll</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </a>
     </>
-  );
-}
-
-function Chapter({ id, go }: { id: ChapterId; go: (v: View) => void }) {
-  const i = CHAPTERS.findIndex((c) => c.id === id);
-  const prev = CHAPTERS[i - 1];
-  const next = CHAPTERS[i + 1];
-  return (
-    <article className={`chapter chapter-${id}`} aria-labelledby="chapter-title">
-      <div className="chapter-top">
-        <button className="back" onClick={() => go("home")}>
-          Overview
-        </button>
-        <span className="count">
-          {i + 1} of {CHAPTERS.length}
-        </span>
-      </div>
-      <h2 id="chapter-title" className="chapter-title">
-        {CHAPTERS[i].title}
-      </h2>
-      {id === "why" && <WhyChapter />}
-      {id === "how" && <HowChapter />}
-      {id === "results" && <ResultsChapter />}
-      {id === "built" && <BuiltChapter />}
-      <nav className="chapter-pager" aria-label="Chapters">
-        {prev ? (
-          <button className="pager prev" onClick={() => go(prev.id)}>
-            <span>Previous</span>
-            {prev.title}
-          </button>
-        ) : (
-          <span />
-        )}
-        {next ? (
-          <button className="pager next" onClick={() => go(next.id)}>
-            <span>Next</span>
-            {next.title}
-          </button>
-        ) : (
-          <a className="button primary" href={DEMO_HREF}>
-            Open the live arena
-          </a>
-        )}
-      </nav>
-    </article>
   );
 }
 
