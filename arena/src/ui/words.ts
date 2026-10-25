@@ -7,16 +7,24 @@ const STYLE: Record<string, string> = {
   many_accounts: "Many accounts",
   hijack_injection: "Hijack and injection",
 };
-const AMOUNT: Record<string, string> = {
-  under_10: "under $10",
-  "10_to_100": "$10 to $100",
-  over_100: "over $100",
+// Real-data runs are in the dataset's currency (euros for the ULB card data); set when a run loads.
+let symbol = "$";
+export const setCurrency = (code: string | undefined) => {
+  symbol = code === "EUR" ? "€" : "$";
+};
+
+const AMOUNT: Record<string, () => string> = {
+  under_10: () => `under ${symbol}10`,
+  "10_to_100": () => `${symbol}10 to ${symbol}100`,
+  over_100: () => `over ${symbol}100`,
 };
 const SIDE: Record<string, string> = { merchant: "against stores", buyer: "against shoppers" };
 
 export function shelfName(id: ShelfId): string {
   const { style, amount, side } = parseShelf(id);
-  return `${STYLE[style]}, ${AMOUNT[amount]}, ${SIDE[side]}`;
+  // A dataset's fraud has no attack style, only an amount: "dataset/<amount>/<side>".
+  if ((style as string) === "dataset") return `Fraud in the dataset, ${AMOUNT[amount]()}`;
+  return `${STYLE[style]}, ${AMOUNT[amount]()}, ${SIDE[side]}`;
 }
 
 export const ACTOR_NAME: Record<Actor, string> = {
@@ -33,14 +41,15 @@ export const SOURCE_LINE: Record<AttackerSource, string> = {
   outsider: "Outsider",
   threat_intel: "From the news",
   held_out: "Held-out exam",
+  dataset: "Real",
 };
 
 export const money = (cents: number): string =>
   cents < 0
     ? `−${money(-cents)}`
     : cents >= 100000
-    ? `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-    : `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents < 1000 ? 2 : 0, maximumFractionDigits: cents < 1000 ? 2 : 0 })}`;
+    ? `${symbol}${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+    : `${symbol}${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents < 1000 ? 2 : 0, maximumFractionDigits: cents < 1000 ? 2 : 0 })}`;
 
 export const modelName = (m: string | null) => (m ? m.split("/")[1] : "hand-written");
 

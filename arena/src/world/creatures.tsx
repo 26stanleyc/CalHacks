@@ -288,6 +288,7 @@ const RING_COLOR: Record<AttackerSource, string> = {
   outsider: C.ink,
   threat_intel: C.news,
   held_out: "#7A55C7",
+  dataset: "#3FB8AF", // fraud from a public dataset
 };
 
 export function Devil({ id, name, source, pos, appear, leave, throws, retunes, facing, idle }: DevilProps) {

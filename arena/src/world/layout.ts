@@ -60,8 +60,17 @@ const SLOT_OFFSETS: [number, number][] = [
 ];
 export function shelfSlot(id: ShelfId, slot: number): Vec3 {
   const t = SHELF_TILE[id];
+  if (!t) return datasetSpot(id);
   const [dx, dz] = SLOT_OFFSETS[slot % SLOT_OFFSETS.length];
   return [t.x + dx, TILE_TOP[4], t.z + dz];
+}
+
+// A public dataset's fraud ("dataset/<amount>/<side>") isn't on any arena shelf. Each amount group
+// stands on the beach just outside the shelf ring, behind the shelves for the same amount.
+function datasetSpot(id: ShelfId): Vec3 {
+  const [, amount, side] = id.split("/");
+  const t = SHELF_TILE[`hijack_injection/${amount}/${side}`];
+  return [t.x * 1.22, TILE_TOP[5], t.z * 1.22];
 }
 
 // Honest shoppers stroll on fixed battlefield tiles.

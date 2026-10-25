@@ -8,7 +8,8 @@ export type Action = "allow" | "step_up" | "block";
 export type AttackStyle = "burst" | "slow_drip" | "many_accounts" | "hijack_injection";
 export type AmountBand = "under_10" | "10_to_100" | "over_100";
 export type Side = "merchant" | "buyer";
-export type AttackerSource = "spawned" | "outsider" | "threat_intel" | "held_out";
+// "dataset": fraud from a public dataset, grouped by amount (the data doesn't say who committed it)
+export type AttackerSource = "spawned" | "outsider" | "threat_intel" | "held_out" | "dataset";
 
 // ShelfKey.id() in contracts/schemas.py: "<style>/<amount>/<side>"
 export type ShelfId = string;
@@ -19,6 +20,17 @@ export interface Replay {
   defense: string; // runs.defense
   defenders: DefenderInfo[]; // contracts/config.py MODEL_ROLES
   rounds: RoundReplay[];
+  dataset?: DatasetInfo; // set when the run replays a public dataset instead of the simulated marketplace
+}
+
+// engine/public_replay.py: where the payments came from. Amounts are in the dataset's currency.
+export interface DatasetInfo {
+  name: string;
+  source: string;
+  url: string;
+  license: string;
+  currency: string; // ISO code, e.g. "EUR"
+  round_hours: number; // each round is this many hours of the dataset, in time order
 }
 
 export interface DefenderInfo {
@@ -135,6 +147,7 @@ export interface Baseline {
   contender: string;
   label: string;
   trained_on: string;
+  // A payment missing here was allowed and settled (real-data exports leave those out to stay small).
   decisions: Record<string, { action: Action; settled: boolean }>;
   totals: BaselineTotals;
   ours_totals: BaselineTotals;

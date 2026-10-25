@@ -48,7 +48,8 @@ export function Timeline() {
   const current = segments.findIndex((s) => s.stage === stage && s.index === round);
   // Attack money grows round by round, so a steady net means the defense is keeping up.
   const attempted = compare ? flowByRound(runs!.after).map((f) => f.attempted) : [];
-  const growing = attempted.length > 1 && attempted[attempted.length - 1] > attempted[0] * 1.2;
+  // A dataset's fraud doesn't adapt or grow on purpose, so the note is only for simulated runs.
+  const growing = !replay.dataset && attempted.length > 1 && attempted[attempted.length - 1] > attempted[0] * 1.2;
   const beforeCount = compare ? runs!.before!.rounds.length : 0;
 
   // Net can go negative, so in comparison mode bars hang from a zero line spanning every value.

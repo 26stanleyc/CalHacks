@@ -5,17 +5,34 @@ import { useArena, phaseAt, ROUND_LEN, waveStart, THROW_WINDOW, FLIGHT, LEARN_ST
 import { getRoundModel, tallyAt } from "../world/roundModel";
 import { ACTOR_NAME, attackerName, money, ruleName, shelfName } from "./words";
 
-function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string): string {
+// Hours into a dataset as h:mm, e.g. 2.6667 -> "2:40".
+const clock = (hours: number) => {
+  const m = Math.round(hours * 60);
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+};
+
+// `hours` is set for a dataset run: each round is that many hours of the dataset, three waves to a round.
+function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string, hours?: number): string {
   const p = phaseAt(t);
+  const wave =
+    p.kind !== "wave"
+      ? ""
+      : hours !== undefined
+        ? `Wave ${p.wave} of 3: the dataset's payments from hour ${clock(((round * 3 + p.wave - 1) * hours) / 3)} to ${clock(((round * 3 + p.wave) * hours) / 3)}`
+        : `Wave ${p.wave} of 3: attackers try to pay their way through the gate`;
   if (stage === "before") {
     // The baseline only trains after round 1's labels arrive, so round 1 is decided untrained.
     if (round === 0 && p.kind !== "learn") return `${model} hasn't trained yet, so this round it lets every payment through`;
     if (p.kind === "spawn") return `${model} is guarding the checkpoint alone`;
-    if (p.kind === "wave") return `Wave ${p.wave} of 3: attackers try to pay their way through the gate`;
-    return round === 0 ? `${model} trains once, on this round's fraud` : `${model} stays frozen while the attackers adapt`;
+    if (p.kind === "wave") return wave;
+    // Recorded data doesn't adapt, so a dataset run doesn't claim it does.
+    return round === 0 ? `${model} trains once, on this round's fraud` : `${model} stays frozen${hours !== undefined ? "" : " while the attackers adapt"}`;
   }
-  if (p.kind === "spawn") return spawns ? "Defenders are building attackers aimed at their weak spots" : "Attackers take their places";
-  if (p.kind === "wave") return `Wave ${p.wave} of 3: attackers try to pay their way through the gate`;
+  if (p.kind === "spawn") {
+    if (hours !== undefined) return `Next: hours ${clock(round * hours)} to ${clock((round + 1) * hours)} of the dataset`;
+    return spawns ? "Defenders are building attackers aimed at their weak spots" : "Attackers take their places";
+  }
+  if (p.kind === "wave") return wave;
   return frozen ? "Learning is frozen, so the defense stays as it was" : "Defenders rewrite their rules from what got through";
 }
 
@@ -75,7 +92,7 @@ export function Hud() {
         <h1>
           Round {r.round} <span>of {replay.rounds.length}</span>
         </h1>
-        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label))}</p>
+        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label), replay.dataset?.round_hours)}</p>
         {r.metrics.frozen && <p className="frozen">Learning frozen</p>}
       </header>
       <section className={`scoreboard${before ? " breach" : ""}`} aria-label="This round's score">
@@ -157,9 +174,9 @@ export function StageBanner() {
             Net {money(us.net)}
             {ratio && ratio >= 1.1 ? `, ${ratio.toFixed(1)}× ${shortName(label)}'s.` : ` against ${money(them.net)}.`}
           </b>{" "}
-          On the same payments, {money(us.stolen)} of fraud got through against {money(them.stolen)} (
-          {Math.round((saved / them.stolen) * 100)}% less), and {us.flagged} honest shoppers were flagged against{" "}
-          {them.flagged}.{" "}
+          On the same payments, {money(us.stolen)} of fraud got through against {money(them.stolen)}
+          {them.stolen > 0 && ` (${Math.round((Math.abs(saved) / them.stolen) * 100)}% ${saved >= 0 ? "less" : "more"})`}, and{" "}
+          {us.flagged} honest shoppers were flagged against {them.flagged}.{" "}
           <button className="replay" onClick={() => setStage("before")}>
             Replay step 0
           </button>

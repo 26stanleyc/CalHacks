@@ -62,4 +62,16 @@ uv run python -m engine.export_baseline <run_id> --out ../arena-viz/arena/public
 
 Only a sample of attack coins is drawn (at most 40 per wave) so the sky stays readable. The scoreboard counts every payment.
 
+### Real data (second data set)
+
+A switch at the top right picks the data set: **Simulated marketplace** (the default, everything above) or **Real cards: ULB / Worldline**, the public ULB credit-card fraud dataset (284,807 real card payments by European cardholders over two days of September 2013, 492 labelled fraud; Université Libre de Bruxelles and Worldline, [Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud), ODbL 1.0 / DbCL 1.0). The choice is kept in the URL (`/demo/?data=real`). The switch only appears when `public/real/` exists, and it's hidden on phones.
+
+`public/real/replay.json.gz` and `public/real/baseline.json` are the same formats as above, made by `engine/public_replay.py` on the `stanley/real-data-engine` branch: TagTeam and XGBoost-trained-once decide the same 284,807 payments, six rounds of 8 hours each, and step 0 works as it does for the simulated run. The replay is gzipped because it holds every payment (the scoreboard counts them all); the app unzips it in the browser. The baseline file lists only decisions that aren't "allow, settled", which is what the app assumes for a missing payment. To re-export, download `creditcard.csv` outside the repo and, in that branch's worktree, run:
+
+```bash
+uv run python -m engine.public_replay --data ~/calhacks-sandbox/ulb/creditcard.csv --out ../arena-real-data/arena/public/real
+```
+
+What differs on screen: amounts are in euros; the dataset has no attack styles, so its fraud stands on the beach in three groups by amount (teal ring) instead of on the shelves, and the shelf grid is hidden; phase lines give the hours of the dataset each wave covers and don't say attackers adapt (recorded fraud doesn't). How the dataset's columns map onto the feature service, and what had to be approximated, is in `evidence/public-data/ulb-arena.md` on the engine branch.
+
 In dev builds, `window.arena` is the playback store, e.g. `arena.setState({ round: 7, t: 12, playing: false })`.

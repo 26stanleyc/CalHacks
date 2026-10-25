@@ -135,6 +135,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 .legend .ring.outsider { border-color: #23233a; box-shadow: 0 0 0 1px rgba(236, 229, 210, 0.5); }
 .legend .ring.news { border-color: var(--news); }
 .legend .ring.held_out { border-color: #9b7ce0; }
+.legend .ring.dataset { border-color: #3fb8af; }
 
 /* Timeline: the scrubber is also the arms-race chart. */
 .timeline {
@@ -179,6 +180,21 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
   position: absolute; top: 18px; right: 24px; width: 380px; align-items: flex-end; max-height: calc(100% - 154px);
   display: flex; flex-direction: column; gap: 12px;
 }
+/* Data-set switch: which payments the arena plays. */
+.data-switch {
+  flex: none; align-self: flex-end; max-width: 100%; background: var(--paper); border: 2px solid var(--edge); border-radius: 18px;
+  box-shadow: var(--lift); padding: 6px;
+}
+.data-switch .seg { display: flex; gap: 2px; }
+.data-switch .seg button {
+  border: none; background: none; color: var(--ink-soft); font-weight: 700; font-size: 13px; padding: 6px 12px; border-radius: 999px;
+  white-space: nowrap;
+}
+.data-switch .seg button:hover { color: var(--ink); }
+.data-switch .seg button[aria-pressed="true"] { color: var(--ink); background: rgba(236, 229, 210, 0.12); }
+.data-switch .source { margin: 6px 8px 4px; font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); }
+.data-switch .source a { color: var(--ink); }
+
 .shelf-map {
   flex: none; align-self: flex-end; background: var(--paper); border: 2px solid var(--edge); border-radius: 18px;
   box-shadow: var(--lift); padding: 10px 12px 8px;
@@ -228,6 +244,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
 .token.devil { background: var(--imp); box-shadow: 0 0 0 3px var(--solid), 0 0 0 6px #23233a, 0 0 0 7px rgba(236, 229, 210, 0.5); }
 .token.devil.spawned { box-shadow: 0 0 0 3px var(--solid), 0 0 0 6px var(--seraph); }
 .token.devil.threat_intel { box-shadow: 0 0 0 3px var(--solid), 0 0 0 6px var(--news); }
+.token.devil.dataset { box-shadow: 0 0 0 3px var(--solid), 0 0 0 6px #3fb8af; }
 .token.devil::before, .token.devil::after {
   content: ""; position: absolute; top: -7px; width: 0; height: 0;
   border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 13px solid var(--imp-dark);
@@ -293,7 +310,7 @@ blockquote {
   .timeline { left: 16px; right: 16px; grid-template-columns: auto 1fr; height: auto; }
   .speeds { grid-column: 1 / -1; justify-self: center; }
   .caption { display: none; }
-  .shelf-map { display: none; }
+  .shelf-map, .data-switch { display: none; }
   .arena .deploy-note, .arena .final-note { top: auto; bottom: 172px; }
   .hud-right { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; max-height: 60%; z-index: 45; }
 }

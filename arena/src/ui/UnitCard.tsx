@@ -30,6 +30,7 @@ function AttackerCard({ id }: { id: string }) {
     getRoundModel(replay, round).coins.map((c) => [c.payment.tx_id, c.outcome === "blocked" ? c.intercept : c.land]),
   );
   const resolved = (txId: string) => (resolvedAt.get(txId) ?? 0) <= tq;
+  const dataset = a.source === "dataset";
   const origin =
     a.source === "spawned"
       ? `Built by the ${ACTOR_NAME[a.parent as Actor]} to beat its own rules`
@@ -37,7 +38,9 @@ function AttackerCard({ id }: { id: string }) {
         ? "A classic fraudster who only sees whether it got through"
         : a.source === "threat_intel"
           ? "Copied from a scam report in the news"
-          : "Kept for the final exam; never trained against";
+          : dataset
+            ? `Real fraud from ${replay.dataset?.name ?? "the dataset"}. It doesn't adapt: these payments happened as recorded.`
+            : "Kept for the final exam; never trained against";
 
   return (
     <article className="card devil-card">
@@ -45,24 +48,28 @@ function AttackerCard({ id }: { id: string }) {
       <div className="who">
         <span className={`token devil ${a.source}`} aria-hidden="true" />
         <div>
-          <p className="kind">{SOURCE_LINE[a.source]} attacker</p>
+          <p className="kind">{dataset ? "Fraud in the dataset" : `${SOURCE_LINE[a.source]} attacker`}</p>
           <h2>{attackerName(a.name)}</h2>
         </div>
       </div>
       <p className="origin">{origin}</p>
       <dl className="facts">
-        <dt>Target</dt>
+        <dt>{dataset ? "Group" : "Target"}</dt>
         <dd>
           <button className="link" onClick={() => select({ kind: "shelf", id: a.shelf })}>
             {shelfName(a.shelf)}
           </button>
         </dd>
-        <dt>Runs on</dt>
-        <dd>{modelName(a.model)}</dd>
-        <dt>Profit so far</dt>
-        <dd>{money(a.profit_cents)}</dd>
+        {!dataset && (
+          <>
+            <dt>Runs on</dt>
+            <dd>{modelName(a.model)}</dd>
+            <dt>Profit so far</dt>
+            <dd>{money(a.profit_cents)}</dd>
+          </>
+        )}
       </dl>
-      <h3>Plan</h3>
+      <h3>{dataset ? "What it is" : "Plan"}</h3>
       <blockquote>{a.strategy}</blockquote>
       <ul className="chips">
         {paramLines(a.params).map(([k, v]) => (
@@ -209,7 +216,7 @@ function ShelfCard({ id }: { id: string }) {
   return (
     <article className="card shelf-card">
       <Close />
-      <p className="kind">Arena shelf</p>
+      <p className="kind">{id.startsWith("dataset/") ? "Fraud group" : "Arena shelf"}</p>
       <h2>{shelfName(id)}</h2>
       <div className="meter" aria-label={rate === null ? "No attempts yet" : `Caught ${Math.round(rate * 100)}%`}>
         <span style={{ width: `${Math.round((rate ?? 0) * 100)}%` }} />
@@ -222,8 +229,8 @@ function ShelfCard({ id }: { id: string }) {
             : `The defense caught ${s.caught} of the last ${s.attempts} attempts (${Math.round(rate! * 100)}%).`}{" "}
         Counts the last {RECENT_ROUNDS} rounds, this one included as it plays.
       </p>
-      <h3>Top attackers kept here</h3>
-      {ids.length ? (
+      {!id.startsWith("dataset/") && <h3>Top attackers kept here</h3>}
+      {id.startsWith("dataset/") ? null : ids.length ? (
         <ul className="roster">
           {ids.map((aid) => (
             <li key={aid}>
@@ -258,8 +265,12 @@ function GateCard() {
         <dd>{money(m.loss_buyer_side_cents)}</dd>
         <dt>False alarms</dt>
         <dd>{(m.false_positive_rate * 100).toFixed(1)}% of honest payments</dd>
-        <dt>Still stealable</dt>
-        <dd>{money(m.exploitability_cents)} by a fresh attacker</dd>
+        {m.exploitability_cents >= 0 && (
+          <>
+            <dt>Still stealable</dt>
+            <dd>{money(m.exploitability_cents)} by a fresh attacker</dd>
+          </>
+        )}
       </dl>
     </article>
   );
