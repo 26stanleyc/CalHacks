@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ResultsChart } from "./ResultsChart";
 import { DEMO_HREF, Mark } from "./brand";
-import { rosette, waveBand } from "./guilloche";
+import { waveBand } from "./guilloche";
 
 // The hero: one agent payment, stamped by each specialist in turn. A malicious buying agent hides
 // instructions for the fraud checker in its own payment note (the more common direction of prompt
@@ -18,10 +18,6 @@ const SEALS: { name: string; verdict: "pass" | "flag" | "block"; why: string }[]
 function PaymentSlip() {
   return (
     <figure className="slip" aria-label="Example: a shopping agent hides instructions in its payment note, and five specialists block it">
-      <svg className="slip-engraving" viewBox="0 0 520 380" preserveAspectRatio="none" aria-hidden="true">
-        <path d={waveBand(520, 380, 26, 7, 3)} />
-        <path className="rosette" d={rosette(440, 70, 60, 11, 34)} />
-      </svg>
       <div className="slip-head">
         <span>x402 payment</span>
         <span className="serial">Base Sepolia, USDC</span>
