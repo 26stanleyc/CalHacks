@@ -7,6 +7,7 @@ import { Hud, StageBanner } from "./ui/Hud";
 import { ShelfMap } from "./ui/ShelfMap";
 import { Timeline } from "./ui/Timeline";
 import { UnitCard } from "./ui/UnitCard";
+import { EthLogo } from "./ui/EthLogo";
 import { setCurrency } from "./ui/words";
 import { Scene } from "./world/Scene";
 
@@ -88,13 +89,26 @@ function DataSwitch({ data, loading, onChange }: { data: DataSet; loading: boole
         <p className="source">Loading the payments…</p>
       ) : (
         dataset && (
-          <p className="source">
+          <>
+            {dataset.currency === "ETH" && (
+              <p className="chain">
+                <EthLogo /> Ethereum mainnet
+                {dataset.start && (
+                  <span>
+                    real transactions,{" "}
+                    {new Date(dataset.start).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}
+                  </span>
+                )}
+              </p>
+            )}
+            <p className="source">
             {dataset.source}.{" "}
             <a href={dataset.url} target="_blank" rel="noreferrer">
               Source
             </a>
             , {dataset.license}. Amounts in {dataset.currency}; {dataset.round_hours} hours of payments per round.
-          </p>
+            </p>
+          </>
         )
       )}
     </section>

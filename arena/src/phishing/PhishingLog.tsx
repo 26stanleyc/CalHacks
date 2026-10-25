@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Action, DatasetInfo } from "../data/types";
+import { EthLogo } from "../ui/EthLogo";
 import { money, ruleName, setCurrency } from "../ui/words";
 
 interface Verdict {
@@ -115,7 +116,9 @@ export function PhishingLog() {
   return (
     <main className="phishing">
       <header className="phish-head">
-        <p className="kicker">One real scam, payment by payment</p>
+        <p className="kicker chain">
+          <EthLogo /> Ethereum mainnet <span>One real scam, payment by payment</span>
+        </p>
         <h1>
           Phishing address <code>{short(log.address)}</code>
         </h1>
