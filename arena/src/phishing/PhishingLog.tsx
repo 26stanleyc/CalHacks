@@ -174,7 +174,7 @@ export function PhishingLog() {
         <div className="phish-cols" aria-hidden="true">
           {(["xgb", "tagteam"] as const).map((side) => (
             <div key={side} className={`side ${side}`}>
-              <b>{side === "xgb" ? "XGBoost, trained once" : "TagTeam"}</b>
+              <b>{side === "xgb" ? "XGBoost" : "TagTeam"}</b>
               <span>Time (UTC)</span>
               <span>From → to</span>
               <span>Amount</span>
@@ -187,16 +187,14 @@ export function PhishingLog() {
             r.kind === "night" ? (
               <li key={r.key} className="night">
                 <div className="side xgb">
-                  <b>Night after {r.day}.</b> XGBoost was trained once, before this week, and stays frozen: it learns nothing
-                  from today. Its memory of {short(log.address)}: <b>{r.frozen} reports</b>.
+                  <b>Night after {r.day}.</b> No learning: still <b>{r.frozen} reports</b> on {short(log.address)}.
                 </div>
                 <div className="side tagteam">
-                  <b>Night after {r.day}.</b> The day's payments are confirmed and TagTeam learns them: {short(log.address)} now
-                  has{" "}
+                  <b>Night after {r.day}.</b> Learns the day's reports:{" "}
                   <b>
-                    {r.reports} confirmed phishing {r.reports === 1 ? "report" : "reports"}
+                    {r.reports} {r.reports === 1 ? "report" : "reports"}
                   </b>{" "}
-                  in its memory.
+                  on {short(log.address)}.
                 </div>
               </li>
             ) : (
