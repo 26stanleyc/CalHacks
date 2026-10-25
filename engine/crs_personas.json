@@ -1,0 +1,665 @@
+{
+ "_source": "Sandbox test personas from @crscreditapi/crs-calhacks-mcp-server 1.1.2 (MIT, CRS Credit API). All data is fake. Send a body exactly as given: only an exact match gets the free canned sandbox answer.",
+ "personas": {
+  "P01": {
+   "name": "MARGARET OKAFOR",
+   "profile": "Prime",
+   "fraud_finder": {
+    "firstName": "MARGARET",
+    "lastName": "OKAFOR",
+    "phoneNumber": "5550101001",
+    "email": "margaret.okafor@example.com",
+    "ipAddress": "203.0.113.11",
+    "address": {
+     "addressLine1": "1420 WILLOW CREEK DR",
+     "city": "SAN JOSE",
+     "state": "CA",
+     "postalCode": "95125"
+    }
+   },
+   "fraud_finder_expected": "risk.score 11 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101001"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "MARGARET",
+    "lastName": "OKAFOR",
+    "ssn": "666701001",
+    "dob": "1984-03-14",
+    "street1": "1420 WILLOW CREEK DR",
+    "city": "SAN JOSE",
+    "state": "CA",
+    "zip": "95125"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P02": {
+   "name": "DANIEL WHITFIELD",
+   "profile": "Super-prime mortgage holder",
+   "fraud_finder": {
+    "firstName": "DANIEL",
+    "lastName": "WHITFIELD",
+    "phoneNumber": "5550101002",
+    "email": "daniel.whitfield@example.com",
+    "ipAddress": "203.0.113.12",
+    "address": {
+     "addressLine1": "88 LAKESHORE BLVD",
+     "city": "AUSTIN",
+     "state": "TX",
+     "postalCode": "78746"
+    }
+   },
+   "fraud_finder_expected": "risk.score 9 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101002"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "DANIEL",
+    "lastName": "WHITFIELD",
+    "ssn": "666701002",
+    "dob": "1972-11-02",
+    "street1": "88 LAKESHORE BLVD",
+    "city": "AUSTIN",
+    "state": "TX",
+    "zip": "78746"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P03": {
+   "name": "JASMINE REYES",
+   "profile": "Thin file / Gen Z",
+   "fraud_finder": {
+    "firstName": "JASMINE",
+    "lastName": "REYES",
+    "phoneNumber": "5550101003",
+    "email": "jasmine.reyes@example.com",
+    "ipAddress": "203.0.113.13",
+    "address": {
+     "addressLine1": "2210 UNIVERSITY AVE APT 4B",
+     "city": "BERKELEY",
+     "state": "CA",
+     "postalCode": "94704"
+    }
+   },
+   "fraud_finder_expected": "risk.score 14 (low), email 3 yrs. Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101003"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "JASMINE",
+    "lastName": "REYES",
+    "ssn": "666701003",
+    "dob": "2004-06-21",
+    "street1": "2210 UNIVERSITY AVE APT 4B",
+    "city": "BERKELEY",
+    "state": "CA",
+    "zip": "94704"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P04": {
+   "name": "TOMAS LINDQVIST",
+   "profile": "Credit invisible",
+   "fraud_finder": {
+    "firstName": "TOMAS",
+    "lastName": "LINDQVIST",
+    "phoneNumber": "5550101004",
+    "email": "tomas.lindqvist@example.com",
+    "ipAddress": "203.0.113.14",
+    "address": {
+     "addressLine1": "415 PINE ST UNIT 12",
+     "city": "SEATTLE",
+     "state": "WA",
+     "postalCode": "98101"
+    }
+   },
+   "fraud_finder_expected": "risk.score 18 (low), email 1 yr. Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101004"
+   },
+   "data_prefill_expected": "empty list (no match)",
+   "identity_verification": {
+    "firstName": "TOMAS",
+    "lastName": "LINDQVIST",
+    "ssn": "666701004",
+    "dob": "1990-01-30",
+    "street1": "415 PINE ST UNIT 12",
+    "city": "SEATTLE",
+    "state": "WA",
+    "zip": "98101"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P05": {
+   "name": "RICKY DALTON",
+   "profile": "Subprime",
+   "fraud_finder": {
+    "firstName": "RICKY",
+    "lastName": "DALTON",
+    "phoneNumber": "5550101005",
+    "email": "ricky.dalton@example.com",
+    "ipAddress": "203.0.113.15",
+    "address": {
+     "addressLine1": "7031 SUNSET RIDGE RD",
+     "city": "ORLANDO",
+     "state": "FL",
+     "postalCode": "32819"
+    }
+   },
+   "fraud_finder_expected": "risk.score 52 (medium). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101005"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "RICKY",
+    "lastName": "DALTON",
+    "ssn": "666701005",
+    "dob": "1988-09-09",
+    "street1": "7031 SUNSET RIDGE RD",
+    "city": "ORLANDO",
+    "state": "FL",
+    "zip": "32819"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P06": {
+   "name": "ANGELA MORRISSEY",
+   "profile": "Chapter 7 discharged",
+   "fraud_finder": {
+    "firstName": "ANGELA",
+    "lastName": "MORRISSEY",
+    "phoneNumber": "5550101006",
+    "email": "angela.morrissey@example.com",
+    "ipAddress": "203.0.113.16",
+    "address": {
+     "addressLine1": "960 MAPLEWOOD AVE",
+     "city": "COLUMBUS",
+     "state": "OH",
+     "postalCode": "43209"
+    }
+   },
+   "fraud_finder_expected": "risk.score 12 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101006"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "ANGELA",
+    "lastName": "MORRISSEY",
+    "ssn": "666701006",
+    "dob": "1979-04-18",
+    "street1": "960 MAPLEWOOD AVE",
+    "city": "COLUMBUS",
+    "state": "OH",
+    "zip": "43209"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P07": {
+   "name": "MARCUS BELLAMY",
+   "profile": "Chapter 13 active",
+   "fraud_finder": {
+    "firstName": "MARCUS",
+    "lastName": "BELLAMY",
+    "phoneNumber": "5550101007",
+    "email": "marcus.bellamy@example.com",
+    "ipAddress": "203.0.113.17",
+    "address": {
+     "addressLine1": "1507 PEACHTREE INDUSTRIAL BLVD",
+     "city": "ATLANTA",
+     "state": "GA",
+     "postalCode": "30341"
+    }
+   },
+   "fraud_finder_expected": "risk.score 12 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101007"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "MARCUS",
+    "lastName": "BELLAMY",
+    "ssn": "666701007",
+    "dob": "1975-12-05",
+    "street1": "1507 PEACHTREE INDUSTRIAL BLVD",
+    "city": "ATLANTA",
+    "state": "GA",
+    "zip": "30341"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P08": {
+   "name": "PRIYA VENKATESAN",
+   "profile": "Tax lien and civil judgment",
+   "fraud_finder": {
+    "firstName": "PRIYA",
+    "lastName": "VENKATESAN",
+    "phoneNumber": "5550101008",
+    "email": "priya.venkatesan@example.com",
+    "ipAddress": "203.0.113.18",
+    "address": {
+     "addressLine1": "3300 N LAKE SHORE DR APT 15C",
+     "city": "CHICAGO",
+     "state": "IL",
+     "postalCode": "60657"
+    }
+   },
+   "fraud_finder_expected": "risk.score 10 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101008"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "PRIYA",
+    "lastName": "VENKATESAN",
+    "ssn": "666701008",
+    "dob": "1981-07-27",
+    "street1": "3300 N LAKE SHORE DR APT 15C",
+    "city": "CHICAGO",
+    "state": "IL",
+    "zip": "60657"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P09": {
+   "name": "DEREK HOLLOWAY",
+   "profile": "Felony conviction",
+   "fraud_finder": {
+    "firstName": "DEREK",
+    "lastName": "HOLLOWAY",
+    "phoneNumber": "5550101009",
+    "email": "derek.holloway@example.com",
+    "ipAddress": "203.0.113.19",
+    "address": {
+     "addressLine1": "4875 W COLFAX AVE",
+     "city": "DENVER",
+     "state": "CO",
+     "postalCode": "80204"
+    }
+   },
+   "fraud_finder_expected": "risk.score 11 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101009"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "DEREK",
+    "lastName": "HOLLOWAY",
+    "ssn": "666701009",
+    "dob": "1986-02-11",
+    "street1": "4875 W COLFAX AVE",
+    "city": "DENVER",
+    "state": "CO",
+    "zip": "80204"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P10": {
+   "name": "LAUREN KOWALCZYK",
+   "profile": "Old dismissed misdemeanor",
+   "fraud_finder": {
+    "firstName": "LAUREN",
+    "lastName": "KOWALCZYK",
+    "phoneNumber": "5550101010",
+    "email": "lauren.kowalczyk@example.com",
+    "ipAddress": "203.0.113.20",
+    "address": {
+     "addressLine1": "1181 WOODWARD AVE",
+     "city": "DETROIT",
+     "state": "MI",
+     "postalCode": "48226"
+    }
+   },
+   "fraud_finder_expected": "risk.score 10 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101010"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "LAUREN",
+    "lastName": "KOWALCZYK",
+    "ssn": "666701010",
+    "dob": "1992-10-03",
+    "street1": "1181 WOODWARD AVE",
+    "city": "DETROIT",
+    "state": "MI",
+    "zip": "48226"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P11": {
+   "name": "BRANDON SZABO",
+   "profile": "Eviction history",
+   "fraud_finder": {
+    "firstName": "BRANDON",
+    "lastName": "SZABO",
+    "phoneNumber": "5550101011",
+    "email": "brandon.szabo@example.com",
+    "ipAddress": "203.0.113.21",
+    "address": {
+     "addressLine1": "2640 HIGHLAND AVE APT 7",
+     "city": "NATIONAL CITY",
+     "state": "CA",
+     "postalCode": "91950"
+    }
+   },
+   "fraud_finder_expected": "risk.score 11 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101011"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "BRANDON",
+    "lastName": "SZABO",
+    "ssn": "666701011",
+    "dob": "1995-05-15",
+    "street1": "2640 HIGHLAND AVE APT 7",
+    "city": "NATIONAL CITY",
+    "state": "CA",
+    "zip": "91950"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P12": {
+   "name": "VICTOR ANAND",
+   "profile": "Identity mismatch",
+   "fraud_finder": {
+    "firstName": "VICTOR",
+    "lastName": "ANAND",
+    "phoneNumber": "5550101012",
+    "email": "v.anand.1968@example.com",
+    "ipAddress": "198.51.100.12",
+    "address": {
+     "addressLine1": "55 WATER ST FL 20",
+     "city": "NEW YORK",
+     "state": "NY",
+     "postalCode": "10041"
+    }
+   },
+   "fraud_finder_expected": "risk.score 85 (high), phone owner no_match, IP > 1000 miles. Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101012"
+   },
+   "data_prefill_expected": "one result for RAJESH MENON (a different person)",
+   "identity_verification": {
+    "firstName": "VICTOR",
+    "lastName": "ANAND",
+    "ssn": "666701012",
+    "dob": "1968-08-08",
+    "street1": "55 WATER ST FL 20",
+    "city": "NEW YORK",
+    "state": "NY",
+    "zip": "10041"
+   },
+   "identity_verification_expected": "result FAIL. SSN issued to a different name; DOB mismatch; address not associated with SSN"
+  },
+  "P13": {
+   "name": "KAYLA BRENNAN",
+   "profile": "Synthetic identity / fraud",
+   "fraud_finder": {
+    "firstName": "KAYLA",
+    "lastName": "BRENNAN",
+    "phoneNumber": "5550101013",
+    "email": "kb.9921x@example.com",
+    "ipAddress": "198.51.100.13",
+    "address": {
+     "addressLine1": "9021 KINGSTON PIKE",
+     "city": "KNOXVILLE",
+     "state": "TN",
+     "postalCode": "37923"
+    }
+   },
+   "fraud_finder_expected": "risk.score 88 (high), email 3 days old, phone owner no_match, voip prepaid. Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101013"
+   },
+   "data_prefill_expected": "empty list (no match)",
+   "identity_verification": {
+    "firstName": "KAYLA",
+    "lastName": "BRENNAN",
+    "ssn": "666701013",
+    "dob": "1999-12-24",
+    "street1": "9021 KINGSTON PIKE",
+    "city": "KNOXVILLE",
+    "state": "TN",
+    "zip": "37923"
+   },
+   "identity_verification_expected": "result FAIL. SSN issue date inconsistent with DOB; multiple names linked to SSN"
+  },
+  "P14": {
+   "name": "HAROLD PETTIGREW",
+   "profile": "Deceased indicator",
+   "fraud_finder": {
+    "firstName": "HAROLD",
+    "lastName": "PETTIGREW",
+    "phoneNumber": "5550101014",
+    "email": "harold.pettigrew@example.com",
+    "ipAddress": "203.0.113.24",
+    "address": {
+     "addressLine1": "310 ELM ST",
+     "city": "DAYTON",
+     "state": "OH",
+     "postalCode": "45402"
+    }
+   },
+   "fraud_finder_expected": "risk.score 80 (high), email invalid, phone dead. Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101014"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "HAROLD",
+    "lastName": "PETTIGREW",
+    "ssn": "666701014",
+    "dob": "1948-01-19",
+    "street1": "310 ELM ST",
+    "city": "DAYTON",
+    "state": "OH",
+    "zip": "45402"
+   },
+   "identity_verification_expected": "result FAIL. SSN reported as belonging to a deceased person (Death Master File)"
+  },
+  "P15": {
+   "name": "NICOLE FARRAGUT",
+   "profile": "Security freeze at one bureau",
+   "fraud_finder": {
+    "firstName": "NICOLE",
+    "lastName": "FARRAGUT",
+    "phoneNumber": "5550101015",
+    "email": "nicole.farragut@example.com",
+    "ipAddress": "203.0.113.25",
+    "address": {
+     "addressLine1": "7700 NE 72ND AVE",
+     "city": "PORTLAND",
+     "state": "OR",
+     "postalCode": "97218"
+    }
+   },
+   "fraud_finder_expected": "risk.score 10 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101015"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "NICOLE",
+    "lastName": "FARRAGUT",
+    "ssn": "666701015",
+    "dob": "1983-03-30",
+    "street1": "7700 NE 72ND AVE",
+    "city": "PORTLAND",
+    "state": "OR",
+    "zip": "97218"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P16": {
+   "name": "SAMUEL OYELARAN",
+   "profile": "Fraud alert on file",
+   "fraud_finder": {
+    "firstName": "SAMUEL",
+    "lastName": "OYELARAN",
+    "phoneNumber": "5550101016",
+    "email": "samuel.oyelaran@example.com",
+    "ipAddress": "203.0.113.26",
+    "address": {
+     "addressLine1": "1200 BRICKELL BAY DR APT 2203",
+     "city": "MIAMI",
+     "state": "FL",
+     "postalCode": "33131"
+    }
+   },
+   "fraud_finder_expected": "risk.score 50 (medium). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101016"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "SAMUEL",
+    "lastName": "OYELARAN",
+    "ssn": "666701016",
+    "dob": "1977-06-12",
+    "street1": "1200 BRICKELL BAY DR APT 2203",
+    "city": "MIAMI",
+    "state": "FL",
+    "zip": "33131"
+   },
+   "identity_verification_expected": "result KBA_REQUIRED. basic verification passes but fraud alert triggers step-up; KBA questions then OTP to phone on file (needs TUC3004 on the quote)"
+  },
+  "P17": {
+   "name": "ELENA CASTELLANOS",
+   "profile": "Bureau divergence",
+   "fraud_finder": {
+    "firstName": "ELENA",
+    "lastName": "CASTELLANOS",
+    "phoneNumber": "5550101017",
+    "email": "elena.castellanos@example.com",
+    "ipAddress": "203.0.113.27",
+    "address": {
+     "addressLine1": "4400 N CENTRAL EXPY STE 100",
+     "city": "DALLAS",
+     "state": "TX",
+     "postalCode": "75206"
+    }
+   },
+   "fraud_finder_expected": "risk.score 11 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101017"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "ELENA",
+    "lastName": "CASTELLANOS",
+    "ssn": "666701017",
+    "dob": "1987-11-20",
+    "street1": "4400 N CENTRAL EXPY STE 100",
+    "city": "DALLAS",
+    "state": "TX",
+    "zip": "75206"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P18": {
+   "name": "TERRENCE ABERNATHY",
+   "profile": "Rebuilding",
+   "fraud_finder": {
+    "firstName": "TERRENCE",
+    "lastName": "ABERNATHY",
+    "phoneNumber": "5550101018",
+    "email": "terrence.abernathy@example.com",
+    "ipAddress": "203.0.113.28",
+    "address": {
+     "addressLine1": "2102 S HALSTED ST",
+     "city": "CHICAGO",
+     "state": "IL",
+     "postalCode": "60608"
+    }
+   },
+   "fraud_finder_expected": "risk.score 12 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101018"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "TERRENCE",
+    "lastName": "ABERNATHY",
+    "ssn": "666701018",
+    "dob": "1980-02-29",
+    "street1": "2102 S HALSTED ST",
+    "city": "CHICAGO",
+    "state": "IL",
+    "zip": "60608"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P19": {
+   "name": "GRACE NAKAMURA",
+   "profile": "Small-business owner",
+   "fraud_finder": {
+    "firstName": "GRACE",
+    "lastName": "NAKAMURA",
+    "phoneNumber": "5550101019",
+    "email": "grace.nakamura@example.com",
+    "ipAddress": "203.0.113.29",
+    "address": {
+     "addressLine1": "1850 SOLANO AVE",
+     "city": "BERKELEY",
+     "state": "CA",
+     "postalCode": "94707"
+    }
+   },
+   "fraud_finder_expected": "risk.score 9 (low). Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101019"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "GRACE",
+    "lastName": "NAKAMURA",
+    "ssn": "666701019",
+    "dob": "1976-09-16",
+    "street1": "1850 SOLANO AVE",
+    "city": "BERKELEY",
+    "state": "CA",
+    "zip": "94707"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  },
+  "P20": {
+   "name": "DOLORES WHITCOMB",
+   "profile": "Retiree with stale file",
+   "fraud_finder": {
+    "firstName": "DOLORES",
+    "lastName": "WHITCOMB",
+    "phoneNumber": "5550101020",
+    "email": "dolores.whitcomb@example.com",
+    "ipAddress": "203.0.113.30",
+    "address": {
+     "addressLine1": "612 OCEAN VIEW DR",
+     "city": "SANTA BARBARA",
+     "state": "CA",
+     "postalCode": "93109"
+    }
+   },
+   "fraud_finder_expected": "risk.score 8 (low), landline. Send name, phone, email and address; ipAddress is free.",
+   "data_prefill": {
+    "phoneNumber": "5550101020"
+   },
+   "data_prefill_expected": "one result for the persona",
+   "identity_verification": {
+    "firstName": "DOLORES",
+    "lastName": "WHITCOMB",
+    "ssn": "666701020",
+    "dob": "1952-05-04",
+    "street1": "612 OCEAN VIEW DR",
+    "city": "SANTA BARBARA",
+    "state": "CA",
+    "zip": "93109"
+   },
+   "identity_verification_expected": "result PASS. name, SSN, DOB and address all verify"
+  }
+ }
+}

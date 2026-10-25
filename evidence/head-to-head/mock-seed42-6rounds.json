@@ -1,0 +1,59 @@
+[
+ {
+  "seed": 42,
+  "rounds": 6,
+  "real": false,
+  "new_attackers": 18,
+  "llm_spend_usd": 0.0,
+  "llm_calls": 634,
+  "llm_tokens": 0,
+  "llm_failures": {},
+  "by_contender": {
+   "full": {
+    "new_first_round_usd": 16283.816,
+    "new_first_3_rounds_usd": 19033.562,
+    "all_fraud_usd": 98216.90400000001,
+    "honest_cost_usd": 77.31150000000001,
+    "total_cost_usd": 98294.2155,
+    "fp_mean": 0.003901932616551817,
+    "fp_max": 0.010067114093959731
+   },
+   "xgboost_retrained": {
+    "new_first_round_usd": 3223.39,
+    "new_first_3_rounds_usd": 4198.32,
+    "all_fraud_usd": 51903.954000000005,
+    "honest_cost_usd": 687.4252499999999,
+    "total_cost_usd": 52591.379250000005,
+    "fp_mean": 0.018963447634296773,
+    "fp_max": 0.053691275167785234
+   },
+   "xgboost_frozen": {
+    "new_first_round_usd": 16407.023999999998,
+    "new_first_3_rounds_usd": 21581.343999999997,
+    "all_fraud_usd": 88640.582,
+    "honest_cost_usd": 1939.7362500000006,
+    "total_cost_usd": 90580.31825,
+    "fp_mean": 0.0412526841896553,
+    "fp_max": 0.06020066889632107
+   },
+   "static_rules": {
+    "new_first_round_usd": 23324.4,
+    "new_first_3_rounds_usd": 28490.29,
+    "all_fraud_usd": 120201.81,
+    "honest_cost_usd": 344.6310000000001,
+    "total_cost_usd": 120546.44099999999,
+    "fp_mean": 0.00725759990422961,
+    "fp_max": 0.020066889632107024
+   },
+   "rules_plus_xgboost": {
+    "new_first_round_usd": 3155.458,
+    "new_first_3_rounds_usd": 4046.04,
+    "all_fraud_usd": 42686.84,
+    "honest_cost_usd": 1032.0562499999996,
+    "total_cost_usd": 43718.89625,
+    "fp_mean": 0.026221047538526384,
+    "fp_max": 0.06375838926174497
+   }
+  }
+ }
+]

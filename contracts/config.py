@@ -27,12 +27,14 @@ def use_stub_engine() -> bool:
 # Role -> Bitdeer model id (spec 2.1). Override any role with MODEL_<ROLE>, e.g. MODEL_INVESTIGATOR.
 MODEL_ROLES: dict[str, str] = {
     "critic": "zai-org/GLM-5.3",
-    "critic_second": "deepseek-ai/DeepSeek-V4.1-Flash",
+    # The long analytical roles run on GLM: on Bitdeer, DeepSeek reasons past any token budget on
+    # them and never answers (evidence/llm-readiness.md). DeepSeek keeps the short tasks.
+    "critic_second": "zai-org/GLM-5.3-Flash",
     "investigator": "deepseek-ai/DeepSeek-V4.1-Flash",
     "timing": "zai-org/GLM-5.3-Flash",
-    "graph": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "graph": "zai-org/GLM-5.3-Flash",
     "identity": "zai-org/GLM-5.3",
-    "velocity": "deepseek-ai/DeepSeek-V4-Flash",
+    "velocity": "zai-org/GLM-5.3",
     "mandate": "zai-org/GLM-5.3-Flash",
     "outsider_a": "deepseek-ai/DeepSeek-V4-Flash",
     "outsider_b": "zai-org/GLM-5.3-Flash",
@@ -58,3 +60,10 @@ def attacker_model_for(parent_model: str) -> str:
     """Spawned attackers use the other family than their parent, and the variant the parent doesn't use."""
     pool = DEEPSEEK_MODELS if family(parent_model) == family(GLM_MODELS[0]) else GLM_MODELS
     return next((m for m in pool if m != parent_model), pool[0])
+
+
+# Spawned attackers are built on the other family than their parent, with the variant the parent
+# doesn't use (spec 2.1); the orchestrator's gap attacker uses the cheapest model.
+for _lane in ("timing", "graph", "identity", "velocity", "mandate"):
+    MODEL_ROLES[f"spawn_{_lane}"] = attacker_model_for(MODEL_ROLES[_lane])
+MODEL_ROLES["spawn_orchestrator"] = "deepseek-ai/DeepSeek-V4-Flash"

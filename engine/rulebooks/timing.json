@@ -1,0 +1,50 @@
+{
+  "lane": "timing",
+  "version": 0,
+  "rules": [
+    {
+      "id": "timing.rapid_fire",
+      "score": 0.7,
+      "description": "Eight or more payments from one agent within a minute: machine-speed bursts (a human's subscription renewals stay under it).",
+      "when": {
+        "feature": "t_count_agent_60s",
+        "op": ">=",
+        "value": 8
+      }
+    },
+    {
+      "id": "timing.machine_regular",
+      "score": 0.4,
+      "description": "Payments spaced almost exactly evenly, minutes apart (bots on a timer).",
+      "when": {
+        "all": [
+          {
+            "feature": "t_gap_cv_agent",
+            "op": "<",
+            "value": 0.06
+          },
+          {
+            "feature": "t_gap_prev_s",
+            "op": ">=",
+            "value": 120
+          },
+          {
+            "feature": "t_gap_prev_s",
+            "op": "<",
+            "value": 3600
+          }
+        ]
+      }
+    },
+    {
+      "id": "timing.injection_text",
+      "score": 0.9,
+      "description": "Free text tries to instruct the checker (prompt injection).",
+      "when": {
+        "feature": "b_memo_injection",
+        "op": ">=",
+        "value": 0.6
+      }
+    }
+  ]
+}

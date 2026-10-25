@@ -1,0 +1,133 @@
+{
+ "seed": 42,
+ "rounds": 4,
+ "source_live": true,
+ "minutes": 49.6,
+ "llm_calls": 319,
+ "llm_tokens": 2045062,
+ "llm_failures": 1,
+ "reports": [
+  {
+   "round": 1,
+   "report_id": "apify-a7714ef0fd32",
+   "title": "Struggling with tax debt? Here\u2019s what to know | Consumer Advice",
+   "source_url": "https://consumer.ftc.gov/consumer-alerts/2026/08/struggling-tax-debt-heres-what-know",
+   "live": true,
+   "pattern": {
+    "report_id": "apify-a7714ef0fd32",
+    "name": "Tax Debt Relief Upfront Fee Scam",
+    "description": "Tax debt relief scam operators impersonate government authorities, send letters demanding contact by a specific deadline, then charge large upfront service fees before doing any work, leaving victims further in debt.",
+    "signals": [
+     "b_memo_injection >= 1",
+     "t_gap_prev_s <= 60",
+     "t_count_agent_60s >= 3"
+    ],
+    "lane": "timing",
+    "shelf": {
+     "style": "hijack_injection",
+     "amount": "over_100",
+     "side": "merchant"
+    }
+   },
+   "watch_rule_id": "timing.watch_apify_a7714ef0fd32",
+   "attacker_ids": [
+    "intel-apify-a7714ef0fd32-0",
+    "intel-apify-a7714ef0fd32-1",
+    "intel-apify-a7714ef0fd32-2"
+   ],
+   "attempts": 174,
+   "caught": 118
+  },
+  {
+   "round": 2,
+   "report_id": "apify-9926ead93355",
+   "title": "What to know ahead of Open Enrollment to avoid health insurance scams | Consumer Advice",
+   "source_url": "https://consumer.ftc.gov/consumer-alerts/2026/09/what-know-ahead-open-enrollment-avoid-health-insurance-scams",
+   "live": true,
+   "pattern": {
+    "report_id": "apify-9926ead93355",
+    "name": "Open Enrollment lookalike insurance site",
+    "description": "Fraudulent lookalike 'HealthCare.gov' sites that buy top search-ad placement during Open Enrollment, using official-sounding names and logos to collect premium payments and steal medical identity data.",
+    "signals": [
+     "i_identity_status <= 0.3"
+    ],
+    "lane": "identity",
+    "shelf": {
+     "style": "burst",
+     "amount": "under_10",
+     "side": "merchant"
+    }
+   },
+   "watch_rule_id": null,
+   "attacker_ids": [
+    "intel-apify-9926ead93355-0",
+    "intel-apify-9926ead93355-1",
+    "intel-apify-9926ead93355-2"
+   ],
+   "attempts": 94,
+   "caught": 61
+  },
+  {
+   "round": 3,
+   "report_id": "apify-2fe0b67fe1e3",
+   "title": "How to avoid deceptive sextortion assistance services and find real help | Consumer Advice",
+   "source_url": "https://consumer.ftc.gov/consumer-alerts/2026/10/how-avoid-deceptive-sextortion-assistance-services-and-find-real-help",
+   "live": true,
+   "pattern": {
+    "report_id": "apify-2fe0b67fe1e3",
+    "name": "Deceptive crisis-assistance fee scam (fake sextortion help services)",
+    "description": "Operator runs multiple 'assistance' websites charging victims large upfront fees for crisis-mitigation services that are never delivered, exploiting distressed principals at high prices.",
+    "signals": [
+     "m_amount_vs_agent >= 8",
+     "m_request_match <= 0.2",
+     "m_new_merchant_for_agent >= 1"
+    ],
+    "lane": "mandate",
+    "shelf": {
+     "style": "slow_drip",
+     "amount": "over_100",
+     "side": "merchant"
+    }
+   },
+   "watch_rule_id": "mandate.watch_apify_2fe0b67fe1e3",
+   "attacker_ids": [
+    "intel-apify-2fe0b67fe1e3-0",
+    "intel-apify-2fe0b67fe1e3-1",
+    "intel-apify-2fe0b67fe1e3-2"
+   ],
+   "attempts": 36,
+   "caught": 33
+  },
+  {
+   "round": 4,
+   "report_id": "apify-0cdd73521490",
+   "title": "The FTC is not calling to deactivate your phone number | Consumer Advice",
+   "source_url": "https://consumer.ftc.gov/consumer-alerts/2026/10/ftc-not-calling-deactivate-your-phone-number",
+   "live": true,
+   "pattern": {
+    "report_id": "apify-0cdd73521490",
+    "name": "Government impersonation security-deposit scam",
+    "description": "Impersonation scam where a caller posing as an FTC official (and a fake police officer) uses threats, fake credentials, and secrecy demands to pressure a victim into sending a 'security deposit' to a fraudster-controlled destination.",
+    "signals": [
+     "i_identity_status <= 0.2",
+     "i_principal_age_s < 7200"
+    ],
+    "lane": "identity",
+    "shelf": {
+     "style": "burst",
+     "amount": "under_10",
+     "side": "merchant"
+    }
+   },
+   "watch_rule_id": null,
+   "attacker_ids": [
+    "intel-apify-0cdd73521490-0",
+    "intel-apify-0cdd73521490-1",
+    "intel-apify-0cdd73521490-2"
+   ],
+   "attempts": 0,
+   "caught": 0
+  }
+ ],
+ "n_reports_logged": 4
+}

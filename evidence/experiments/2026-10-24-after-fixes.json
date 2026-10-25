@@ -1,0 +1,1394 @@
+[
+ {
+  "setup": "full",
+  "seed": 42,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 315502,
+    "outsider_loss_cents": 315352,
+    "escalation_rate": 0.03058823529411765,
+    "hijacker_caught": 19,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2500000,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.0,
+    "total_cost_cents": 1508794,
+    "outsider_loss_cents": 612234,
+    "escalation_rate": 0.003838771593090211,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1757794,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2782115,
+    "outsider_loss_cents": 821442,
+    "escalation_rate": 0.01675041876046901,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1900675,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.010067114093959731,
+    "total_cost_cents": 2561797,
+    "outsider_loss_cents": 867484,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 8,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2323733,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.0,
+    "total_cost_cents": 1506021,
+    "outsider_loss_cents": 874921,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 7,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 644598,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.01,
+    "total_cost_cents": 1180026,
+    "outsider_loss_cents": 555489,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 8,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 676766,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0,
+    "total_cost_cents": 830943,
+    "outsider_loss_cents": 348736,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 22,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 785961,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.013377926421404682,
+    "total_cost_cents": 905220,
+    "outsider_loss_cents": 177818,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 20,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 754998,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0,
+    "total_cost_cents": 533498,
+    "outsider_loss_cents": 327071,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 959823,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0,
+    "total_cost_cents": 665094,
+    "outsider_loss_cents": 150849,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 848660,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "full",
+  "seed": 43,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.02,
+    "total_cost_cents": 389110,
+    "outsider_loss_cents": 384933,
+    "escalation_rate": 0.03058823529411765,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2734802,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.006688963210702341,
+    "total_cost_cents": 1622419,
+    "outsider_loss_cents": 627845,
+    "escalation_rate": 0.005758157389635317,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2226414,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2121948,
+    "outsider_loss_cents": 833828,
+    "escalation_rate": 0.005025125628140704,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1717581,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.0033333333333333335,
+    "total_cost_cents": 2159919,
+    "outsider_loss_cents": 1183000,
+    "escalation_rate": 0.0995260663507109,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1077678,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.01,
+    "total_cost_cents": 2017868,
+    "outsider_loss_cents": 639979,
+    "escalation_rate": 0.0995260663507109,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 929838,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.0,
+    "total_cost_cents": 2101030,
+    "outsider_loss_cents": 504882,
+    "escalation_rate": 0.0995260663507109,
+    "hijacker_caught": 9,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1812300,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 1765278,
+    "outsider_loss_cents": 665775,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1287448,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.003355704697986577,
+    "total_cost_cents": 742184,
+    "outsider_loss_cents": 474712,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 576164,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.006711409395973154,
+    "total_cost_cents": 1066777,
+    "outsider_loss_cents": 419304,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 824749,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0,
+    "total_cost_cents": 758537,
+    "outsider_loss_cents": 300530,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 9,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 977822,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "full",
+  "seed": 44,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 417593,
+    "outsider_loss_cents": 402033,
+    "escalation_rate": 0.03294117647058824,
+    "hijacker_caught": 13,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2745807,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 1675866,
+    "outsider_loss_cents": 591966,
+    "escalation_rate": 0.003838771593090211,
+    "hijacker_caught": 16,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1669188,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2216212,
+    "outsider_loss_cents": 873200,
+    "escalation_rate": 0.010050251256281407,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2535917,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.013468013468013467,
+    "total_cost_cents": 2289217,
+    "outsider_loss_cents": 780488,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 5,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 873308,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.010067114093959731,
+    "total_cost_cents": 837292,
+    "outsider_loss_cents": 240882,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 20,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1165794,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.013468013468013467,
+    "total_cost_cents": 1635851,
+    "outsider_loss_cents": 295023,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 736192,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0033333333333333335,
+    "total_cost_cents": 632256,
+    "outsider_loss_cents": 285382,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1135148,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.006666666666666667,
+    "total_cost_cents": 386593,
+    "outsider_loss_cents": 177148,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 16,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 503135,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0,
+    "total_cost_cents": 372179,
+    "outsider_loss_cents": 179960,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 529742,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.006711409395973154,
+    "total_cost_cents": 501773,
+    "outsider_loss_cents": 154137,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 3,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 799087,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "outsiders_only",
+  "seed": 42,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 302200,
+    "outsider_loss_cents": 302050,
+    "escalation_rate": 0.03058823529411765,
+    "hijacker_caught": 19,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.0,
+    "total_cost_cents": 629670,
+    "outsider_loss_cents": 629670,
+    "escalation_rate": 0.002352941176470588,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 829320,
+    "outsider_loss_cents": 829320,
+    "escalation_rate": 0.009411764705882352,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.010067114093959731,
+    "total_cost_cents": 652779,
+    "outsider_loss_cents": 650530,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 8,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.0,
+    "total_cost_cents": 671856,
+    "outsider_loss_cents": 671856,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 9,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.0,
+    "total_cost_cents": 509097,
+    "outsider_loss_cents": 509097,
+    "escalation_rate": 0.09411764705882353,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0,
+    "total_cost_cents": 452095,
+    "outsider_loss_cents": 452095,
+    "escalation_rate": 0.08941176470588236,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.033444816053511704,
+    "total_cost_cents": 101990,
+    "outsider_loss_cents": 95826,
+    "escalation_rate": 0.07764705882352942,
+    "hijacker_caught": 23,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0033333333333333335,
+    "total_cost_cents": 306331,
+    "outsider_loss_cents": 306181,
+    "escalation_rate": 0.09411764705882353,
+    "hijacker_caught": 15,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.003355704697986577,
+    "total_cost_cents": 172124,
+    "outsider_loss_cents": 168824,
+    "escalation_rate": 0.08941176470588236,
+    "hijacker_caught": 16,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "outsiders_only",
+  "seed": 43,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.02,
+    "total_cost_cents": 402184,
+    "outsider_loss_cents": 398007,
+    "escalation_rate": 0.03058823529411765,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.006688963210702341,
+    "total_cost_cents": 632794,
+    "outsider_loss_cents": 627845,
+    "escalation_rate": 0.004705882352941176,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 834182,
+    "outsider_loss_cents": 834182,
+    "escalation_rate": 0.004705882352941176,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.0,
+    "total_cost_cents": 957543,
+    "outsider_loss_cents": 957543,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 3,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.013333333333333334,
+    "total_cost_cents": 376212,
+    "outsider_loss_cents": 357577,
+    "escalation_rate": 0.0611764705882353,
+    "hijacker_caught": 17,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.03,
+    "total_cost_cents": 150888,
+    "outsider_loss_cents": 139219,
+    "escalation_rate": 0.05176470588235294,
+    "hijacker_caught": 16,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 570607,
+    "outsider_loss_cents": 570457,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 9,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.006711409395973154,
+    "total_cost_cents": 326183,
+    "outsider_loss_cents": 325883,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 9,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.006711409395973154,
+    "total_cost_cents": 250317,
+    "outsider_loss_cents": 250017,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0,
+    "total_cost_cents": 251365,
+    "outsider_loss_cents": 251365,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 8,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "outsiders_only",
+  "seed": 44,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 417706,
+    "outsider_loss_cents": 415352,
+    "escalation_rate": 0.03294117647058824,
+    "hijacker_caught": 13,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 579721,
+    "outsider_loss_cents": 540258,
+    "escalation_rate": 0.009411764705882352,
+    "hijacker_caught": 16,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 761340,
+    "outsider_loss_cents": 761340,
+    "escalation_rate": 0.007058823529411765,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.013468013468013467,
+    "total_cost_cents": 580765,
+    "outsider_loss_cents": 565257,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.013422818791946308,
+    "total_cost_cents": 354295,
+    "outsider_loss_cents": 353695,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 18,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.006734006734006734,
+    "total_cost_cents": 395992,
+    "outsider_loss_cents": 392693,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 7,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0,
+    "total_cost_cents": 668270,
+    "outsider_loss_cents": 668270,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.0,
+    "total_cost_cents": 403176,
+    "outsider_loss_cents": 403176,
+    "escalation_rate": 0.06823529411764706,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0,
+    "total_cost_cents": 274177,
+    "outsider_loss_cents": 274177,
+    "escalation_rate": 0.0988235294117647,
+    "hijacker_caught": 9,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.003355704697986577,
+    "total_cost_cents": 172219,
+    "outsider_loss_cents": 170459,
+    "escalation_rate": 0.08,
+    "hijacker_caught": 9,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 0,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "no_xgb_voter",
+  "seed": 42,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 302200,
+    "outsider_loss_cents": 302050,
+    "escalation_rate": 0.03058823529411765,
+    "hijacker_caught": 19,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2500000,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.0,
+    "total_cost_cents": 1508794,
+    "outsider_loss_cents": 612234,
+    "escalation_rate": 0.003838771593090211,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1757794,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2909770,
+    "outsider_loss_cents": 821442,
+    "escalation_rate": 0.01675041876046901,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2068722,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.003355704697986577,
+    "total_cost_cents": 2740707,
+    "outsider_loss_cents": 898477,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 7,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2500000,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 2378929,
+    "outsider_loss_cents": 910058,
+    "escalation_rate": 0.04690117252931323,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2500000,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.013333333333333334,
+    "total_cost_cents": 2623645,
+    "outsider_loss_cents": 855234,
+    "escalation_rate": 0.048576214405360134,
+    "hijacker_caught": 6,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2500000,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0,
+    "total_cost_cents": 2356286,
+    "outsider_loss_cents": 915833,
+    "escalation_rate": 0.05862646566164154,
+    "hijacker_caught": 6,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2506576,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.0,
+    "total_cost_cents": 2893611,
+    "outsider_loss_cents": 875360,
+    "escalation_rate": 0.058823529411764705,
+    "hijacker_caught": 10,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2009442,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0,
+    "total_cost_cents": 2566276,
+    "outsider_loss_cents": 1134453,
+    "escalation_rate": 0.049910873440285206,
+    "hijacker_caught": 5,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2413750,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0,
+    "total_cost_cents": 1495873,
+    "outsider_loss_cents": 1088151,
+    "escalation_rate": 0.08199643493761141,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2378530,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "no_xgb_voter",
+  "seed": 43,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.02,
+    "total_cost_cents": 390745,
+    "outsider_loss_cents": 384933,
+    "escalation_rate": 0.02823529411764706,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2734802,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.006688963210702341,
+    "total_cost_cents": 1622419,
+    "outsider_loss_cents": 627845,
+    "escalation_rate": 0.005758157389635317,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2226414,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2122302,
+    "outsider_loss_cents": 834182,
+    "escalation_rate": 0.005025125628140704,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1717581,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.0033333333333333335,
+    "total_cost_cents": 2596492,
+    "outsider_loss_cents": 1212206,
+    "escalation_rate": 0.0679304897314376,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1860746,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.01,
+    "total_cost_cents": 3621912,
+    "outsider_loss_cents": 1307690,
+    "escalation_rate": 0.00315955766192733,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1981956,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.0,
+    "total_cost_cents": 2899075,
+    "outsider_loss_cents": 1705716,
+    "escalation_rate": 0.007898894154818325,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2522204,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 3859503,
+    "outsider_loss_cents": 1924125,
+    "escalation_rate": 0.03350083752093802,
+    "hijacker_caught": 0,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2388788,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.003355704697986577,
+    "total_cost_cents": 2644313,
+    "outsider_loss_cents": 1677799,
+    "escalation_rate": 0.0106951871657754,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1960764,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0,
+    "total_cost_cents": 3403449,
+    "outsider_loss_cents": 1729490,
+    "escalation_rate": 0.024955436720142603,
+    "hijacker_caught": 7,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2500000,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0033333333333333335,
+    "total_cost_cents": 2038737,
+    "outsider_loss_cents": 1426587,
+    "escalation_rate": 0.0213903743315508,
+    "hijacker_caught": 6,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2536685,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "no_xgb_voter",
+  "seed": 44,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 403007,
+    "outsider_loss_cents": 402033,
+    "escalation_rate": 0.03294117647058824,
+    "hijacker_caught": 13,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2745807,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 1675866,
+    "outsider_loss_cents": 591966,
+    "escalation_rate": 0.003838771593090211,
+    "hijacker_caught": 16,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1669188,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2216212,
+    "outsider_loss_cents": 873200,
+    "escalation_rate": 0.010050251256281407,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2535917,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.006734006734006734,
+    "total_cost_cents": 2821730,
+    "outsider_loss_cents": 813938,
+    "escalation_rate": 0.07537688442211055,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1867139,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.0,
+    "total_cost_cents": 2321809,
+    "outsider_loss_cents": 754763,
+    "escalation_rate": 0.020100502512562814,
+    "hijacker_caught": 5,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1524979,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.006734006734006734,
+    "total_cost_cents": 3587227,
+    "outsider_loss_cents": 1230594,
+    "escalation_rate": 0.04020100502512563,
+    "hijacker_caught": 3,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1818611,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0,
+    "total_cost_cents": 3389284,
+    "outsider_loss_cents": 1544271,
+    "escalation_rate": 0.038525963149078725,
+    "hijacker_caught": 0,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2510825,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.006666666666666667,
+    "total_cost_cents": 2609543,
+    "outsider_loss_cents": 1276716,
+    "escalation_rate": 0.07130124777183601,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2377038,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 2316502,
+    "outsider_loss_cents": 1508971,
+    "escalation_rate": 0.0784313725490196,
+    "hijacker_caught": 7,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1879756,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0,
+    "total_cost_cents": 2070992,
+    "outsider_loss_cents": 1200018,
+    "escalation_rate": 0.07308377896613191,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1969219,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "intel_off",
+  "seed": 42,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 315502,
+    "outsider_loss_cents": 315352,
+    "escalation_rate": 0.03058823529411765,
+    "hijacker_caught": 19,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2500000,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.0,
+    "total_cost_cents": 1472065,
+    "outsider_loss_cents": 603901,
+    "escalation_rate": 0.003838771593090211,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2386352,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2862338,
+    "outsider_loss_cents": 821442,
+    "escalation_rate": 0.01507537688442211,
+    "hijacker_caught": 2,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2521396,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.010067114093959731,
+    "total_cost_cents": 2302214,
+    "outsider_loss_cents": 887330,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 7,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2001240,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.0,
+    "total_cost_cents": 2039381,
+    "outsider_loss_cents": 912242,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 6,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 611177,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.0033333333333333335,
+    "total_cost_cents": 1554221,
+    "outsider_loss_cents": 468180,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 10,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 400449,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0,
+    "total_cost_cents": 720096,
+    "outsider_loss_cents": 332053,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 13,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 496906,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.013377926421404682,
+    "total_cost_cents": 583115,
+    "outsider_loss_cents": 176804,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 17,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 467419,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0,
+    "total_cost_cents": 568091,
+    "outsider_loss_cents": 292260,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1042066,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0,
+    "total_cost_cents": 784725,
+    "outsider_loss_cents": 215654,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 13,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 637381,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "intel_off",
+  "seed": 43,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.02,
+    "total_cost_cents": 402184,
+    "outsider_loss_cents": 398007,
+    "escalation_rate": 0.03058823529411765,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2734802,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.006688963210702341,
+    "total_cost_cents": 1622419,
+    "outsider_loss_cents": 627845,
+    "escalation_rate": 0.005758157389635317,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2535986,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2138238,
+    "outsider_loss_cents": 833828,
+    "escalation_rate": 0.005025125628140704,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2091126,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.0,
+    "total_cost_cents": 2126944,
+    "outsider_loss_cents": 1155126,
+    "escalation_rate": 0.0995260663507109,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 833365,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.02,
+    "total_cost_cents": 1639315,
+    "outsider_loss_cents": 562289,
+    "escalation_rate": 0.0995260663507109,
+    "hijacker_caught": 20,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 737074,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.01,
+    "total_cost_cents": 1036336,
+    "outsider_loss_cents": 395174,
+    "escalation_rate": 0.0995260663507109,
+    "hijacker_caught": 20,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 796939,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.0033444816053511705,
+    "total_cost_cents": 920297,
+    "outsider_loss_cents": 332245,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 20,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1111613,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.003355704697986577,
+    "total_cost_cents": 474552,
+    "outsider_loss_cents": 311921,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 17,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 184161,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.016778523489932886,
+    "total_cost_cents": 336283,
+    "outsider_loss_cents": 169151,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 10,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 660245,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.0,
+    "total_cost_cents": 393921,
+    "outsider_loss_cents": 179864,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 4,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 972668,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ },
+ {
+  "setup": "intel_off",
+  "seed": 44,
+  "rounds": [
+   {
+    "round": 1,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 403007,
+    "outsider_loss_cents": 402033,
+    "escalation_rate": 0.03294117647058824,
+    "hijacker_caught": 13,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2745807,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 2,
+    "fp": 0.010033444816053512,
+    "total_cost_cents": 1704024,
+    "outsider_loss_cents": 591966,
+    "escalation_rate": 0.003838771593090211,
+    "hijacker_caught": 16,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2241639,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 3,
+    "fp": 0.0,
+    "total_cost_cents": 2212781,
+    "outsider_loss_cents": 873200,
+    "escalation_rate": 0.008375209380234505,
+    "hijacker_caught": 1,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 2156514,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 4,
+    "fp": 0.013468013468013467,
+    "total_cost_cents": 2380968,
+    "outsider_loss_cents": 786613,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 5,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 850780,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 5,
+    "fp": 0.013422818791946308,
+    "total_cost_cents": 844152,
+    "outsider_loss_cents": 400822,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 15,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 795829,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 6,
+    "fp": 0.003367003367003367,
+    "total_cost_cents": 859254,
+    "outsider_loss_cents": 447663,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 11,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 1215968,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 7,
+    "fp": 0.006666666666666667,
+    "total_cost_cents": 916716,
+    "outsider_loss_cents": 437158,
+    "escalation_rate": 0.09882747068676717,
+    "hijacker_caught": 8,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 813352,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 8,
+    "fp": 0.006666666666666667,
+    "total_cost_cents": 512523,
+    "outsider_loss_cents": 348240,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 12,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 527262,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 9,
+    "fp": 0.0,
+    "total_cost_cents": 513971,
+    "outsider_loss_cents": 282468,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 14,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 650874,
+    "llm_spend_usd": 0.0
+   },
+   {
+    "round": 10,
+    "fp": 0.02348993288590604,
+    "total_cost_cents": 729577,
+    "outsider_loss_cents": 200406,
+    "escalation_rate": 0.09982174688057041,
+    "hijacker_caught": 10,
+    "hijacker_attempts": 25,
+    "exploitability_cents": 843094,
+    "llm_spend_usd": 0.0
+   }
+  ]
+ }
+]

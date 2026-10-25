@@ -1,0 +1,2786 @@
+[
+ {
+  "product_id": "prod-0001",
+  "merchant_id": "m-voltmart",
+  "title": "Wireless earbuds (black)",
+  "category": "electronics",
+  "price_cents": 4999,
+  "page_url": "https://voltmart.shop.example/p/wireless-earbuds-black"
+ },
+ {
+  "product_id": "prod-0002",
+  "merchant_id": "m-circuitcity",
+  "title": "Wireless earbuds (black)",
+  "category": "electronics",
+  "price_cents": 4749,
+  "page_url": "https://circuitcity.shop.example/p/wireless-earbuds-black"
+ },
+ {
+  "product_id": "prod-0003",
+  "merchant_id": "m-voltmart",
+  "title": "Wireless earbuds (white)",
+  "category": "electronics",
+  "price_cents": 6249,
+  "page_url": "https://voltmart.shop.example/p/wireless-earbuds-white"
+ },
+ {
+  "product_id": "prod-0004",
+  "merchant_id": "m-circuitcity",
+  "title": "Wireless earbuds (white)",
+  "category": "electronics",
+  "price_cents": 6189,
+  "page_url": "https://circuitcity.shop.example/p/wireless-earbuds-white"
+ },
+ {
+  "product_id": "prod-0005",
+  "merchant_id": "m-voltmart",
+  "title": "Wireless earbuds (noise cancelling)",
+  "category": "electronics",
+  "price_cents": 7499,
+  "page_url": "https://voltmart.shop.example/p/wireless-earbuds-noise-cancelling"
+ },
+ {
+  "product_id": "prod-0006",
+  "merchant_id": "m-circuitcity",
+  "title": "Wireless earbuds (noise cancelling)",
+  "category": "electronics",
+  "price_cents": 7719,
+  "page_url": "https://circuitcity.shop.example/p/wireless-earbuds-noise-cancelling"
+ },
+ {
+  "product_id": "prod-0007",
+  "merchant_id": "m-voltmart",
+  "title": "Bluetooth speaker (mini)",
+  "category": "electronics",
+  "price_cents": 3999,
+  "page_url": "https://voltmart.shop.example/p/bluetooth-speaker-mini"
+ },
+ {
+  "product_id": "prod-0008",
+  "merchant_id": "m-circuitcity",
+  "title": "Bluetooth speaker (mini)",
+  "category": "electronics",
+  "price_cents": 3799,
+  "page_url": "https://circuitcity.shop.example/p/bluetooth-speaker-mini"
+ },
+ {
+  "product_id": "prod-0009",
+  "merchant_id": "m-voltmart",
+  "title": "Bluetooth speaker (waterproof)",
+  "category": "electronics",
+  "price_cents": 4999,
+  "page_url": "https://voltmart.shop.example/p/bluetooth-speaker-waterproof"
+ },
+ {
+  "product_id": "prod-0010",
+  "merchant_id": "m-circuitcity",
+  "title": "Bluetooth speaker (waterproof)",
+  "category": "electronics",
+  "price_cents": 4949,
+  "page_url": "https://circuitcity.shop.example/p/bluetooth-speaker-waterproof"
+ },
+ {
+  "product_id": "prod-0011",
+  "merchant_id": "m-voltmart",
+  "title": "Bluetooth speaker (party)",
+  "category": "electronics",
+  "price_cents": 5999,
+  "page_url": "https://voltmart.shop.example/p/bluetooth-speaker-party"
+ },
+ {
+  "product_id": "prod-0012",
+  "merchant_id": "m-circuitcity",
+  "title": "Bluetooth speaker (party)",
+  "category": "electronics",
+  "price_cents": 6179,
+  "page_url": "https://circuitcity.shop.example/p/bluetooth-speaker-party"
+ },
+ {
+  "product_id": "prod-0013",
+  "merchant_id": "m-voltmart",
+  "title": "27-inch monitor (1440p)",
+  "category": "electronics",
+  "price_cents": 21999,
+  "page_url": "https://voltmart.shop.example/p/27-inch-monitor-1440p"
+ },
+ {
+  "product_id": "prod-0014",
+  "merchant_id": "m-circuitcity",
+  "title": "27-inch monitor (1440p)",
+  "category": "electronics",
+  "price_cents": 20899,
+  "page_url": "https://circuitcity.shop.example/p/27-inch-monitor-1440p"
+ },
+ {
+  "product_id": "prod-0015",
+  "merchant_id": "m-voltmart",
+  "title": "27-inch monitor (4K)",
+  "category": "electronics",
+  "price_cents": 27499,
+  "page_url": "https://voltmart.shop.example/p/27-inch-monitor-4k"
+ },
+ {
+  "product_id": "prod-0016",
+  "merchant_id": "m-circuitcity",
+  "title": "27-inch monitor (4K)",
+  "category": "electronics",
+  "price_cents": 27219,
+  "page_url": "https://circuitcity.shop.example/p/27-inch-monitor-4k"
+ },
+ {
+  "product_id": "prod-0017",
+  "merchant_id": "m-voltmart",
+  "title": "Mechanical keyboard (tenkeyless)",
+  "category": "electronics",
+  "price_cents": 8999,
+  "page_url": "https://voltmart.shop.example/p/mechanical-keyboard-tenkeyless"
+ },
+ {
+  "product_id": "prod-0018",
+  "merchant_id": "m-circuitcity",
+  "title": "Mechanical keyboard (tenkeyless)",
+  "category": "electronics",
+  "price_cents": 8549,
+  "page_url": "https://circuitcity.shop.example/p/mechanical-keyboard-tenkeyless"
+ },
+ {
+  "product_id": "prod-0019",
+  "merchant_id": "m-voltmart",
+  "title": "Mechanical keyboard (full size)",
+  "category": "electronics",
+  "price_cents": 11249,
+  "page_url": "https://voltmart.shop.example/p/mechanical-keyboard-full-size"
+ },
+ {
+  "product_id": "prod-0020",
+  "merchant_id": "m-circuitcity",
+  "title": "Mechanical keyboard (full size)",
+  "category": "electronics",
+  "price_cents": 11139,
+  "page_url": "https://circuitcity.shop.example/p/mechanical-keyboard-full-size"
+ },
+ {
+  "product_id": "prod-0021",
+  "merchant_id": "m-voltmart",
+  "title": "Mechanical keyboard (low profile)",
+  "category": "electronics",
+  "price_cents": 13499,
+  "page_url": "https://voltmart.shop.example/p/mechanical-keyboard-low-profile"
+ },
+ {
+  "product_id": "prod-0022",
+  "merchant_id": "m-circuitcity",
+  "title": "Mechanical keyboard (low profile)",
+  "category": "electronics",
+  "price_cents": 13899,
+  "page_url": "https://circuitcity.shop.example/p/mechanical-keyboard-low-profile"
+ },
+ {
+  "product_id": "prod-0023",
+  "merchant_id": "m-voltmart",
+  "title": "Webcam (1080p)",
+  "category": "electronics",
+  "price_cents": 5999,
+  "page_url": "https://voltmart.shop.example/p/webcam-1080p"
+ },
+ {
+  "product_id": "prod-0024",
+  "merchant_id": "m-circuitcity",
+  "title": "Webcam (1080p)",
+  "category": "electronics",
+  "price_cents": 5699,
+  "page_url": "https://circuitcity.shop.example/p/webcam-1080p"
+ },
+ {
+  "product_id": "prod-0025",
+  "merchant_id": "m-voltmart",
+  "title": "Webcam (4K)",
+  "category": "electronics",
+  "price_cents": 7499,
+  "page_url": "https://voltmart.shop.example/p/webcam-4k"
+ },
+ {
+  "product_id": "prod-0026",
+  "merchant_id": "m-circuitcity",
+  "title": "Webcam (4K)",
+  "category": "electronics",
+  "price_cents": 7419,
+  "page_url": "https://circuitcity.shop.example/p/webcam-4k"
+ },
+ {
+  "product_id": "prod-0027",
+  "merchant_id": "m-voltmart",
+  "title": "Portable SSD (1TB)",
+  "category": "electronics",
+  "price_cents": 8999,
+  "page_url": "https://voltmart.shop.example/p/portable-ssd-1tb"
+ },
+ {
+  "product_id": "prod-0028",
+  "merchant_id": "m-circuitcity",
+  "title": "Portable SSD (1TB)",
+  "category": "electronics",
+  "price_cents": 8549,
+  "page_url": "https://circuitcity.shop.example/p/portable-ssd-1tb"
+ },
+ {
+  "product_id": "prod-0029",
+  "merchant_id": "m-voltmart",
+  "title": "Portable SSD (2TB)",
+  "category": "electronics",
+  "price_cents": 11249,
+  "page_url": "https://voltmart.shop.example/p/portable-ssd-2tb"
+ },
+ {
+  "product_id": "prod-0030",
+  "merchant_id": "m-circuitcity",
+  "title": "Portable SSD (2TB)",
+  "category": "electronics",
+  "price_cents": 11139,
+  "page_url": "https://circuitcity.shop.example/p/portable-ssd-2tb"
+ },
+ {
+  "product_id": "prod-0031",
+  "merchant_id": "m-voltmart",
+  "title": "USB-C charger (20W)",
+  "category": "phone_accessories",
+  "price_cents": 1999,
+  "page_url": "https://voltmart.shop.example/p/usb-c-charger-20w"
+ },
+ {
+  "product_id": "prod-0032",
+  "merchant_id": "m-caseworks",
+  "title": "USB-C charger (20W)",
+  "category": "phone_accessories",
+  "price_cents": 1899,
+  "page_url": "https://caseworks.shop.example/p/usb-c-charger-20w"
+ },
+ {
+  "product_id": "prod-0033",
+  "merchant_id": "m-voltmart",
+  "title": "USB-C charger (45W)",
+  "category": "phone_accessories",
+  "price_cents": 2499,
+  "page_url": "https://voltmart.shop.example/p/usb-c-charger-45w"
+ },
+ {
+  "product_id": "prod-0034",
+  "merchant_id": "m-caseworks",
+  "title": "USB-C charger (45W)",
+  "category": "phone_accessories",
+  "price_cents": 2469,
+  "page_url": "https://caseworks.shop.example/p/usb-c-charger-45w"
+ },
+ {
+  "product_id": "prod-0035",
+  "merchant_id": "m-voltmart",
+  "title": "USB-C charger (65W)",
+  "category": "phone_accessories",
+  "price_cents": 2999,
+  "page_url": "https://voltmart.shop.example/p/usb-c-charger-65w"
+ },
+ {
+  "product_id": "prod-0036",
+  "merchant_id": "m-caseworks",
+  "title": "USB-C charger (65W)",
+  "category": "phone_accessories",
+  "price_cents": 3089,
+  "page_url": "https://caseworks.shop.example/p/usb-c-charger-65w"
+ },
+ {
+  "product_id": "prod-0037",
+  "merchant_id": "m-voltmart",
+  "title": "Phone case (clear)",
+  "category": "phone_accessories",
+  "price_cents": 1499,
+  "page_url": "https://voltmart.shop.example/p/phone-case-clear"
+ },
+ {
+  "product_id": "prod-0038",
+  "merchant_id": "m-caseworks",
+  "title": "Phone case (clear)",
+  "category": "phone_accessories",
+  "price_cents": 1419,
+  "page_url": "https://caseworks.shop.example/p/phone-case-clear"
+ },
+ {
+  "product_id": "prod-0039",
+  "merchant_id": "m-voltmart",
+  "title": "Phone case (rugged)",
+  "category": "phone_accessories",
+  "price_cents": 1869,
+  "page_url": "https://voltmart.shop.example/p/phone-case-rugged"
+ },
+ {
+  "product_id": "prod-0040",
+  "merchant_id": "m-caseworks",
+  "title": "Phone case (rugged)",
+  "category": "phone_accessories",
+  "price_cents": 1849,
+  "page_url": "https://caseworks.shop.example/p/phone-case-rugged"
+ },
+ {
+  "product_id": "prod-0041",
+  "merchant_id": "m-voltmart",
+  "title": "Phone case (leather)",
+  "category": "phone_accessories",
+  "price_cents": 2249,
+  "page_url": "https://voltmart.shop.example/p/phone-case-leather"
+ },
+ {
+  "product_id": "prod-0042",
+  "merchant_id": "m-caseworks",
+  "title": "Phone case (leather)",
+  "category": "phone_accessories",
+  "price_cents": 2319,
+  "page_url": "https://caseworks.shop.example/p/phone-case-leather"
+ },
+ {
+  "product_id": "prod-0043",
+  "merchant_id": "m-voltmart",
+  "title": "Screen protector (2-pack)",
+  "category": "phone_accessories",
+  "price_cents": 999,
+  "page_url": "https://voltmart.shop.example/p/screen-protector-2-pack"
+ },
+ {
+  "product_id": "prod-0044",
+  "merchant_id": "m-caseworks",
+  "title": "Screen protector (2-pack)",
+  "category": "phone_accessories",
+  "price_cents": 949,
+  "page_url": "https://caseworks.shop.example/p/screen-protector-2-pack"
+ },
+ {
+  "product_id": "prod-0045",
+  "merchant_id": "m-voltmart",
+  "title": "Screen protector (privacy)",
+  "category": "phone_accessories",
+  "price_cents": 1249,
+  "page_url": "https://voltmart.shop.example/p/screen-protector-privacy"
+ },
+ {
+  "product_id": "prod-0046",
+  "merchant_id": "m-caseworks",
+  "title": "Screen protector (privacy)",
+  "category": "phone_accessories",
+  "price_cents": 1239,
+  "page_url": "https://caseworks.shop.example/p/screen-protector-privacy"
+ },
+ {
+  "product_id": "prod-0047",
+  "merchant_id": "m-voltmart",
+  "title": "Power bank (10,000 mAh)",
+  "category": "phone_accessories",
+  "price_cents": 2999,
+  "page_url": "https://voltmart.shop.example/p/power-bank-10-000-mah"
+ },
+ {
+  "product_id": "prod-0048",
+  "merchant_id": "m-caseworks",
+  "title": "Power bank (10,000 mAh)",
+  "category": "phone_accessories",
+  "price_cents": 2849,
+  "page_url": "https://caseworks.shop.example/p/power-bank-10-000-mah"
+ },
+ {
+  "product_id": "prod-0049",
+  "merchant_id": "m-voltmart",
+  "title": "Power bank (20,000 mAh)",
+  "category": "phone_accessories",
+  "price_cents": 3749,
+  "page_url": "https://voltmart.shop.example/p/power-bank-20-000-mah"
+ },
+ {
+  "product_id": "prod-0050",
+  "merchant_id": "m-caseworks",
+  "title": "Power bank (20,000 mAh)",
+  "category": "phone_accessories",
+  "price_cents": 3709,
+  "page_url": "https://caseworks.shop.example/p/power-bank-20-000-mah"
+ },
+ {
+  "product_id": "prod-0051",
+  "merchant_id": "m-voltmart",
+  "title": "USB-C cable (1 m)",
+  "category": "phone_accessories",
+  "price_cents": 899,
+  "page_url": "https://voltmart.shop.example/p/usb-c-cable-1-m"
+ },
+ {
+  "product_id": "prod-0052",
+  "merchant_id": "m-caseworks",
+  "title": "USB-C cable (1 m)",
+  "category": "phone_accessories",
+  "price_cents": 849,
+  "page_url": "https://caseworks.shop.example/p/usb-c-cable-1-m"
+ },
+ {
+  "product_id": "prod-0053",
+  "merchant_id": "m-voltmart",
+  "title": "USB-C cable (2 m)",
+  "category": "phone_accessories",
+  "price_cents": 1119,
+  "page_url": "https://voltmart.shop.example/p/usb-c-cable-2-m"
+ },
+ {
+  "product_id": "prod-0054",
+  "merchant_id": "m-caseworks",
+  "title": "USB-C cable (2 m)",
+  "category": "phone_accessories",
+  "price_cents": 1109,
+  "page_url": "https://caseworks.shop.example/p/usb-c-cable-2-m"
+ },
+ {
+  "product_id": "prod-0055",
+  "merchant_id": "m-voltmart",
+  "title": "USB-C cable (braided 3 m)",
+  "category": "phone_accessories",
+  "price_cents": 1349,
+  "page_url": "https://voltmart.shop.example/p/usb-c-cable-braided-3-m"
+ },
+ {
+  "product_id": "prod-0056",
+  "merchant_id": "m-caseworks",
+  "title": "USB-C cable (braided 3 m)",
+  "category": "phone_accessories",
+  "price_cents": 1389,
+  "page_url": "https://caseworks.shop.example/p/usb-c-cable-braided-3-m"
+ },
+ {
+  "product_id": "prod-0057",
+  "merchant_id": "m-deskdepot",
+  "title": "Ergonomic office chair (mesh)",
+  "category": "home_office",
+  "price_cents": 24999,
+  "page_url": "https://deskdepot.shop.example/p/ergonomic-office-chair-mesh"
+ },
+ {
+  "product_id": "prod-0058",
+  "merchant_id": "m-workwell",
+  "title": "Ergonomic office chair (mesh)",
+  "category": "home_office",
+  "price_cents": 23749,
+  "page_url": "https://workwell.shop.example/p/ergonomic-office-chair-mesh"
+ },
+ {
+  "product_id": "prod-0059",
+  "merchant_id": "m-deskdepot",
+  "title": "Ergonomic office chair (leather)",
+  "category": "home_office",
+  "price_cents": 31249,
+  "page_url": "https://deskdepot.shop.example/p/ergonomic-office-chair-leather"
+ },
+ {
+  "product_id": "prod-0060",
+  "merchant_id": "m-workwell",
+  "title": "Ergonomic office chair (leather)",
+  "category": "home_office",
+  "price_cents": 30939,
+  "page_url": "https://workwell.shop.example/p/ergonomic-office-chair-leather"
+ },
+ {
+  "product_id": "prod-0061",
+  "merchant_id": "m-deskdepot",
+  "title": "Standing desk (48-inch)",
+  "category": "home_office",
+  "price_cents": 39999,
+  "page_url": "https://deskdepot.shop.example/p/standing-desk-48-inch"
+ },
+ {
+  "product_id": "prod-0062",
+  "merchant_id": "m-workwell",
+  "title": "Standing desk (48-inch)",
+  "category": "home_office",
+  "price_cents": 37999,
+  "page_url": "https://workwell.shop.example/p/standing-desk-48-inch"
+ },
+ {
+  "product_id": "prod-0063",
+  "merchant_id": "m-deskdepot",
+  "title": "Standing desk (60-inch)",
+  "category": "home_office",
+  "price_cents": 49999,
+  "page_url": "https://deskdepot.shop.example/p/standing-desk-60-inch"
+ },
+ {
+  "product_id": "prod-0064",
+  "merchant_id": "m-workwell",
+  "title": "Standing desk (60-inch)",
+  "category": "home_office",
+  "price_cents": 49499,
+  "page_url": "https://workwell.shop.example/p/standing-desk-60-inch"
+ },
+ {
+  "product_id": "prod-0065",
+  "merchant_id": "m-deskdepot",
+  "title": "Desk lamp (LED)",
+  "category": "home_office",
+  "price_cents": 3499,
+  "page_url": "https://deskdepot.shop.example/p/desk-lamp-led"
+ },
+ {
+  "product_id": "prod-0066",
+  "merchant_id": "m-workwell",
+  "title": "Desk lamp (LED)",
+  "category": "home_office",
+  "price_cents": 3319,
+  "page_url": "https://workwell.shop.example/p/desk-lamp-led"
+ },
+ {
+  "product_id": "prod-0067",
+  "merchant_id": "m-deskdepot",
+  "title": "Desk lamp (clamp)",
+  "category": "home_office",
+  "price_cents": 4369,
+  "page_url": "https://deskdepot.shop.example/p/desk-lamp-clamp"
+ },
+ {
+  "product_id": "prod-0068",
+  "merchant_id": "m-workwell",
+  "title": "Desk lamp (clamp)",
+  "category": "home_office",
+  "price_cents": 4329,
+  "page_url": "https://workwell.shop.example/p/desk-lamp-clamp"
+ },
+ {
+  "product_id": "prod-0069",
+  "merchant_id": "m-deskdepot",
+  "title": "Monitor arm (single)",
+  "category": "home_office",
+  "price_cents": 6999,
+  "page_url": "https://deskdepot.shop.example/p/monitor-arm-single"
+ },
+ {
+  "product_id": "prod-0070",
+  "merchant_id": "m-workwell",
+  "title": "Monitor arm (single)",
+  "category": "home_office",
+  "price_cents": 6649,
+  "page_url": "https://workwell.shop.example/p/monitor-arm-single"
+ },
+ {
+  "product_id": "prod-0071",
+  "merchant_id": "m-deskdepot",
+  "title": "Monitor arm (dual)",
+  "category": "home_office",
+  "price_cents": 8749,
+  "page_url": "https://deskdepot.shop.example/p/monitor-arm-dual"
+ },
+ {
+  "product_id": "prod-0072",
+  "merchant_id": "m-workwell",
+  "title": "Monitor arm (dual)",
+  "category": "home_office",
+  "price_cents": 8659,
+  "page_url": "https://workwell.shop.example/p/monitor-arm-dual"
+ },
+ {
+  "product_id": "prod-0073",
+  "merchant_id": "m-deskdepot",
+  "title": "Cable management kit (basic)",
+  "category": "home_office",
+  "price_cents": 1999,
+  "page_url": "https://deskdepot.shop.example/p/cable-management-kit-basic"
+ },
+ {
+  "product_id": "prod-0074",
+  "merchant_id": "m-workwell",
+  "title": "Cable management kit (basic)",
+  "category": "home_office",
+  "price_cents": 1899,
+  "page_url": "https://workwell.shop.example/p/cable-management-kit-basic"
+ },
+ {
+  "product_id": "prod-0075",
+  "merchant_id": "m-deskdepot",
+  "title": "Cable management kit (deluxe)",
+  "category": "home_office",
+  "price_cents": 2499,
+  "page_url": "https://deskdepot.shop.example/p/cable-management-kit-deluxe"
+ },
+ {
+  "product_id": "prod-0076",
+  "merchant_id": "m-workwell",
+  "title": "Cable management kit (deluxe)",
+  "category": "home_office",
+  "price_cents": 2469,
+  "page_url": "https://workwell.shop.example/p/cable-management-kit-deluxe"
+ },
+ {
+  "product_id": "prod-0077",
+  "merchant_id": "m-panandpantry",
+  "title": "Chef's knife (8-inch)",
+  "category": "kitchen",
+  "price_cents": 4999,
+  "page_url": "https://panandpantry.shop.example/p/chef-s-knife-8-inch"
+ },
+ {
+  "product_id": "prod-0078",
+  "merchant_id": "m-homegoods",
+  "title": "Chef's knife (8-inch)",
+  "category": "kitchen",
+  "price_cents": 4749,
+  "page_url": "https://homegoods.shop.example/p/chef-s-knife-8-inch"
+ },
+ {
+  "product_id": "prod-0079",
+  "merchant_id": "m-panandpantry",
+  "title": "Chef's knife (Santoku)",
+  "category": "kitchen",
+  "price_cents": 6249,
+  "page_url": "https://panandpantry.shop.example/p/chef-s-knife-santoku"
+ },
+ {
+  "product_id": "prod-0080",
+  "merchant_id": "m-homegoods",
+  "title": "Chef's knife (Santoku)",
+  "category": "kitchen",
+  "price_cents": 6189,
+  "page_url": "https://homegoods.shop.example/p/chef-s-knife-santoku"
+ },
+ {
+  "product_id": "prod-0081",
+  "merchant_id": "m-panandpantry",
+  "title": "Nonstick frying pan (10-inch)",
+  "category": "kitchen",
+  "price_cents": 3499,
+  "page_url": "https://panandpantry.shop.example/p/nonstick-frying-pan-10-inch"
+ },
+ {
+  "product_id": "prod-0082",
+  "merchant_id": "m-homegoods",
+  "title": "Nonstick frying pan (10-inch)",
+  "category": "kitchen",
+  "price_cents": 3319,
+  "page_url": "https://homegoods.shop.example/p/nonstick-frying-pan-10-inch"
+ },
+ {
+  "product_id": "prod-0083",
+  "merchant_id": "m-panandpantry",
+  "title": "Nonstick frying pan (12-inch)",
+  "category": "kitchen",
+  "price_cents": 4369,
+  "page_url": "https://panandpantry.shop.example/p/nonstick-frying-pan-12-inch"
+ },
+ {
+  "product_id": "prod-0084",
+  "merchant_id": "m-homegoods",
+  "title": "Nonstick frying pan (12-inch)",
+  "category": "kitchen",
+  "price_cents": 4329,
+  "page_url": "https://homegoods.shop.example/p/nonstick-frying-pan-12-inch"
+ },
+ {
+  "product_id": "prod-0085",
+  "merchant_id": "m-panandpantry",
+  "title": "Coffee grinder (blade)",
+  "category": "kitchen",
+  "price_cents": 3999,
+  "page_url": "https://panandpantry.shop.example/p/coffee-grinder-blade"
+ },
+ {
+  "product_id": "prod-0086",
+  "merchant_id": "m-homegoods",
+  "title": "Coffee grinder (blade)",
+  "category": "kitchen",
+  "price_cents": 3799,
+  "page_url": "https://homegoods.shop.example/p/coffee-grinder-blade"
+ },
+ {
+  "product_id": "prod-0087",
+  "merchant_id": "m-panandpantry",
+  "title": "Coffee grinder (burr)",
+  "category": "kitchen",
+  "price_cents": 4999,
+  "page_url": "https://panandpantry.shop.example/p/coffee-grinder-burr"
+ },
+ {
+  "product_id": "prod-0088",
+  "merchant_id": "m-homegoods",
+  "title": "Coffee grinder (burr)",
+  "category": "kitchen",
+  "price_cents": 4949,
+  "page_url": "https://homegoods.shop.example/p/coffee-grinder-burr"
+ },
+ {
+  "product_id": "prod-0089",
+  "merchant_id": "m-panandpantry",
+  "title": "French press (small)",
+  "category": "kitchen",
+  "price_cents": 2999,
+  "page_url": "https://panandpantry.shop.example/p/french-press-small"
+ },
+ {
+  "product_id": "prod-0090",
+  "merchant_id": "m-homegoods",
+  "title": "French press (small)",
+  "category": "kitchen",
+  "price_cents": 2849,
+  "page_url": "https://homegoods.shop.example/p/french-press-small"
+ },
+ {
+  "product_id": "prod-0091",
+  "merchant_id": "m-panandpantry",
+  "title": "French press (large)",
+  "category": "kitchen",
+  "price_cents": 3749,
+  "page_url": "https://panandpantry.shop.example/p/french-press-large"
+ },
+ {
+  "product_id": "prod-0092",
+  "merchant_id": "m-homegoods",
+  "title": "French press (large)",
+  "category": "kitchen",
+  "price_cents": 3709,
+  "page_url": "https://homegoods.shop.example/p/french-press-large"
+ },
+ {
+  "product_id": "prod-0093",
+  "merchant_id": "m-panandpantry",
+  "title": "Glass food containers (10-piece)",
+  "category": "kitchen",
+  "price_cents": 2499,
+  "page_url": "https://panandpantry.shop.example/p/glass-food-containers-10-piece"
+ },
+ {
+  "product_id": "prod-0094",
+  "merchant_id": "m-homegoods",
+  "title": "Glass food containers (10-piece)",
+  "category": "kitchen",
+  "price_cents": 2369,
+  "page_url": "https://homegoods.shop.example/p/glass-food-containers-10-piece"
+ },
+ {
+  "product_id": "prod-0095",
+  "merchant_id": "m-panandpantry",
+  "title": "Glass food containers (18-piece)",
+  "category": "kitchen",
+  "price_cents": 3119,
+  "page_url": "https://panandpantry.shop.example/p/glass-food-containers-18-piece"
+ },
+ {
+  "product_id": "prod-0096",
+  "merchant_id": "m-homegoods",
+  "title": "Glass food containers (18-piece)",
+  "category": "kitchen",
+  "price_cents": 3089,
+  "page_url": "https://homegoods.shop.example/p/glass-food-containers-18-piece"
+ },
+ {
+  "product_id": "prod-0097",
+  "merchant_id": "m-freshcart",
+  "title": "Ground coffee (medium roast)",
+  "category": "groceries",
+  "price_cents": 1299,
+  "page_url": "https://freshcart.shop.example/p/ground-coffee-medium-roast"
+ },
+ {
+  "product_id": "prod-0098",
+  "merchant_id": "m-panandpantry",
+  "title": "Ground coffee (medium roast)",
+  "category": "groceries",
+  "price_cents": 1229,
+  "page_url": "https://panandpantry.shop.example/p/ground-coffee-medium-roast"
+ },
+ {
+  "product_id": "prod-0099",
+  "merchant_id": "m-freshcart",
+  "title": "Ground coffee (dark roast)",
+  "category": "groceries",
+  "price_cents": 1619,
+  "page_url": "https://freshcart.shop.example/p/ground-coffee-dark-roast"
+ },
+ {
+  "product_id": "prod-0100",
+  "merchant_id": "m-panandpantry",
+  "title": "Ground coffee (dark roast)",
+  "category": "groceries",
+  "price_cents": 1599,
+  "page_url": "https://panandpantry.shop.example/p/ground-coffee-dark-roast"
+ },
+ {
+  "product_id": "prod-0101",
+  "merchant_id": "m-freshcart",
+  "title": "Ground coffee (decaf)",
+  "category": "groceries",
+  "price_cents": 1949,
+  "page_url": "https://freshcart.shop.example/p/ground-coffee-decaf"
+ },
+ {
+  "product_id": "prod-0102",
+  "merchant_id": "m-panandpantry",
+  "title": "Ground coffee (decaf)",
+  "category": "groceries",
+  "price_cents": 2009,
+  "page_url": "https://panandpantry.shop.example/p/ground-coffee-decaf"
+ },
+ {
+  "product_id": "prod-0103",
+  "merchant_id": "m-freshcart",
+  "title": "Olive oil (500 ml)",
+  "category": "groceries",
+  "price_cents": 1599,
+  "page_url": "https://freshcart.shop.example/p/olive-oil-500-ml"
+ },
+ {
+  "product_id": "prod-0104",
+  "merchant_id": "m-panandpantry",
+  "title": "Olive oil (500 ml)",
+  "category": "groceries",
+  "price_cents": 1519,
+  "page_url": "https://panandpantry.shop.example/p/olive-oil-500-ml"
+ },
+ {
+  "product_id": "prod-0105",
+  "merchant_id": "m-freshcart",
+  "title": "Olive oil (1 l)",
+  "category": "groceries",
+  "price_cents": 1999,
+  "page_url": "https://freshcart.shop.example/p/olive-oil-1-l"
+ },
+ {
+  "product_id": "prod-0106",
+  "merchant_id": "m-panandpantry",
+  "title": "Olive oil (1 l)",
+  "category": "groceries",
+  "price_cents": 1979,
+  "page_url": "https://panandpantry.shop.example/p/olive-oil-1-l"
+ },
+ {
+  "product_id": "prod-0107",
+  "merchant_id": "m-freshcart",
+  "title": "Granola (honey almond)",
+  "category": "groceries",
+  "price_cents": 699,
+  "page_url": "https://freshcart.shop.example/p/granola-honey-almond"
+ },
+ {
+  "product_id": "prod-0108",
+  "merchant_id": "m-panandpantry",
+  "title": "Granola (honey almond)",
+  "category": "groceries",
+  "price_cents": 659,
+  "page_url": "https://panandpantry.shop.example/p/granola-honey-almond"
+ },
+ {
+  "product_id": "prod-0109",
+  "merchant_id": "m-freshcart",
+  "title": "Granola (dark chocolate)",
+  "category": "groceries",
+  "price_cents": 869,
+  "page_url": "https://freshcart.shop.example/p/granola-dark-chocolate"
+ },
+ {
+  "product_id": "prod-0110",
+  "merchant_id": "m-panandpantry",
+  "title": "Granola (dark chocolate)",
+  "category": "groceries",
+  "price_cents": 859,
+  "page_url": "https://panandpantry.shop.example/p/granola-dark-chocolate"
+ },
+ {
+  "product_id": "prod-0111",
+  "merchant_id": "m-freshcart",
+  "title": "Green tea (40 bags)",
+  "category": "groceries",
+  "price_cents": 899,
+  "page_url": "https://freshcart.shop.example/p/green-tea-40-bags"
+ },
+ {
+  "product_id": "prod-0112",
+  "merchant_id": "m-panandpantry",
+  "title": "Green tea (40 bags)",
+  "category": "groceries",
+  "price_cents": 849,
+  "page_url": "https://panandpantry.shop.example/p/green-tea-40-bags"
+ },
+ {
+  "product_id": "prod-0113",
+  "merchant_id": "m-freshcart",
+  "title": "Green tea (loose leaf)",
+  "category": "groceries",
+  "price_cents": 1119,
+  "page_url": "https://freshcart.shop.example/p/green-tea-loose-leaf"
+ },
+ {
+  "product_id": "prod-0114",
+  "merchant_id": "m-panandpantry",
+  "title": "Green tea (loose leaf)",
+  "category": "groceries",
+  "price_cents": 1109,
+  "page_url": "https://panandpantry.shop.example/p/green-tea-loose-leaf"
+ },
+ {
+  "product_id": "prod-0115",
+  "merchant_id": "m-freshcart",
+  "title": "Sparkling water (12-pack lime)",
+  "category": "groceries",
+  "price_cents": 599,
+  "page_url": "https://freshcart.shop.example/p/sparkling-water-12-pack-lime"
+ },
+ {
+  "product_id": "prod-0116",
+  "merchant_id": "m-panandpantry",
+  "title": "Sparkling water (12-pack lime)",
+  "category": "groceries",
+  "price_cents": 569,
+  "page_url": "https://panandpantry.shop.example/p/sparkling-water-12-pack-lime"
+ },
+ {
+  "product_id": "prod-0117",
+  "merchant_id": "m-freshcart",
+  "title": "Sparkling water (12-pack plain)",
+  "category": "groceries",
+  "price_cents": 749,
+  "page_url": "https://freshcart.shop.example/p/sparkling-water-12-pack-plain"
+ },
+ {
+  "product_id": "prod-0118",
+  "merchant_id": "m-panandpantry",
+  "title": "Sparkling water (12-pack plain)",
+  "category": "groceries",
+  "price_cents": 739,
+  "page_url": "https://panandpantry.shop.example/p/sparkling-water-12-pack-plain"
+ },
+ {
+  "product_id": "prod-0119",
+  "merchant_id": "m-freshcart",
+  "title": "Pasta (spaghetti)",
+  "category": "groceries",
+  "price_cents": 399,
+  "page_url": "https://freshcart.shop.example/p/pasta-spaghetti"
+ },
+ {
+  "product_id": "prod-0120",
+  "merchant_id": "m-panandpantry",
+  "title": "Pasta (spaghetti)",
+  "category": "groceries",
+  "price_cents": 379,
+  "page_url": "https://panandpantry.shop.example/p/pasta-spaghetti"
+ },
+ {
+  "product_id": "prod-0121",
+  "merchant_id": "m-freshcart",
+  "title": "Pasta (penne)",
+  "category": "groceries",
+  "price_cents": 499,
+  "page_url": "https://freshcart.shop.example/p/pasta-penne"
+ },
+ {
+  "product_id": "prod-0122",
+  "merchant_id": "m-panandpantry",
+  "title": "Pasta (penne)",
+  "category": "groceries",
+  "price_cents": 489,
+  "page_url": "https://panandpantry.shop.example/p/pasta-penne"
+ },
+ {
+  "product_id": "prod-0123",
+  "merchant_id": "m-freshcart",
+  "title": "Pasta (fusilli)",
+  "category": "groceries",
+  "price_cents": 599,
+  "page_url": "https://freshcart.shop.example/p/pasta-fusilli"
+ },
+ {
+  "product_id": "prod-0124",
+  "merchant_id": "m-panandpantry",
+  "title": "Pasta (fusilli)",
+  "category": "groceries",
+  "price_cents": 619,
+  "page_url": "https://panandpantry.shop.example/p/pasta-fusilli"
+ },
+ {
+  "product_id": "prod-0125",
+  "merchant_id": "m-pageturner",
+  "title": "Paperback novel (mystery)",
+  "category": "books",
+  "price_cents": 1699,
+  "page_url": "https://pageturner.shop.example/p/paperback-novel-mystery"
+ },
+ {
+  "product_id": "prod-0126",
+  "merchant_id": "m-readmore",
+  "title": "Paperback novel (mystery)",
+  "category": "books",
+  "price_cents": 1609,
+  "page_url": "https://readmore.shop.example/p/paperback-novel-mystery"
+ },
+ {
+  "product_id": "prod-0127",
+  "merchant_id": "m-pageturner",
+  "title": "Paperback novel (science fiction)",
+  "category": "books",
+  "price_cents": 2119,
+  "page_url": "https://pageturner.shop.example/p/paperback-novel-science-fiction"
+ },
+ {
+  "product_id": "prod-0128",
+  "merchant_id": "m-readmore",
+  "title": "Paperback novel (science fiction)",
+  "category": "books",
+  "price_cents": 2099,
+  "page_url": "https://readmore.shop.example/p/paperback-novel-science-fiction"
+ },
+ {
+  "product_id": "prod-0129",
+  "merchant_id": "m-pageturner",
+  "title": "Paperback novel (literary)",
+  "category": "books",
+  "price_cents": 2549,
+  "page_url": "https://pageturner.shop.example/p/paperback-novel-literary"
+ },
+ {
+  "product_id": "prod-0130",
+  "merchant_id": "m-readmore",
+  "title": "Paperback novel (literary)",
+  "category": "books",
+  "price_cents": 2629,
+  "page_url": "https://readmore.shop.example/p/paperback-novel-literary"
+ },
+ {
+  "product_id": "prod-0131",
+  "merchant_id": "m-pageturner",
+  "title": "Cookbook (weeknight)",
+  "category": "books",
+  "price_cents": 2999,
+  "page_url": "https://pageturner.shop.example/p/cookbook-weeknight"
+ },
+ {
+  "product_id": "prod-0132",
+  "merchant_id": "m-readmore",
+  "title": "Cookbook (weeknight)",
+  "category": "books",
+  "price_cents": 2849,
+  "page_url": "https://readmore.shop.example/p/cookbook-weeknight"
+ },
+ {
+  "product_id": "prod-0133",
+  "merchant_id": "m-pageturner",
+  "title": "Cookbook (baking)",
+  "category": "books",
+  "price_cents": 3749,
+  "page_url": "https://pageturner.shop.example/p/cookbook-baking"
+ },
+ {
+  "product_id": "prod-0134",
+  "merchant_id": "m-readmore",
+  "title": "Cookbook (baking)",
+  "category": "books",
+  "price_cents": 3709,
+  "page_url": "https://readmore.shop.example/p/cookbook-baking"
+ },
+ {
+  "product_id": "prod-0135",
+  "merchant_id": "m-pageturner",
+  "title": "Programming handbook (Python)",
+  "category": "books",
+  "price_cents": 4499,
+  "page_url": "https://pageturner.shop.example/p/programming-handbook-python"
+ },
+ {
+  "product_id": "prod-0136",
+  "merchant_id": "m-readmore",
+  "title": "Programming handbook (Python)",
+  "category": "books",
+  "price_cents": 4269,
+  "page_url": "https://readmore.shop.example/p/programming-handbook-python"
+ },
+ {
+  "product_id": "prod-0137",
+  "merchant_id": "m-pageturner",
+  "title": "Programming handbook (TypeScript)",
+  "category": "books",
+  "price_cents": 5619,
+  "page_url": "https://pageturner.shop.example/p/programming-handbook-typescript"
+ },
+ {
+  "product_id": "prod-0138",
+  "merchant_id": "m-readmore",
+  "title": "Programming handbook (TypeScript)",
+  "category": "books",
+  "price_cents": 5559,
+  "page_url": "https://readmore.shop.example/p/programming-handbook-typescript"
+ },
+ {
+  "product_id": "prod-0139",
+  "merchant_id": "m-pageturner",
+  "title": "Programming handbook (Rust)",
+  "category": "books",
+  "price_cents": 6749,
+  "page_url": "https://pageturner.shop.example/p/programming-handbook-rust"
+ },
+ {
+  "product_id": "prod-0140",
+  "merchant_id": "m-readmore",
+  "title": "Programming handbook (Rust)",
+  "category": "books",
+  "price_cents": 6949,
+  "page_url": "https://readmore.shop.example/p/programming-handbook-rust"
+ },
+ {
+  "product_id": "prod-0141",
+  "merchant_id": "m-pageturner",
+  "title": "Children's picture book (animals)",
+  "category": "books",
+  "price_cents": 1299,
+  "page_url": "https://pageturner.shop.example/p/children-s-picture-book-animals"
+ },
+ {
+  "product_id": "prod-0142",
+  "merchant_id": "m-readmore",
+  "title": "Children's picture book (animals)",
+  "category": "books",
+  "price_cents": 1229,
+  "page_url": "https://readmore.shop.example/p/children-s-picture-book-animals"
+ },
+ {
+  "product_id": "prod-0143",
+  "merchant_id": "m-pageturner",
+  "title": "Children's picture book (bedtime)",
+  "category": "books",
+  "price_cents": 1619,
+  "page_url": "https://pageturner.shop.example/p/children-s-picture-book-bedtime"
+ },
+ {
+  "product_id": "prod-0144",
+  "merchant_id": "m-readmore",
+  "title": "Children's picture book (bedtime)",
+  "category": "books",
+  "price_cents": 1599,
+  "page_url": "https://readmore.shop.example/p/children-s-picture-book-bedtime"
+ },
+ {
+  "product_id": "prod-0145",
+  "merchant_id": "m-threadline",
+  "title": "Cotton T-shirt (S)",
+  "category": "clothing",
+  "price_cents": 1999,
+  "page_url": "https://threadline.shop.example/p/cotton-t-shirt-s"
+ },
+ {
+  "product_id": "prod-0146",
+  "merchant_id": "m-outfitters",
+  "title": "Cotton T-shirt (S)",
+  "category": "clothing",
+  "price_cents": 1899,
+  "page_url": "https://outfitters.shop.example/p/cotton-t-shirt-s"
+ },
+ {
+  "product_id": "prod-0147",
+  "merchant_id": "m-threadline",
+  "title": "Cotton T-shirt (M)",
+  "category": "clothing",
+  "price_cents": 2499,
+  "page_url": "https://threadline.shop.example/p/cotton-t-shirt-m"
+ },
+ {
+  "product_id": "prod-0148",
+  "merchant_id": "m-outfitters",
+  "title": "Cotton T-shirt (M)",
+  "category": "clothing",
+  "price_cents": 2469,
+  "page_url": "https://outfitters.shop.example/p/cotton-t-shirt-m"
+ },
+ {
+  "product_id": "prod-0149",
+  "merchant_id": "m-threadline",
+  "title": "Cotton T-shirt (L)",
+  "category": "clothing",
+  "price_cents": 2999,
+  "page_url": "https://threadline.shop.example/p/cotton-t-shirt-l"
+ },
+ {
+  "product_id": "prod-0150",
+  "merchant_id": "m-outfitters",
+  "title": "Cotton T-shirt (L)",
+  "category": "clothing",
+  "price_cents": 3089,
+  "page_url": "https://outfitters.shop.example/p/cotton-t-shirt-l"
+ },
+ {
+  "product_id": "prod-0151",
+  "merchant_id": "m-threadline",
+  "title": "Cotton T-shirt (XL)",
+  "category": "clothing",
+  "price_cents": 3499,
+  "page_url": "https://threadline.shop.example/p/cotton-t-shirt-xl"
+ },
+ {
+  "product_id": "prod-0152",
+  "merchant_id": "m-outfitters",
+  "title": "Cotton T-shirt (XL)",
+  "category": "clothing",
+  "price_cents": 3739,
+  "page_url": "https://outfitters.shop.example/p/cotton-t-shirt-xl"
+ },
+ {
+  "product_id": "prod-0153",
+  "merchant_id": "m-threadline",
+  "title": "Rain jacket (men's)",
+  "category": "clothing",
+  "price_cents": 8999,
+  "page_url": "https://threadline.shop.example/p/rain-jacket-men-s"
+ },
+ {
+  "product_id": "prod-0154",
+  "merchant_id": "m-outfitters",
+  "title": "Rain jacket (men's)",
+  "category": "clothing",
+  "price_cents": 8549,
+  "page_url": "https://outfitters.shop.example/p/rain-jacket-men-s"
+ },
+ {
+  "product_id": "prod-0155",
+  "merchant_id": "m-threadline",
+  "title": "Rain jacket (women's)",
+  "category": "clothing",
+  "price_cents": 11249,
+  "page_url": "https://threadline.shop.example/p/rain-jacket-women-s"
+ },
+ {
+  "product_id": "prod-0156",
+  "merchant_id": "m-outfitters",
+  "title": "Rain jacket (women's)",
+  "category": "clothing",
+  "price_cents": 11139,
+  "page_url": "https://outfitters.shop.example/p/rain-jacket-women-s"
+ },
+ {
+  "product_id": "prod-0157",
+  "merchant_id": "m-threadline",
+  "title": "Wool socks (3-pack)",
+  "category": "clothing",
+  "price_cents": 1499,
+  "page_url": "https://threadline.shop.example/p/wool-socks-3-pack"
+ },
+ {
+  "product_id": "prod-0158",
+  "merchant_id": "m-outfitters",
+  "title": "Wool socks (3-pack)",
+  "category": "clothing",
+  "price_cents": 1419,
+  "page_url": "https://outfitters.shop.example/p/wool-socks-3-pack"
+ },
+ {
+  "product_id": "prod-0159",
+  "merchant_id": "m-threadline",
+  "title": "Wool socks (6-pack)",
+  "category": "clothing",
+  "price_cents": 1869,
+  "page_url": "https://threadline.shop.example/p/wool-socks-6-pack"
+ },
+ {
+  "product_id": "prod-0160",
+  "merchant_id": "m-outfitters",
+  "title": "Wool socks (6-pack)",
+  "category": "clothing",
+  "price_cents": 1849,
+  "page_url": "https://outfitters.shop.example/p/wool-socks-6-pack"
+ },
+ {
+  "product_id": "prod-0161",
+  "merchant_id": "m-threadline",
+  "title": "Running shoes (men's)",
+  "category": "clothing",
+  "price_cents": 11999,
+  "page_url": "https://threadline.shop.example/p/running-shoes-men-s"
+ },
+ {
+  "product_id": "prod-0162",
+  "merchant_id": "m-outfitters",
+  "title": "Running shoes (men's)",
+  "category": "clothing",
+  "price_cents": 11399,
+  "page_url": "https://outfitters.shop.example/p/running-shoes-men-s"
+ },
+ {
+  "product_id": "prod-0163",
+  "merchant_id": "m-threadline",
+  "title": "Running shoes (women's)",
+  "category": "clothing",
+  "price_cents": 14999,
+  "page_url": "https://threadline.shop.example/p/running-shoes-women-s"
+ },
+ {
+  "product_id": "prod-0164",
+  "merchant_id": "m-outfitters",
+  "title": "Running shoes (women's)",
+  "category": "clothing",
+  "price_cents": 14849,
+  "page_url": "https://outfitters.shop.example/p/running-shoes-women-s"
+ },
+ {
+  "product_id": "prod-0165",
+  "merchant_id": "m-glowshop",
+  "title": "Moisturizer (day)",
+  "category": "beauty",
+  "price_cents": 2499,
+  "page_url": "https://glowshop.shop.example/p/moisturizer-day"
+ },
+ {
+  "product_id": "prod-0166",
+  "merchant_id": "m-homegoods",
+  "title": "Moisturizer (day)",
+  "category": "beauty",
+  "price_cents": 2369,
+  "page_url": "https://homegoods.shop.example/p/moisturizer-day"
+ },
+ {
+  "product_id": "prod-0167",
+  "merchant_id": "m-glowshop",
+  "title": "Moisturizer (night)",
+  "category": "beauty",
+  "price_cents": 3119,
+  "page_url": "https://glowshop.shop.example/p/moisturizer-night"
+ },
+ {
+  "product_id": "prod-0168",
+  "merchant_id": "m-homegoods",
+  "title": "Moisturizer (night)",
+  "category": "beauty",
+  "price_cents": 3089,
+  "page_url": "https://homegoods.shop.example/p/moisturizer-night"
+ },
+ {
+  "product_id": "prod-0169",
+  "merchant_id": "m-glowshop",
+  "title": "Sunscreen SPF 50 (lotion)",
+  "category": "beauty",
+  "price_cents": 1599,
+  "page_url": "https://glowshop.shop.example/p/sunscreen-spf-50-lotion"
+ },
+ {
+  "product_id": "prod-0170",
+  "merchant_id": "m-homegoods",
+  "title": "Sunscreen SPF 50 (lotion)",
+  "category": "beauty",
+  "price_cents": 1519,
+  "page_url": "https://homegoods.shop.example/p/sunscreen-spf-50-lotion"
+ },
+ {
+  "product_id": "prod-0171",
+  "merchant_id": "m-glowshop",
+  "title": "Sunscreen SPF 50 (spray)",
+  "category": "beauty",
+  "price_cents": 1999,
+  "page_url": "https://glowshop.shop.example/p/sunscreen-spf-50-spray"
+ },
+ {
+  "product_id": "prod-0172",
+  "merchant_id": "m-homegoods",
+  "title": "Sunscreen SPF 50 (spray)",
+  "category": "beauty",
+  "price_cents": 1979,
+  "page_url": "https://homegoods.shop.example/p/sunscreen-spf-50-spray"
+ },
+ {
+  "product_id": "prod-0173",
+  "merchant_id": "m-glowshop",
+  "title": "Shampoo (volumizing)",
+  "category": "beauty",
+  "price_cents": 1199,
+  "page_url": "https://glowshop.shop.example/p/shampoo-volumizing"
+ },
+ {
+  "product_id": "prod-0174",
+  "merchant_id": "m-homegoods",
+  "title": "Shampoo (volumizing)",
+  "category": "beauty",
+  "price_cents": 1139,
+  "page_url": "https://homegoods.shop.example/p/shampoo-volumizing"
+ },
+ {
+  "product_id": "prod-0175",
+  "merchant_id": "m-glowshop",
+  "title": "Shampoo (sensitive scalp)",
+  "category": "beauty",
+  "price_cents": 1499,
+  "page_url": "https://glowshop.shop.example/p/shampoo-sensitive-scalp"
+ },
+ {
+  "product_id": "prod-0176",
+  "merchant_id": "m-homegoods",
+  "title": "Shampoo (sensitive scalp)",
+  "category": "beauty",
+  "price_cents": 1479,
+  "page_url": "https://homegoods.shop.example/p/shampoo-sensitive-scalp"
+ },
+ {
+  "product_id": "prod-0177",
+  "merchant_id": "m-glowshop",
+  "title": "Electric toothbrush (basic)",
+  "category": "beauty",
+  "price_cents": 5999,
+  "page_url": "https://glowshop.shop.example/p/electric-toothbrush-basic"
+ },
+ {
+  "product_id": "prod-0178",
+  "merchant_id": "m-homegoods",
+  "title": "Electric toothbrush (basic)",
+  "category": "beauty",
+  "price_cents": 5699,
+  "page_url": "https://homegoods.shop.example/p/electric-toothbrush-basic"
+ },
+ {
+  "product_id": "prod-0179",
+  "merchant_id": "m-glowshop",
+  "title": "Electric toothbrush (pro)",
+  "category": "beauty",
+  "price_cents": 7499,
+  "page_url": "https://glowshop.shop.example/p/electric-toothbrush-pro"
+ },
+ {
+  "product_id": "prod-0180",
+  "merchant_id": "m-homegoods",
+  "title": "Electric toothbrush (pro)",
+  "category": "beauty",
+  "price_cents": 7419,
+  "page_url": "https://homegoods.shop.example/p/electric-toothbrush-pro"
+ },
+ {
+  "product_id": "prod-0181",
+  "merchant_id": "m-playland",
+  "title": "Building blocks set (500 pieces)",
+  "category": "toys",
+  "price_cents": 3999,
+  "page_url": "https://playland.shop.example/p/building-blocks-set-500-pieces"
+ },
+ {
+  "product_id": "prod-0182",
+  "merchant_id": "m-readmore",
+  "title": "Building blocks set (500 pieces)",
+  "category": "toys",
+  "price_cents": 3799,
+  "page_url": "https://readmore.shop.example/p/building-blocks-set-500-pieces"
+ },
+ {
+  "product_id": "prod-0183",
+  "merchant_id": "m-playland",
+  "title": "Building blocks set (1,000 pieces)",
+  "category": "toys",
+  "price_cents": 4999,
+  "page_url": "https://playland.shop.example/p/building-blocks-set-1-000-pieces"
+ },
+ {
+  "product_id": "prod-0184",
+  "merchant_id": "m-readmore",
+  "title": "Building blocks set (1,000 pieces)",
+  "category": "toys",
+  "price_cents": 4949,
+  "page_url": "https://readmore.shop.example/p/building-blocks-set-1-000-pieces"
+ },
+ {
+  "product_id": "prod-0185",
+  "merchant_id": "m-playland",
+  "title": "Board game (strategy)",
+  "category": "toys",
+  "price_cents": 3499,
+  "page_url": "https://playland.shop.example/p/board-game-strategy"
+ },
+ {
+  "product_id": "prod-0186",
+  "merchant_id": "m-readmore",
+  "title": "Board game (strategy)",
+  "category": "toys",
+  "price_cents": 3319,
+  "page_url": "https://readmore.shop.example/p/board-game-strategy"
+ },
+ {
+  "product_id": "prod-0187",
+  "merchant_id": "m-playland",
+  "title": "Board game (family)",
+  "category": "toys",
+  "price_cents": 4369,
+  "page_url": "https://playland.shop.example/p/board-game-family"
+ },
+ {
+  "product_id": "prod-0188",
+  "merchant_id": "m-readmore",
+  "title": "Board game (family)",
+  "category": "toys",
+  "price_cents": 4329,
+  "page_url": "https://readmore.shop.example/p/board-game-family"
+ },
+ {
+  "product_id": "prod-0189",
+  "merchant_id": "m-playland",
+  "title": "Board game (party)",
+  "category": "toys",
+  "price_cents": 5249,
+  "page_url": "https://playland.shop.example/p/board-game-party"
+ },
+ {
+  "product_id": "prod-0190",
+  "merchant_id": "m-readmore",
+  "title": "Board game (party)",
+  "category": "toys",
+  "price_cents": 5409,
+  "page_url": "https://readmore.shop.example/p/board-game-party"
+ },
+ {
+  "product_id": "prod-0191",
+  "merchant_id": "m-playland",
+  "title": "Jigsaw puzzle (500 pieces)",
+  "category": "toys",
+  "price_cents": 1999,
+  "page_url": "https://playland.shop.example/p/jigsaw-puzzle-500-pieces"
+ },
+ {
+  "product_id": "prod-0192",
+  "merchant_id": "m-readmore",
+  "title": "Jigsaw puzzle (500 pieces)",
+  "category": "toys",
+  "price_cents": 1899,
+  "page_url": "https://readmore.shop.example/p/jigsaw-puzzle-500-pieces"
+ },
+ {
+  "product_id": "prod-0193",
+  "merchant_id": "m-playland",
+  "title": "Jigsaw puzzle (1,000 pieces)",
+  "category": "toys",
+  "price_cents": 2499,
+  "page_url": "https://playland.shop.example/p/jigsaw-puzzle-1-000-pieces"
+ },
+ {
+  "product_id": "prod-0194",
+  "merchant_id": "m-readmore",
+  "title": "Jigsaw puzzle (1,000 pieces)",
+  "category": "toys",
+  "price_cents": 2469,
+  "page_url": "https://readmore.shop.example/p/jigsaw-puzzle-1-000-pieces"
+ },
+ {
+  "product_id": "prod-0195",
+  "merchant_id": "m-playland",
+  "title": "Remote control car (off-road)",
+  "category": "toys",
+  "price_cents": 4999,
+  "page_url": "https://playland.shop.example/p/remote-control-car-off-road"
+ },
+ {
+  "product_id": "prod-0196",
+  "merchant_id": "m-readmore",
+  "title": "Remote control car (off-road)",
+  "category": "toys",
+  "price_cents": 4749,
+  "page_url": "https://readmore.shop.example/p/remote-control-car-off-road"
+ },
+ {
+  "product_id": "prod-0197",
+  "merchant_id": "m-playland",
+  "title": "Remote control car (drift)",
+  "category": "toys",
+  "price_cents": 6249,
+  "page_url": "https://playland.shop.example/p/remote-control-car-drift"
+ },
+ {
+  "product_id": "prod-0198",
+  "merchant_id": "m-readmore",
+  "title": "Remote control car (drift)",
+  "category": "toys",
+  "price_cents": 6189,
+  "page_url": "https://readmore.shop.example/p/remote-control-car-drift"
+ },
+ {
+  "product_id": "prod-0199",
+  "merchant_id": "m-trailhead",
+  "title": "Yoga mat (4 mm)",
+  "category": "sports",
+  "price_cents": 2999,
+  "page_url": "https://trailhead.shop.example/p/yoga-mat-4-mm"
+ },
+ {
+  "product_id": "prod-0200",
+  "merchant_id": "m-outfitters",
+  "title": "Yoga mat (4 mm)",
+  "category": "sports",
+  "price_cents": 2849,
+  "page_url": "https://outfitters.shop.example/p/yoga-mat-4-mm"
+ },
+ {
+  "product_id": "prod-0201",
+  "merchant_id": "m-trailhead",
+  "title": "Yoga mat (6 mm)",
+  "category": "sports",
+  "price_cents": 3749,
+  "page_url": "https://trailhead.shop.example/p/yoga-mat-6-mm"
+ },
+ {
+  "product_id": "prod-0202",
+  "merchant_id": "m-outfitters",
+  "title": "Yoga mat (6 mm)",
+  "category": "sports",
+  "price_cents": 3709,
+  "page_url": "https://outfitters.shop.example/p/yoga-mat-6-mm"
+ },
+ {
+  "product_id": "prod-0203",
+  "merchant_id": "m-trailhead",
+  "title": "Adjustable dumbbells (25 lb)",
+  "category": "sports",
+  "price_cents": 19999,
+  "page_url": "https://trailhead.shop.example/p/adjustable-dumbbells-25-lb"
+ },
+ {
+  "product_id": "prod-0204",
+  "merchant_id": "m-outfitters",
+  "title": "Adjustable dumbbells (25 lb)",
+  "category": "sports",
+  "price_cents": 18999,
+  "page_url": "https://outfitters.shop.example/p/adjustable-dumbbells-25-lb"
+ },
+ {
+  "product_id": "prod-0205",
+  "merchant_id": "m-trailhead",
+  "title": "Adjustable dumbbells (50 lb)",
+  "category": "sports",
+  "price_cents": 24999,
+  "page_url": "https://trailhead.shop.example/p/adjustable-dumbbells-50-lb"
+ },
+ {
+  "product_id": "prod-0206",
+  "merchant_id": "m-outfitters",
+  "title": "Adjustable dumbbells (50 lb)",
+  "category": "sports",
+  "price_cents": 24749,
+  "page_url": "https://outfitters.shop.example/p/adjustable-dumbbells-50-lb"
+ },
+ {
+  "product_id": "prod-0207",
+  "merchant_id": "m-trailhead",
+  "title": "Water bottle (24 oz)",
+  "category": "sports",
+  "price_cents": 2499,
+  "page_url": "https://trailhead.shop.example/p/water-bottle-24-oz"
+ },
+ {
+  "product_id": "prod-0208",
+  "merchant_id": "m-outfitters",
+  "title": "Water bottle (24 oz)",
+  "category": "sports",
+  "price_cents": 2369,
+  "page_url": "https://outfitters.shop.example/p/water-bottle-24-oz"
+ },
+ {
+  "product_id": "prod-0209",
+  "merchant_id": "m-trailhead",
+  "title": "Water bottle (32 oz)",
+  "category": "sports",
+  "price_cents": 3119,
+  "page_url": "https://trailhead.shop.example/p/water-bottle-32-oz"
+ },
+ {
+  "product_id": "prod-0210",
+  "merchant_id": "m-outfitters",
+  "title": "Water bottle (32 oz)",
+  "category": "sports",
+  "price_cents": 3089,
+  "page_url": "https://outfitters.shop.example/p/water-bottle-32-oz"
+ },
+ {
+  "product_id": "prod-0211",
+  "merchant_id": "m-trailhead",
+  "title": "Camping tent (2-person)",
+  "category": "sports",
+  "price_cents": 14999,
+  "page_url": "https://trailhead.shop.example/p/camping-tent-2-person"
+ },
+ {
+  "product_id": "prod-0212",
+  "merchant_id": "m-outfitters",
+  "title": "Camping tent (2-person)",
+  "category": "sports",
+  "price_cents": 14249,
+  "page_url": "https://outfitters.shop.example/p/camping-tent-2-person"
+ },
+ {
+  "product_id": "prod-0213",
+  "merchant_id": "m-trailhead",
+  "title": "Camping tent (4-person)",
+  "category": "sports",
+  "price_cents": 18749,
+  "page_url": "https://trailhead.shop.example/p/camping-tent-4-person"
+ },
+ {
+  "product_id": "prod-0214",
+  "merchant_id": "m-outfitters",
+  "title": "Camping tent (4-person)",
+  "category": "sports",
+  "price_cents": 18559,
+  "page_url": "https://outfitters.shop.example/p/camping-tent-4-person"
+ },
+ {
+  "product_id": "prod-0215",
+  "merchant_id": "m-trailhead",
+  "title": "Bike helmet (road)",
+  "category": "sports",
+  "price_cents": 5999,
+  "page_url": "https://trailhead.shop.example/p/bike-helmet-road"
+ },
+ {
+  "product_id": "prod-0216",
+  "merchant_id": "m-outfitters",
+  "title": "Bike helmet (road)",
+  "category": "sports",
+  "price_cents": 5699,
+  "page_url": "https://outfitters.shop.example/p/bike-helmet-road"
+ },
+ {
+  "product_id": "prod-0217",
+  "merchant_id": "m-trailhead",
+  "title": "Bike helmet (mountain)",
+  "category": "sports",
+  "price_cents": 7499,
+  "page_url": "https://trailhead.shop.example/p/bike-helmet-mountain"
+ },
+ {
+  "product_id": "prod-0218",
+  "merchant_id": "m-outfitters",
+  "title": "Bike helmet (mountain)",
+  "category": "sports",
+  "price_cents": 7419,
+  "page_url": "https://outfitters.shop.example/p/bike-helmet-mountain"
+ },
+ {
+  "product_id": "prod-0219",
+  "merchant_id": "m-pawpantry",
+  "title": "Dry dog food (15 lb)",
+  "category": "pet_supplies",
+  "price_cents": 4599,
+  "page_url": "https://pawpantry.shop.example/p/dry-dog-food-15-lb"
+ },
+ {
+  "product_id": "prod-0220",
+  "merchant_id": "m-freshcart",
+  "title": "Dry dog food (15 lb)",
+  "category": "pet_supplies",
+  "price_cents": 4369,
+  "page_url": "https://freshcart.shop.example/p/dry-dog-food-15-lb"
+ },
+ {
+  "product_id": "prod-0221",
+  "merchant_id": "m-pawpantry",
+  "title": "Dry dog food (30 lb)",
+  "category": "pet_supplies",
+  "price_cents": 5749,
+  "page_url": "https://pawpantry.shop.example/p/dry-dog-food-30-lb"
+ },
+ {
+  "product_id": "prod-0222",
+  "merchant_id": "m-freshcart",
+  "title": "Dry dog food (30 lb)",
+  "category": "pet_supplies",
+  "price_cents": 5689,
+  "page_url": "https://freshcart.shop.example/p/dry-dog-food-30-lb"
+ },
+ {
+  "product_id": "prod-0223",
+  "merchant_id": "m-pawpantry",
+  "title": "Cat litter (clumping)",
+  "category": "pet_supplies",
+  "price_cents": 1899,
+  "page_url": "https://pawpantry.shop.example/p/cat-litter-clumping"
+ },
+ {
+  "product_id": "prod-0224",
+  "merchant_id": "m-freshcart",
+  "title": "Cat litter (clumping)",
+  "category": "pet_supplies",
+  "price_cents": 1799,
+  "page_url": "https://freshcart.shop.example/p/cat-litter-clumping"
+ },
+ {
+  "product_id": "prod-0225",
+  "merchant_id": "m-pawpantry",
+  "title": "Cat litter (unscented)",
+  "category": "pet_supplies",
+  "price_cents": 2369,
+  "page_url": "https://pawpantry.shop.example/p/cat-litter-unscented"
+ },
+ {
+  "product_id": "prod-0226",
+  "merchant_id": "m-freshcart",
+  "title": "Cat litter (unscented)",
+  "category": "pet_supplies",
+  "price_cents": 2349,
+  "page_url": "https://freshcart.shop.example/p/cat-litter-unscented"
+ },
+ {
+  "product_id": "prod-0227",
+  "merchant_id": "m-pawpantry",
+  "title": "Chew toys (3-pack)",
+  "category": "pet_supplies",
+  "price_cents": 1299,
+  "page_url": "https://pawpantry.shop.example/p/chew-toys-3-pack"
+ },
+ {
+  "product_id": "prod-0228",
+  "merchant_id": "m-freshcart",
+  "title": "Chew toys (3-pack)",
+  "category": "pet_supplies",
+  "price_cents": 1229,
+  "page_url": "https://freshcart.shop.example/p/chew-toys-3-pack"
+ },
+ {
+  "product_id": "prod-0229",
+  "merchant_id": "m-pawpantry",
+  "title": "Chew toys (durable)",
+  "category": "pet_supplies",
+  "price_cents": 1619,
+  "page_url": "https://pawpantry.shop.example/p/chew-toys-durable"
+ },
+ {
+  "product_id": "prod-0230",
+  "merchant_id": "m-freshcart",
+  "title": "Chew toys (durable)",
+  "category": "pet_supplies",
+  "price_cents": 1599,
+  "page_url": "https://freshcart.shop.example/p/chew-toys-durable"
+ },
+ {
+  "product_id": "prod-0231",
+  "merchant_id": "m-pawpantry",
+  "title": "Pet bed (medium)",
+  "category": "pet_supplies",
+  "price_cents": 3999,
+  "page_url": "https://pawpantry.shop.example/p/pet-bed-medium"
+ },
+ {
+  "product_id": "prod-0232",
+  "merchant_id": "m-freshcart",
+  "title": "Pet bed (medium)",
+  "category": "pet_supplies",
+  "price_cents": 3799,
+  "page_url": "https://freshcart.shop.example/p/pet-bed-medium"
+ },
+ {
+  "product_id": "prod-0233",
+  "merchant_id": "m-pawpantry",
+  "title": "Pet bed (large)",
+  "category": "pet_supplies",
+  "price_cents": 4999,
+  "page_url": "https://pawpantry.shop.example/p/pet-bed-large"
+ },
+ {
+  "product_id": "prod-0234",
+  "merchant_id": "m-freshcart",
+  "title": "Pet bed (large)",
+  "category": "pet_supplies",
+  "price_cents": 4949,
+  "page_url": "https://freshcart.shop.example/p/pet-bed-large"
+ },
+ {
+  "product_id": "prod-0235",
+  "merchant_id": "m-saasly",
+  "title": "Password manager, annual (personal)",
+  "category": "software",
+  "price_cents": 3599,
+  "page_url": "https://saasly.shop.example/p/password-manager-annual-personal"
+ },
+ {
+  "product_id": "prod-0236",
+  "merchant_id": "m-devtools",
+  "title": "Password manager, annual (personal)",
+  "category": "software",
+  "price_cents": 3419,
+  "page_url": "https://devtools.shop.example/p/password-manager-annual-personal"
+ },
+ {
+  "product_id": "prod-0237",
+  "merchant_id": "m-saasly",
+  "title": "Password manager, annual (family)",
+  "category": "software",
+  "price_cents": 4499,
+  "page_url": "https://saasly.shop.example/p/password-manager-annual-family"
+ },
+ {
+  "product_id": "prod-0238",
+  "merchant_id": "m-devtools",
+  "title": "Password manager, annual (family)",
+  "category": "software",
+  "price_cents": 4449,
+  "page_url": "https://devtools.shop.example/p/password-manager-annual-family"
+ },
+ {
+  "product_id": "prod-0239",
+  "merchant_id": "m-saasly",
+  "title": "Photo editor license (standard)",
+  "category": "software",
+  "price_cents": 9999,
+  "page_url": "https://saasly.shop.example/p/photo-editor-license-standard"
+ },
+ {
+  "product_id": "prod-0240",
+  "merchant_id": "m-devtools",
+  "title": "Photo editor license (standard)",
+  "category": "software",
+  "price_cents": 9499,
+  "page_url": "https://devtools.shop.example/p/photo-editor-license-standard"
+ },
+ {
+  "product_id": "prod-0241",
+  "merchant_id": "m-saasly",
+  "title": "Photo editor license (pro)",
+  "category": "software",
+  "price_cents": 12499,
+  "page_url": "https://saasly.shop.example/p/photo-editor-license-pro"
+ },
+ {
+  "product_id": "prod-0242",
+  "merchant_id": "m-devtools",
+  "title": "Photo editor license (pro)",
+  "category": "software",
+  "price_cents": 12369,
+  "page_url": "https://devtools.shop.example/p/photo-editor-license-pro"
+ },
+ {
+  "product_id": "prod-0243",
+  "merchant_id": "m-saasly",
+  "title": "VPN, annual (1 device)",
+  "category": "software",
+  "price_cents": 5999,
+  "page_url": "https://saasly.shop.example/p/vpn-annual-1-device"
+ },
+ {
+  "product_id": "prod-0244",
+  "merchant_id": "m-devtools",
+  "title": "VPN, annual (1 device)",
+  "category": "software",
+  "price_cents": 5699,
+  "page_url": "https://devtools.shop.example/p/vpn-annual-1-device"
+ },
+ {
+  "product_id": "prod-0245",
+  "merchant_id": "m-saasly",
+  "title": "VPN, annual (5 devices)",
+  "category": "software",
+  "price_cents": 7499,
+  "page_url": "https://saasly.shop.example/p/vpn-annual-5-devices"
+ },
+ {
+  "product_id": "prod-0246",
+  "merchant_id": "m-devtools",
+  "title": "VPN, annual (5 devices)",
+  "category": "software",
+  "price_cents": 7419,
+  "page_url": "https://devtools.shop.example/p/vpn-annual-5-devices"
+ },
+ {
+  "product_id": "prod-0247",
+  "merchant_id": "m-saasly",
+  "title": "Note-taking app, annual (personal)",
+  "category": "software",
+  "price_cents": 4999,
+  "page_url": "https://saasly.shop.example/p/note-taking-app-annual-personal"
+ },
+ {
+  "product_id": "prod-0248",
+  "merchant_id": "m-devtools",
+  "title": "Note-taking app, annual (personal)",
+  "category": "software",
+  "price_cents": 4749,
+  "page_url": "https://devtools.shop.example/p/note-taking-app-annual-personal"
+ },
+ {
+  "product_id": "prod-0249",
+  "merchant_id": "m-saasly",
+  "title": "Note-taking app, annual (team)",
+  "category": "software",
+  "price_cents": 6249,
+  "page_url": "https://saasly.shop.example/p/note-taking-app-annual-team"
+ },
+ {
+  "product_id": "prod-0250",
+  "merchant_id": "m-devtools",
+  "title": "Note-taking app, annual (team)",
+  "category": "software",
+  "price_cents": 6189,
+  "page_url": "https://devtools.shop.example/p/note-taking-app-annual-team"
+ },
+ {
+  "product_id": "prod-0251",
+  "merchant_id": "m-cloudnine",
+  "title": "GPU compute credits ($50)",
+  "category": "cloud_compute",
+  "price_cents": 5000,
+  "page_url": "https://cloudnine.shop.example/p/gpu-compute-credits-50"
+ },
+ {
+  "product_id": "prod-0252",
+  "merchant_id": "m-devtools",
+  "title": "GPU compute credits ($50)",
+  "category": "cloud_compute",
+  "price_cents": 5000,
+  "page_url": "https://devtools.shop.example/p/gpu-compute-credits-50"
+ },
+ {
+  "product_id": "prod-0253",
+  "merchant_id": "m-cloudnine",
+  "title": "GPU compute credits ($100)",
+  "category": "cloud_compute",
+  "price_cents": 10000,
+  "page_url": "https://cloudnine.shop.example/p/gpu-compute-credits-100"
+ },
+ {
+  "product_id": "prod-0254",
+  "merchant_id": "m-devtools",
+  "title": "GPU compute credits ($100)",
+  "category": "cloud_compute",
+  "price_cents": 10000,
+  "page_url": "https://devtools.shop.example/p/gpu-compute-credits-100"
+ },
+ {
+  "product_id": "prod-0255",
+  "merchant_id": "m-cloudnine",
+  "title": "Object storage, monthly (100 GB)",
+  "category": "cloud_compute",
+  "price_cents": 999,
+  "page_url": "https://cloudnine.shop.example/p/object-storage-monthly-100-gb"
+ },
+ {
+  "product_id": "prod-0256",
+  "merchant_id": "m-devtools",
+  "title": "Object storage, monthly (100 GB)",
+  "category": "cloud_compute",
+  "price_cents": 949,
+  "page_url": "https://devtools.shop.example/p/object-storage-monthly-100-gb"
+ },
+ {
+  "product_id": "prod-0257",
+  "merchant_id": "m-cloudnine",
+  "title": "Object storage, monthly (1 TB)",
+  "category": "cloud_compute",
+  "price_cents": 1249,
+  "page_url": "https://cloudnine.shop.example/p/object-storage-monthly-1-tb"
+ },
+ {
+  "product_id": "prod-0258",
+  "merchant_id": "m-devtools",
+  "title": "Object storage, monthly (1 TB)",
+  "category": "cloud_compute",
+  "price_cents": 1239,
+  "page_url": "https://devtools.shop.example/p/object-storage-monthly-1-tb"
+ },
+ {
+  "product_id": "prod-0259",
+  "merchant_id": "m-cloudnine",
+  "title": "API calls bundle (10k calls)",
+  "category": "cloud_compute",
+  "price_cents": 1999,
+  "page_url": "https://cloudnine.shop.example/p/api-calls-bundle-10k-calls"
+ },
+ {
+  "product_id": "prod-0260",
+  "merchant_id": "m-devtools",
+  "title": "API calls bundle (10k calls)",
+  "category": "cloud_compute",
+  "price_cents": 1899,
+  "page_url": "https://devtools.shop.example/p/api-calls-bundle-10k-calls"
+ },
+ {
+  "product_id": "prod-0261",
+  "merchant_id": "m-cloudnine",
+  "title": "API calls bundle (100k calls)",
+  "category": "cloud_compute",
+  "price_cents": 2499,
+  "page_url": "https://cloudnine.shop.example/p/api-calls-bundle-100k-calls"
+ },
+ {
+  "product_id": "prod-0262",
+  "merchant_id": "m-devtools",
+  "title": "API calls bundle (100k calls)",
+  "category": "cloud_compute",
+  "price_cents": 2469,
+  "page_url": "https://devtools.shop.example/p/api-calls-bundle-100k-calls"
+ },
+ {
+  "product_id": "prod-0263",
+  "merchant_id": "m-cloudnine",
+  "title": "Managed database, monthly (starter)",
+  "category": "cloud_compute",
+  "price_cents": 2499,
+  "page_url": "https://cloudnine.shop.example/p/managed-database-monthly-starter"
+ },
+ {
+  "product_id": "prod-0264",
+  "merchant_id": "m-devtools",
+  "title": "Managed database, monthly (starter)",
+  "category": "cloud_compute",
+  "price_cents": 2369,
+  "page_url": "https://devtools.shop.example/p/managed-database-monthly-starter"
+ },
+ {
+  "product_id": "prod-0265",
+  "merchant_id": "m-cloudnine",
+  "title": "Managed database, monthly (standard)",
+  "category": "cloud_compute",
+  "price_cents": 3119,
+  "page_url": "https://cloudnine.shop.example/p/managed-database-monthly-standard"
+ },
+ {
+  "product_id": "prod-0266",
+  "merchant_id": "m-devtools",
+  "title": "Managed database, monthly (standard)",
+  "category": "cloud_compute",
+  "price_cents": 3089,
+  "page_url": "https://devtools.shop.example/p/managed-database-monthly-standard"
+ },
+ {
+  "product_id": "prod-0267",
+  "merchant_id": "m-tripwise",
+  "title": "Economy flight (domestic)",
+  "category": "travel",
+  "price_cents": 18999,
+  "page_url": "https://tripwise.shop.example/p/economy-flight-domestic"
+ },
+ {
+  "product_id": "prod-0268",
+  "merchant_id": "m-farefinder",
+  "title": "Economy flight (domestic)",
+  "category": "travel",
+  "price_cents": 18049,
+  "page_url": "https://farefinder.shop.example/p/economy-flight-domestic"
+ },
+ {
+  "product_id": "prod-0269",
+  "merchant_id": "m-tripwise",
+  "title": "Economy flight (regional)",
+  "category": "travel",
+  "price_cents": 23749,
+  "page_url": "https://tripwise.shop.example/p/economy-flight-regional"
+ },
+ {
+  "product_id": "prod-0270",
+  "merchant_id": "m-farefinder",
+  "title": "Economy flight (regional)",
+  "category": "travel",
+  "price_cents": 23509,
+  "page_url": "https://farefinder.shop.example/p/economy-flight-regional"
+ },
+ {
+  "product_id": "prod-0271",
+  "merchant_id": "m-tripwise",
+  "title": "Hotel night (standard room)",
+  "category": "travel",
+  "price_cents": 14999,
+  "page_url": "https://tripwise.shop.example/p/hotel-night-standard-room"
+ },
+ {
+  "product_id": "prod-0272",
+  "merchant_id": "m-farefinder",
+  "title": "Hotel night (standard room)",
+  "category": "travel",
+  "price_cents": 14249,
+  "page_url": "https://farefinder.shop.example/p/hotel-night-standard-room"
+ },
+ {
+  "product_id": "prod-0273",
+  "merchant_id": "m-tripwise",
+  "title": "Hotel night (king room)",
+  "category": "travel",
+  "price_cents": 18749,
+  "page_url": "https://tripwise.shop.example/p/hotel-night-king-room"
+ },
+ {
+  "product_id": "prod-0274",
+  "merchant_id": "m-farefinder",
+  "title": "Hotel night (king room)",
+  "category": "travel",
+  "price_cents": 18559,
+  "page_url": "https://farefinder.shop.example/p/hotel-night-king-room"
+ },
+ {
+  "product_id": "prod-0275",
+  "merchant_id": "m-tripwise",
+  "title": "Airport shuttle (one way)",
+  "category": "travel",
+  "price_cents": 3499,
+  "page_url": "https://tripwise.shop.example/p/airport-shuttle-one-way"
+ },
+ {
+  "product_id": "prod-0276",
+  "merchant_id": "m-farefinder",
+  "title": "Airport shuttle (one way)",
+  "category": "travel",
+  "price_cents": 3319,
+  "page_url": "https://farefinder.shop.example/p/airport-shuttle-one-way"
+ },
+ {
+  "product_id": "prod-0277",
+  "merchant_id": "m-tripwise",
+  "title": "Airport shuttle (round trip)",
+  "category": "travel",
+  "price_cents": 4379,
+  "page_url": "https://tripwise.shop.example/p/airport-shuttle-round-trip"
+ },
+ {
+  "product_id": "prod-0278",
+  "merchant_id": "m-farefinder",
+  "title": "Airport shuttle (round trip)",
+  "category": "travel",
+  "price_cents": 4339,
+  "page_url": "https://farefinder.shop.example/p/airport-shuttle-round-trip"
+ },
+ {
+  "product_id": "prod-0279",
+  "merchant_id": "m-tripwise",
+  "title": "Train ticket (standard)",
+  "category": "travel",
+  "price_cents": 6499,
+  "page_url": "https://tripwise.shop.example/p/train-ticket-standard"
+ },
+ {
+  "product_id": "prod-0280",
+  "merchant_id": "m-farefinder",
+  "title": "Train ticket (standard)",
+  "category": "travel",
+  "price_cents": 6169,
+  "page_url": "https://farefinder.shop.example/p/train-ticket-standard"
+ },
+ {
+  "product_id": "prod-0281",
+  "merchant_id": "m-tripwise",
+  "title": "Train ticket (first class)",
+  "category": "travel",
+  "price_cents": 8119,
+  "page_url": "https://tripwise.shop.example/p/train-ticket-first-class"
+ },
+ {
+  "product_id": "prod-0282",
+  "merchant_id": "m-farefinder",
+  "title": "Train ticket (first class)",
+  "category": "travel",
+  "price_cents": 8039,
+  "page_url": "https://farefinder.shop.example/p/train-ticket-first-class"
+ },
+ {
+  "product_id": "prod-0283",
+  "merchant_id": "m-tripwise",
+  "title": "Travel insurance (single trip)",
+  "category": "travel",
+  "price_cents": 4199,
+  "page_url": "https://tripwise.shop.example/p/travel-insurance-single-trip"
+ },
+ {
+  "product_id": "prod-0284",
+  "merchant_id": "m-farefinder",
+  "title": "Travel insurance (single trip)",
+  "category": "travel",
+  "price_cents": 3989,
+  "page_url": "https://farefinder.shop.example/p/travel-insurance-single-trip"
+ },
+ {
+  "product_id": "prod-0285",
+  "merchant_id": "m-tripwise",
+  "title": "Travel insurance (annual)",
+  "category": "travel",
+  "price_cents": 5249,
+  "page_url": "https://tripwise.shop.example/p/travel-insurance-annual"
+ },
+ {
+  "product_id": "prod-0286",
+  "merchant_id": "m-farefinder",
+  "title": "Travel insurance (annual)",
+  "category": "travel",
+  "price_cents": 5199,
+  "page_url": "https://farefinder.shop.example/p/travel-insurance-annual"
+ },
+ {
+  "product_id": "prod-0287",
+  "merchant_id": "m-giftly",
+  "title": "Digital gift card ($25)",
+  "category": "gift_cards",
+  "price_cents": 2500,
+  "page_url": "https://giftly.shop.example/p/digital-gift-card-25"
+ },
+ {
+  "product_id": "prod-0288",
+  "merchant_id": "m-voltmart",
+  "title": "Digital gift card ($25)",
+  "category": "gift_cards",
+  "price_cents": 2500,
+  "page_url": "https://voltmart.shop.example/p/digital-gift-card-25"
+ },
+ {
+  "product_id": "prod-0289",
+  "merchant_id": "m-giftly",
+  "title": "Digital gift card ($50)",
+  "category": "gift_cards",
+  "price_cents": 5000,
+  "page_url": "https://giftly.shop.example/p/digital-gift-card-50"
+ },
+ {
+  "product_id": "prod-0290",
+  "merchant_id": "m-voltmart",
+  "title": "Digital gift card ($50)",
+  "category": "gift_cards",
+  "price_cents": 5000,
+  "page_url": "https://voltmart.shop.example/p/digital-gift-card-50"
+ },
+ {
+  "product_id": "prod-0291",
+  "merchant_id": "m-giftly",
+  "title": "Digital gift card ($100)",
+  "category": "gift_cards",
+  "price_cents": 10000,
+  "page_url": "https://giftly.shop.example/p/digital-gift-card-100"
+ },
+ {
+  "product_id": "prod-0292",
+  "merchant_id": "m-voltmart",
+  "title": "Digital gift card ($100)",
+  "category": "gift_cards",
+  "price_cents": 10000,
+  "page_url": "https://voltmart.shop.example/p/digital-gift-card-100"
+ },
+ {
+  "product_id": "prod-0293",
+  "merchant_id": "m-giftly",
+  "title": "Restaurant gift card ($50)",
+  "category": "gift_cards",
+  "price_cents": 5000,
+  "page_url": "https://giftly.shop.example/p/restaurant-gift-card-50"
+ },
+ {
+  "product_id": "prod-0294",
+  "merchant_id": "m-voltmart",
+  "title": "Restaurant gift card ($50)",
+  "category": "gift_cards",
+  "price_cents": 5000,
+  "page_url": "https://voltmart.shop.example/p/restaurant-gift-card-50"
+ },
+ {
+  "product_id": "prod-0295",
+  "merchant_id": "m-giftly",
+  "title": "Restaurant gift card ($100)",
+  "category": "gift_cards",
+  "price_cents": 10000,
+  "page_url": "https://giftly.shop.example/p/restaurant-gift-card-100"
+ },
+ {
+  "product_id": "prod-0296",
+  "merchant_id": "m-voltmart",
+  "title": "Restaurant gift card ($100)",
+  "category": "gift_cards",
+  "price_cents": 10000,
+  "page_url": "https://voltmart.shop.example/p/restaurant-gift-card-100"
+ },
+ {
+  "product_id": "prod-0297",
+  "merchant_id": "m-streambox",
+  "title": "Movie rental (HD)",
+  "category": "digital_media",
+  "price_cents": 499,
+  "page_url": "https://streambox.shop.example/p/movie-rental-hd"
+ },
+ {
+  "product_id": "prod-0298",
+  "merchant_id": "m-pageturner",
+  "title": "Movie rental (HD)",
+  "category": "digital_media",
+  "price_cents": 469,
+  "page_url": "https://pageturner.shop.example/p/movie-rental-hd"
+ },
+ {
+  "product_id": "prod-0299",
+  "merchant_id": "m-streambox",
+  "title": "Movie rental (4K)",
+  "category": "digital_media",
+  "price_cents": 619,
+  "page_url": "https://streambox.shop.example/p/movie-rental-4k"
+ },
+ {
+  "product_id": "prod-0300",
+  "merchant_id": "m-pageturner",
+  "title": "Movie rental (4K)",
+  "category": "digital_media",
+  "price_cents": 609,
+  "page_url": "https://pageturner.shop.example/p/movie-rental-4k"
+ },
+ {
+  "product_id": "prod-0301",
+  "merchant_id": "m-streambox",
+  "title": "Ebook (bestseller)",
+  "category": "digital_media",
+  "price_cents": 999,
+  "page_url": "https://streambox.shop.example/p/ebook-bestseller"
+ },
+ {
+  "product_id": "prod-0302",
+  "merchant_id": "m-pageturner",
+  "title": "Ebook (bestseller)",
+  "category": "digital_media",
+  "price_cents": 949,
+  "page_url": "https://pageturner.shop.example/p/ebook-bestseller"
+ },
+ {
+  "product_id": "prod-0303",
+  "merchant_id": "m-streambox",
+  "title": "Ebook (classic)",
+  "category": "digital_media",
+  "price_cents": 1249,
+  "page_url": "https://streambox.shop.example/p/ebook-classic"
+ },
+ {
+  "product_id": "prod-0304",
+  "merchant_id": "m-pageturner",
+  "title": "Ebook (classic)",
+  "category": "digital_media",
+  "price_cents": 1239,
+  "page_url": "https://pageturner.shop.example/p/ebook-classic"
+ },
+ {
+  "product_id": "prod-0305",
+  "merchant_id": "m-streambox",
+  "title": "Music streaming, monthly (individual)",
+  "category": "digital_media",
+  "price_cents": 1099,
+  "page_url": "https://streambox.shop.example/p/music-streaming-monthly-individual"
+ },
+ {
+  "product_id": "prod-0306",
+  "merchant_id": "m-pageturner",
+  "title": "Music streaming, monthly (individual)",
+  "category": "digital_media",
+  "price_cents": 1039,
+  "page_url": "https://pageturner.shop.example/p/music-streaming-monthly-individual"
+ },
+ {
+  "product_id": "prod-0307",
+  "merchant_id": "m-streambox",
+  "title": "Music streaming, monthly (family)",
+  "category": "digital_media",
+  "price_cents": 1369,
+  "page_url": "https://streambox.shop.example/p/music-streaming-monthly-family"
+ },
+ {
+  "product_id": "prod-0308",
+  "merchant_id": "m-pageturner",
+  "title": "Music streaming, monthly (family)",
+  "category": "digital_media",
+  "price_cents": 1359,
+  "page_url": "https://pageturner.shop.example/p/music-streaming-monthly-family"
+ },
+ {
+  "product_id": "prod-0309",
+  "merchant_id": "m-streambox",
+  "title": "Audiobook (fiction)",
+  "category": "digital_media",
+  "price_cents": 1499,
+  "page_url": "https://streambox.shop.example/p/audiobook-fiction"
+ },
+ {
+  "product_id": "prod-0310",
+  "merchant_id": "m-pageturner",
+  "title": "Audiobook (fiction)",
+  "category": "digital_media",
+  "price_cents": 1419,
+  "page_url": "https://pageturner.shop.example/p/audiobook-fiction"
+ },
+ {
+  "product_id": "prod-0311",
+  "merchant_id": "m-streambox",
+  "title": "Audiobook (nonfiction)",
+  "category": "digital_media",
+  "price_cents": 1869,
+  "page_url": "https://streambox.shop.example/p/audiobook-nonfiction"
+ },
+ {
+  "product_id": "prod-0312",
+  "merchant_id": "m-pageturner",
+  "title": "Audiobook (nonfiction)",
+  "category": "digital_media",
+  "price_cents": 1849,
+  "page_url": "https://pageturner.shop.example/p/audiobook-nonfiction"
+ },
+ {
+  "product_id": "prod-0313",
+  "merchant_id": "m-deskdepot",
+  "title": "Printer paper (500 sheets)",
+  "category": "office_supplies",
+  "price_cents": 899,
+  "page_url": "https://deskdepot.shop.example/p/printer-paper-500-sheets"
+ },
+ {
+  "product_id": "prod-0314",
+  "merchant_id": "m-paperclip",
+  "title": "Printer paper (500 sheets)",
+  "category": "office_supplies",
+  "price_cents": 849,
+  "page_url": "https://paperclip.shop.example/p/printer-paper-500-sheets"
+ },
+ {
+  "product_id": "prod-0315",
+  "merchant_id": "m-deskdepot",
+  "title": "Printer paper (2,500 sheets)",
+  "category": "office_supplies",
+  "price_cents": 1119,
+  "page_url": "https://deskdepot.shop.example/p/printer-paper-2-500-sheets"
+ },
+ {
+  "product_id": "prod-0316",
+  "merchant_id": "m-paperclip",
+  "title": "Printer paper (2,500 sheets)",
+  "category": "office_supplies",
+  "price_cents": 1109,
+  "page_url": "https://paperclip.shop.example/p/printer-paper-2-500-sheets"
+ },
+ {
+  "product_id": "prod-0317",
+  "merchant_id": "m-deskdepot",
+  "title": "Gel pens (12-pack)",
+  "category": "office_supplies",
+  "price_cents": 799,
+  "page_url": "https://deskdepot.shop.example/p/gel-pens-12-pack"
+ },
+ {
+  "product_id": "prod-0318",
+  "merchant_id": "m-paperclip",
+  "title": "Gel pens (12-pack)",
+  "category": "office_supplies",
+  "price_cents": 759,
+  "page_url": "https://paperclip.shop.example/p/gel-pens-12-pack"
+ },
+ {
+  "product_id": "prod-0319",
+  "merchant_id": "m-deskdepot",
+  "title": "Gel pens (24-pack)",
+  "category": "office_supplies",
+  "price_cents": 999,
+  "page_url": "https://deskdepot.shop.example/p/gel-pens-24-pack"
+ },
+ {
+  "product_id": "prod-0320",
+  "merchant_id": "m-paperclip",
+  "title": "Gel pens (24-pack)",
+  "category": "office_supplies",
+  "price_cents": 989,
+  "page_url": "https://paperclip.shop.example/p/gel-pens-24-pack"
+ },
+ {
+  "product_id": "prod-0321",
+  "merchant_id": "m-deskdepot",
+  "title": "Sticky notes (12 pads)",
+  "category": "office_supplies",
+  "price_cents": 599,
+  "page_url": "https://deskdepot.shop.example/p/sticky-notes-12-pads"
+ },
+ {
+  "product_id": "prod-0322",
+  "merchant_id": "m-paperclip",
+  "title": "Sticky notes (12 pads)",
+  "category": "office_supplies",
+  "price_cents": 569,
+  "page_url": "https://paperclip.shop.example/p/sticky-notes-12-pads"
+ },
+ {
+  "product_id": "prod-0323",
+  "merchant_id": "m-deskdepot",
+  "title": "Sticky notes (24 pads)",
+  "category": "office_supplies",
+  "price_cents": 749,
+  "page_url": "https://deskdepot.shop.example/p/sticky-notes-24-pads"
+ },
+ {
+  "product_id": "prod-0324",
+  "merchant_id": "m-paperclip",
+  "title": "Sticky notes (24 pads)",
+  "category": "office_supplies",
+  "price_cents": 739,
+  "page_url": "https://paperclip.shop.example/p/sticky-notes-24-pads"
+ },
+ {
+  "product_id": "prod-0325",
+  "merchant_id": "m-deskdepot",
+  "title": "Toner cartridge (black)",
+  "category": "office_supplies",
+  "price_cents": 6999,
+  "page_url": "https://deskdepot.shop.example/p/toner-cartridge-black"
+ },
+ {
+  "product_id": "prod-0326",
+  "merchant_id": "m-paperclip",
+  "title": "Toner cartridge (black)",
+  "category": "office_supplies",
+  "price_cents": 6649,
+  "page_url": "https://paperclip.shop.example/p/toner-cartridge-black"
+ },
+ {
+  "product_id": "prod-0327",
+  "merchant_id": "m-deskdepot",
+  "title": "Toner cartridge (color set)",
+  "category": "office_supplies",
+  "price_cents": 8749,
+  "page_url": "https://deskdepot.shop.example/p/toner-cartridge-color-set"
+ },
+ {
+  "product_id": "prod-0328",
+  "merchant_id": "m-paperclip",
+  "title": "Toner cartridge (color set)",
+  "category": "office_supplies",
+  "price_cents": 8659,
+  "page_url": "https://paperclip.shop.example/p/toner-cartridge-color-set"
+ },
+ {
+  "product_id": "prod-0329",
+  "merchant_id": "m-deskdepot",
+  "title": "Notebooks (3-pack)",
+  "category": "office_supplies",
+  "price_cents": 1199,
+  "page_url": "https://deskdepot.shop.example/p/notebooks-3-pack"
+ },
+ {
+  "product_id": "prod-0330",
+  "merchant_id": "m-paperclip",
+  "title": "Notebooks (3-pack)",
+  "category": "office_supplies",
+  "price_cents": 1139,
+  "page_url": "https://paperclip.shop.example/p/notebooks-3-pack"
+ },
+ {
+  "product_id": "prod-0331",
+  "merchant_id": "m-deskdepot",
+  "title": "Notebooks (dotted)",
+  "category": "office_supplies",
+  "price_cents": 1499,
+  "page_url": "https://deskdepot.shop.example/p/notebooks-dotted"
+ },
+ {
+  "product_id": "prod-0332",
+  "merchant_id": "m-paperclip",
+  "title": "Notebooks (dotted)",
+  "category": "office_supplies",
+  "price_cents": 1479,
+  "page_url": "https://paperclip.shop.example/p/notebooks-dotted"
+ },
+ {
+  "product_id": "prod-0333",
+  "merchant_id": "m-wellrx",
+  "title": "Multivitamins (60 count)",
+  "category": "health",
+  "price_cents": 1999,
+  "page_url": "https://wellrx.shop.example/p/multivitamins-60-count"
+ },
+ {
+  "product_id": "prod-0334",
+  "merchant_id": "m-glowshop",
+  "title": "Multivitamins (60 count)",
+  "category": "health",
+  "price_cents": 1899,
+  "page_url": "https://glowshop.shop.example/p/multivitamins-60-count"
+ },
+ {
+  "product_id": "prod-0335",
+  "merchant_id": "m-wellrx",
+  "title": "Multivitamins (120 count)",
+  "category": "health",
+  "price_cents": 2499,
+  "page_url": "https://wellrx.shop.example/p/multivitamins-120-count"
+ },
+ {
+  "product_id": "prod-0336",
+  "merchant_id": "m-glowshop",
+  "title": "Multivitamins (120 count)",
+  "category": "health",
+  "price_cents": 2469,
+  "page_url": "https://glowshop.shop.example/p/multivitamins-120-count"
+ },
+ {
+  "product_id": "prod-0337",
+  "merchant_id": "m-wellrx",
+  "title": "First aid kit (home)",
+  "category": "health",
+  "price_cents": 2499,
+  "page_url": "https://wellrx.shop.example/p/first-aid-kit-home"
+ },
+ {
+  "product_id": "prod-0338",
+  "merchant_id": "m-glowshop",
+  "title": "First aid kit (home)",
+  "category": "health",
+  "price_cents": 2369,
+  "page_url": "https://glowshop.shop.example/p/first-aid-kit-home"
+ },
+ {
+  "product_id": "prod-0339",
+  "merchant_id": "m-wellrx",
+  "title": "First aid kit (travel)",
+  "category": "health",
+  "price_cents": 3119,
+  "page_url": "https://wellrx.shop.example/p/first-aid-kit-travel"
+ },
+ {
+  "product_id": "prod-0340",
+  "merchant_id": "m-glowshop",
+  "title": "First aid kit (travel)",
+  "category": "health",
+  "price_cents": 3089,
+  "page_url": "https://glowshop.shop.example/p/first-aid-kit-travel"
+ },
+ {
+  "product_id": "prod-0341",
+  "merchant_id": "m-wellrx",
+  "title": "Digital thermometer (oral)",
+  "category": "health",
+  "price_cents": 1499,
+  "page_url": "https://wellrx.shop.example/p/digital-thermometer-oral"
+ },
+ {
+  "product_id": "prod-0342",
+  "merchant_id": "m-glowshop",
+  "title": "Digital thermometer (oral)",
+  "category": "health",
+  "price_cents": 1419,
+  "page_url": "https://glowshop.shop.example/p/digital-thermometer-oral"
+ },
+ {
+  "product_id": "prod-0343",
+  "merchant_id": "m-wellrx",
+  "title": "Digital thermometer (forehead)",
+  "category": "health",
+  "price_cents": 1869,
+  "page_url": "https://wellrx.shop.example/p/digital-thermometer-forehead"
+ },
+ {
+  "product_id": "prod-0344",
+  "merchant_id": "m-glowshop",
+  "title": "Digital thermometer (forehead)",
+  "category": "health",
+  "price_cents": 1849,
+  "page_url": "https://glowshop.shop.example/p/digital-thermometer-forehead"
+ },
+ {
+  "product_id": "prod-0345",
+  "merchant_id": "m-wellrx",
+  "title": "Allergy relief (24 count)",
+  "category": "health",
+  "price_cents": 1299,
+  "page_url": "https://wellrx.shop.example/p/allergy-relief-24-count"
+ },
+ {
+  "product_id": "prod-0346",
+  "merchant_id": "m-glowshop",
+  "title": "Allergy relief (24 count)",
+  "category": "health",
+  "price_cents": 1229,
+  "page_url": "https://glowshop.shop.example/p/allergy-relief-24-count"
+ },
+ {
+  "product_id": "prod-0347",
+  "merchant_id": "m-wellrx",
+  "title": "Allergy relief (60 count)",
+  "category": "health",
+  "price_cents": 1619,
+  "page_url": "https://wellrx.shop.example/p/allergy-relief-60-count"
+ },
+ {
+  "product_id": "prod-0348",
+  "merchant_id": "m-glowshop",
+  "title": "Allergy relief (60 count)",
+  "category": "health",
+  "price_cents": 1599,
+  "page_url": "https://glowshop.shop.example/p/allergy-relief-60-count"
+ }
+]

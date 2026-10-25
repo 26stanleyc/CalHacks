@@ -1,0 +1,13 @@
+{
+  "lane": "identity",
+  "version": 0,
+  "rules": [
+    {"id": "identity.failed", "score": 0.95,
+     "description": "Identity mismatch or flagged person behind the agent.",
+     "when": {"feature": "i_identity_status", "op": ">=", "value": 2}},
+    {"id": "identity.thin_new_principal", "score": 0.08,
+     "description": "A brand-new person with a thin identity file. Too weak alone; adds to other signals.",
+     "when": {"all": [{"feature": "i_identity_status", "op": ">=", "value": 1},
+                      {"feature": "i_principal_age_s", "op": "<", "value": 600}]}}
+  ]
+}

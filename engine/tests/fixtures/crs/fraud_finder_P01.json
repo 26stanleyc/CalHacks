@@ -1,0 +1,60 @@
+{
+ "eam": {
+  "date_first_seen": "2016-03-02",
+  "longevity": 9,
+  "velocity": 1,
+  "popularity": 6
+ },
+ "dam": {
+  "date_first_seen": "1995-08-13",
+  "longevity": 10,
+  "velocity": 1,
+  "popularity": 10
+ },
+ "risk": {
+  "score": 11,
+  "tumbling_risk": 0,
+  "query_id": "calhacks-P01-0001",
+  "domain": {
+   "domain_risk_score": 0
+  },
+  "ip": {
+   "routing_type": "fixed",
+   "organization": "comcast cable communications llc",
+   "proxy_type": "",
+   "hosting_facility": false,
+   "latitude": "37.34",
+   "longitude": "-121.89"
+  },
+  "postal": {
+   "first_name_match": "match",
+   "last_name_match": "match",
+   "street_match": "match",
+   "city_match": "match",
+   "zip_match": "match",
+   "address_type": "Street",
+   "deliverability": "deliverable",
+   "ip_postal_distance": "5 miles"
+  },
+  "phone": {
+   "line_type": "mobile",
+   "carrier": "VERIZON WIRELESS",
+   "status": "valid",
+   "prepaid": false,
+   "owner": {
+    "first_name_match": "match",
+    "last_name_match": "match",
+    "street_match": "match",
+    "city_match": "match",
+    "zip_match": "match",
+    "type": "person"
+   }
+  }
+ },
+ "email_validation": {
+  "address": "margaret.okafor@example.com",
+  "status": "valid",
+  "status_code": 50,
+  "domain_type": "freeisp"
+ }
+}

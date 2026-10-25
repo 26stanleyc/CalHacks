@@ -1,0 +1,173 @@
+[
+ {
+  "seed": 100,
+  "rounds": 6,
+  "real": false,
+  "new_attackers": 18,
+  "llm_spend_usd": 0.0,
+  "llm_calls": 664,
+  "llm_tokens": 0,
+  "llm_failures": {},
+  "by_contender": {
+   "full": {
+    "new_first_round_usd": 7862.624,
+    "new_first_3_rounds_usd": 8574.9,
+    "all_fraud_usd": 54596.518,
+    "honest_cost_usd": 521.1855,
+    "total_cost_usd": 55117.703499999996,
+    "fp_mean": 0.012813093109270524,
+    "fp_max": 0.043478260869565216
+   },
+   "xgboost_retrained": {
+    "new_first_round_usd": 12167.282,
+    "new_first_3_rounds_usd": 12991.998,
+    "all_fraud_usd": 66223.2,
+    "honest_cost_usd": 645.5152500000003,
+    "total_cost_usd": 66868.71525000001,
+    "fp_mean": 0.018957811147773215,
+    "fp_max": 0.04697986577181208
+   },
+   "xgboost_frozen": {
+    "new_first_round_usd": 24699.086,
+    "new_first_3_rounds_usd": 32368.45,
+    "all_fraud_usd": 111548.186,
+    "honest_cost_usd": 1264.1895000000002,
+    "total_cost_usd": 112812.3755,
+    "fp_mean": 0.03176345960559559,
+    "fp_max": 0.04697986577181208
+   },
+   "static_rules": {
+    "new_first_round_usd": 25534.69,
+    "new_first_3_rounds_usd": 34357.27,
+    "all_fraud_usd": 122294.57400000001,
+    "honest_cost_usd": 430.55775,
+    "total_cost_usd": 122725.13175,
+    "fp_mean": 0.008907494282457807,
+    "fp_max": 0.016666666666666666
+   },
+   "rules_plus_xgboost": {
+    "new_first_round_usd": 11868.702,
+    "new_first_3_rounds_usd": 12693.418,
+    "all_fraud_usd": 56968.384000000005,
+    "honest_cost_usd": 1076.073,
+    "total_cost_usd": 58044.457,
+    "fp_mean": 0.02786530543023102,
+    "fp_max": 0.050335570469798654
+   }
+  }
+ },
+ {
+  "seed": 101,
+  "rounds": 6,
+  "real": false,
+  "new_attackers": 18,
+  "llm_spend_usd": 0.0,
+  "llm_calls": 648,
+  "llm_tokens": 0,
+  "llm_failures": {},
+  "by_contender": {
+   "full": {
+    "new_first_round_usd": 6473.088000000001,
+    "new_first_3_rounds_usd": 6744.17,
+    "all_fraud_usd": 57414.972,
+    "honest_cost_usd": 238.49249999999992,
+    "total_cost_usd": 57653.4645,
+    "fp_mean": 0.0061409395973154365,
+    "fp_max": 0.010067114093959731
+   },
+   "xgboost_retrained": {
+    "new_first_round_usd": 5769.1359999999995,
+    "new_first_3_rounds_usd": 6176.31,
+    "all_fraud_usd": 58866.61,
+    "honest_cost_usd": 728.745,
+    "total_cost_usd": 59595.355,
+    "fp_mean": 0.016696495152870992,
+    "fp_max": 0.04
+   },
+   "xgboost_frozen": {
+    "new_first_round_usd": 22801.94,
+    "new_first_3_rounds_usd": 25497.958,
+    "all_fraud_usd": 94879.20800000001,
+    "honest_cost_usd": 2414.1307500000003,
+    "total_cost_usd": 97293.33875,
+    "fp_mean": 0.04633855331841909,
+    "fp_max": 0.07718120805369127
+   },
+   "static_rules": {
+    "new_first_round_usd": 25777.754,
+    "new_first_3_rounds_usd": 29233.293999999998,
+    "all_fraud_usd": 109344.036,
+    "honest_cost_usd": 467.3632499999999,
+    "total_cost_usd": 109811.39924999999,
+    "fp_mean": 0.007248322147651007,
+    "fp_max": 0.013422818791946308
+   },
+   "rules_plus_xgboost": {
+    "new_first_round_usd": 5359.722,
+    "new_first_3_rounds_usd": 5766.896,
+    "all_fraud_usd": 48338.412000000004,
+    "honest_cost_usd": 1196.1082499999998,
+    "total_cost_usd": 49534.52025,
+    "fp_mean": 0.023944817300522,
+    "fp_max": 0.05
+   }
+  }
+ },
+ {
+  "seed": 102,
+  "rounds": 6,
+  "real": false,
+  "new_attackers": 18,
+  "llm_spend_usd": 0.0,
+  "llm_calls": 618,
+  "llm_tokens": 0,
+  "llm_failures": {},
+  "by_contender": {
+   "full": {
+    "new_first_round_usd": 8149.715999999999,
+    "new_first_3_rounds_usd": 8639.142,
+    "all_fraud_usd": 44447.666,
+    "honest_cost_usd": 138.20774999999995,
+    "total_cost_usd": 44585.87375,
+    "fp_mean": 0.006133558307471351,
+    "fp_max": 0.010033444816053512
+   },
+   "xgboost_retrained": {
+    "new_first_round_usd": 8496.787999999999,
+    "new_first_3_rounds_usd": 8934.154,
+    "all_fraud_usd": 52188.27,
+    "honest_cost_usd": 406.3222500000001,
+    "total_cost_usd": 52594.592249999994,
+    "fp_mean": 0.009489414163327207,
+    "fp_max": 0.023333333333333334
+   },
+   "xgboost_frozen": {
+    "new_first_round_usd": 25988.863999999998,
+    "new_first_3_rounds_usd": 31772.106,
+    "all_fraud_usd": 92104.28,
+    "honest_cost_usd": 953.0939999999999,
+    "total_cost_usd": 93057.37400000001,
+    "fp_mean": 0.018398741550915466,
+    "fp_max": 0.030100334448160536
+   },
+   "static_rules": {
+    "new_first_round_usd": 28461.92,
+    "new_first_3_rounds_usd": 32331.95,
+    "all_fraud_usd": 91323.086,
+    "honest_cost_usd": 374.6505,
+    "total_cost_usd": 91697.7365,
+    "fp_mean": 0.008930067190936756,
+    "fp_max": 0.013513513513513514
+   },
+   "rules_plus_xgboost": {
+    "new_first_round_usd": 8441.264000000001,
+    "new_first_3_rounds_usd": 8878.63,
+    "all_fraud_usd": 38096.916,
+    "honest_cost_usd": 780.9727499999999,
+    "total_cost_usd": 38877.88875,
+    "fp_mean": 0.018419481354263963,
+    "fp_max": 0.03333333333333333
+   }
+  }
+ }
+]

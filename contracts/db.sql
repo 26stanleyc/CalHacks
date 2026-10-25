@@ -64,6 +64,7 @@ create table if not exists settlements (
     tx_hash  text,
     network  text not null
 );
+alter table settlements add column if not exists reason text not null default '';  -- SettlementResult.reason
 
 create table if not exists rulebook_versions (
     id          bigserial primary key,

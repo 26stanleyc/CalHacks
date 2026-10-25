@@ -1,0 +1,4 @@
+swarm            exploit_max=4.35±0.96 exploit_mean=1.39±0.15 defended=0.0/24 heldout_static=0.809 heldout_swarm=2.33±0.96
+swarm+shelves    exploit_max=4.28±0.96 exploit_mean=1.35±0.15 defended=0.0/24 heldout_static=0.762 heldout_swarm=1.88±0.95
+tagteam-noshelf  exploit_max=4.35±0.96 exploit_mean=1.34±0.16 defended=1.4/24 heldout_static=0.757 heldout_swarm=2.14±1.07
+tagteam-arena    exploit_max=2.89±0.75 exploit_mean=0.85±0.06 defended=2.8/24 heldout_static=0.311 heldout_swarm=1.47±0.85

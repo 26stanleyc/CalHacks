@@ -102,3 +102,68 @@ def test_db_sql_applies_cleanly():
             conn.execute(DB_SQL.read_text())
         finally:
             conn.execute("drop schema if exists contracts_check cascade")
+
+
+def test_stub_engine_with_an_empty_allowlist_refuses_everyone():
+    from contracts.entrypoints import NotAllowed
+
+    with pytest.raises(NotAllowed):
+        stubs.StubEngine(allowlist=set()).run_round(requested_by="stub-team")
+
+
+def test_mock_llm_reports_usage():
+    usage = MockLLM().usage()
+    assert {"calls", "input_tokens", "output_tokens", "cost_usd"} <= set(usage)
+
+
+def test_stub_settlement_says_why_it_did_not_settle():
+    tx = conformance.sample_tx()
+    allowed = schemas.Decision(tx_id=tx.tx_id, action=schemas.Action.ALLOW, weighted_score=0.0, votes=[])
+    blocked = allowed.model_copy(update={"action": schemas.Action.BLOCK})
+    assert stubs.StubSettlement().settle(tx, allowed).reason == ""
+    assert stubs.StubSettlement().settle(tx, blocked).reason
+
+
+def test_http_explain_of_an_unknown_tx_is_a_404_and_a_key_error_for_the_client():
+    from fastapi.testclient import TestClient
+
+    from contracts.api import HttpEngine, create_app
+
+    class Missing(stubs.StubEngine):
+        def explain(self, tx_id):
+            raise KeyError(tx_id)
+
+    client = TestClient(create_app(Missing()))
+    assert client.get("/explain/nope").status_code == 404
+    with pytest.raises(KeyError):
+        HttpEngine(client=client).explain("nope")
+
+
+def test_attack_feedback_says_whether_the_money_moved_and_defaults_to_unknown():
+    assert schemas.AttackFeedback(tx_id="t", outcome=schemas.Action.ALLOW).settled is None
+    assert schemas.AttackFeedback(tx_id="t", outcome=schemas.Action.STEP_UP, settled=True).settled is True
+
+
+def test_round_metrics_carry_total_cost_and_default_it_to_zero():
+    metrics = schemas.RoundMetrics(run_id="r", seed=1, round=1)
+    assert metrics.total_cost_cents == 0
+    assert schemas.RoundMetrics(run_id="r", seed=1, round=1, total_cost_cents=1234).total_cost_cents == 1234
+
+
+def test_spawned_attackers_have_roles_on_the_other_family():
+    for lane in ("timing", "graph", "identity", "velocity", "mandate"):
+        assert config.family(config.MODEL_ROLES[f"spawn_{lane}"]) != config.family(config.MODEL_ROLES[lane])
+    assert config.MODEL_ROLES["held_out"] not in {m for r, m in config.MODEL_ROLES.items() if r != "held_out"}
+
+
+def test_decision_carries_an_optional_crs_report():
+    tx = conformance.sample_tx()
+    plain = schemas.Decision(tx_id=tx.tx_id, action=schemas.Action.ALLOW, weighted_score=0.0, votes=[])
+    assert plain.crs is None
+    report = schemas.CrsReport(tx_id=tx.tx_id, score=0.5, band=(0.3, 0.7), decision=schemas.Action.STEP_UP, reasons="test",
+                               tool_calls=[schemas.ToolCall(tool="crs_identity_verification", output_summary="review")])
+    checked = plain.model_copy(update={"crs": report})
+    assert schemas.Decision.model_validate_json(checked.model_dump_json()).crs == report
+    assert report.watch is None and report.hidden == []
+    watched = report.model_copy(update={"watch": "on_list", "tool_calls": []})
+    assert schemas.CrsReport.model_validate_json(watched.model_dump_json()).watch == "on_list"
