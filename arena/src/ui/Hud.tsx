@@ -137,9 +137,8 @@ export function StageBanner() {
   const label = runs.baseline.label;
   const them = runTotals(runs.before);
   const us = runTotals(runs.after);
-  const worst = flowByRound(runs.before)
-    .map((f, i) => ({ net: f.net, round: i + 1 }))
-    .reduce((w, f) => (f.net < w.net ? f : w));
+  // The first round the baseline lost money overall, not its worst one.
+  const firstNegative = flowByRound(runs.before).findIndex((f) => f.net < 0) + 1;
   const saved = them.stolen - us.stolen;
   const ratio = them.net > 0 ? us.net / them.net : null;
 
@@ -148,7 +147,7 @@ export function StageBanner() {
       {showDeploy && (
         <p className="deploy-note" role="status">
           <b>TagTeam deployed.</b> Without it, {shortName(label)} netted {money(them.net)}
-          {worst.net < 0 ? ` and went negative in round ${worst.round}` : ""}. Same payments, same attackers.
+          {firstNegative > 0 ? `, first going negative in round ${firstNegative}` : ""}. Same payments, same attackers.
         </p>
       )}
       {atEnd && (

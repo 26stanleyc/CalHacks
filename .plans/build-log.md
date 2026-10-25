@@ -359,6 +359,35 @@ The engine suite passed: 58 passed, 3 skipped.
 
 **Demo angle:** ⭐ the before/after. Play from the start at 4×. XGBoost's net collapses to negative by round 4, TagTeam deploys, and the outline bars show it holding steady on the same payments. Say plainly: 4 rounds, one seed, XGBoost untrained in round 1.
 
+### Sat Oct 24, 20:35 · Arena on the 20-round real run · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- **20-round replay and baseline.** The arena now plays run h2h-real-42-202610241732 from the sister session.
+
+  | | XGBoost (trained once) | TagTeam |
+  |---|---|---|
+  | Net | −$43,919 | $376,121 |
+  | Fraud let through | $471,963 | $50,014 |
+  | Honest shoppers flagged | 406 | 71 |
+
+  TagTeam's net beats XGBoost's in 19 of 20 rounds.
+- **Crowded shelves.** Up to 8 attackers share a shelf in this run, so past seven they now stand evenly round a ring instead of stacking.
+- **Honest notes.**
+  - Attack money doesn't rise every round here. The timeline note now says where it peaks: $7,871 in round 1, up to $58,408 in round 6.
+  - The deploy note gives the first round XGBoost went negative (4), not its worst one.
+- **Loss outlines.** XGBoost's outline under a TagTeam bar turns translucent red when XGBoost lost money that round. Grey on the dark panel had read as an empty black box.
+- Earlier today, also on this branch: colour roles (blue TagTeam, grey XGBoost, red losses), a two-group legend, the timeline key, a buyer-side injection slip on the overview, and live shelf catch rates shared by the tiles, shelf map and shelf card.
+
+**Proof:**
+- `npx tsc -b` and `npm run build` pass.
+- In the browser:
+  - all 40 timeline segments render;
+  - 8 attackers fit on one shelf, 0.44 apart at the closest;
+  - step 0 hands off to TagTeam round 1 with "XGBoost netted −$43,919, first going negative in round 4";
+  - 10 red loss outlines show.
+- The totals above are recomputed directly from the two JSON files.
+
+**Demo angle:** ⭐ the before/after at scale. At 1× each half runs about 9 minutes, so play at 8× (about 2¼ minutes each) or click ahead on the timeline. Say plainly: one seed, XGBoost trained once and untrained in round 1.
+
 ---
 
 ## Entry template

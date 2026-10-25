@@ -46,9 +46,11 @@ export function Timeline() {
     }));
   }
   const current = segments.findIndex((s) => s.stage === stage && s.index === round);
-  // Attack money grows round by round, so a steady net means the defense is keeping up.
+  // Attack money ramps up over the run, so a steady net under heavier attack means the defense is
+  // keeping up. Say where it peaks rather than assuming it rises every round.
   const attempted = compare ? flowByRound(runs!.after).map((f) => f.attempted) : [];
-  const growing = attempted.length > 1 && attempted[attempted.length - 1] > attempted[0] * 1.2;
+  const peak = attempted.reduce((best, v, i) => (v > attempted[best] ? i : best), 0);
+  const growing = attempted.length > 1 && attempted[peak] > attempted[0] * 1.2;
   const beforeCount = compare ? runs!.before!.rounds.length : 0;
 
   // Net can go negative, so in comparison mode bars hang from a zero line spanning every value.
@@ -98,7 +100,7 @@ export function Timeline() {
                 title={`${who}: ${what}${extra.replace("; ", "\n")}`}
               >
                 {compare && <span className="zero" style={{ bottom: `${zero}%` }} />}
-                {s.ghost !== null && <span className="ghost" style={netBox(s.ghost)} />}
+                {s.ghost !== null && <span className={`ghost${s.ghost < 0 ? " loss" : ""}`} style={netBox(s.ghost)} />}
                 <span
                   className="fill"
                   style={
@@ -145,8 +147,8 @@ export function Timeline() {
             <span><i className="negative" /> More stolen than paid</span>
             {growing && (
               <span className="growth">
-                Attacks grow each round: {money(attempted[0])} tried in round 1, {money(attempted[attempted.length - 1])} in round{" "}
-                {attempted.length}. A steady net means the defense is keeping up.
+                Attacks ramp up: {money(attempted[0])} tried in round 1, peaking at {money(attempted[peak])} in round {peak + 1}.
+                A steady net under heavier attack means the defense is keeping up.
               </span>
             )}
           </p>
