@@ -14,6 +14,7 @@ export function toBaselineReplay(replay: Replay, baseline: Baseline): Replay {
 
     const waves = r.waves.map((w) => ({
       ...w,
+      retunes: [], // attackers retuned after TagTeam's catches, not the baseline's
       payments: w.payments.map((p): Payment => {
         const d = baseline.decisions[p.tx_id] ?? { action: "allow", settled: true };
         if (p.is_fraud) {
@@ -58,18 +59,23 @@ export function toBaselineReplay(replay: Replay, baseline: Baseline): Replay {
 
 // Money that got through in each round, split into honest and stolen. Comparable across
 // defenses on the same traffic. Net is honest money through minus money stolen: blocking an
-// honest shopper costs the payment they couldn't make, so higher is better.
+// honest shopper costs the payment they couldn't make, so higher is better. Lost is what the
+// defense cost: fraud that got through plus honest payments it stopped (lower is better).
 export const flowByRound = (replay: Replay) =>
   replay.rounds.map((r) => {
     let honest = 0;
     let stolen = 0;
+    let stopped = 0; // honest money stopped (blocked, or abandoned at a step-up)
     let attempted = 0; // fraud money tried, whether or not it got through
     for (const w of r.waves)
       for (const p of w.payments) {
         if (p.is_fraud) attempted += p.amount_cents;
-        if (!p.settled) continue;
+        if (!p.settled) {
+          if (!p.is_fraud && !p.breach) stopped += p.amount_cents;
+          continue;
+        }
         if (p.is_fraud) stolen += p.amount_cents;
         else honest += p.amount_cents;
       }
-    return { honest, stolen, attempted, net: honest - stolen };
+    return { honest, stolen, stopped, attempted, net: honest - stolen, lost: stolen + stopped };
   });

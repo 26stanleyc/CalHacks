@@ -78,3 +78,7 @@ export function attackerName(name: string): string {
 
 // Engine rule ids look like "timing.rapid_fire"; show "rapid fire". Mock rules are already prose.
 export const ruleName = (id: string) => id.replace(/^[a-z]+\./, "").replace(/_/g, " ");
+
+// How the baseline's numbers compare with TagTeam's: its decisions on TagTeam's recorded payments, or
+// its own live run against the same attackers (Baseline.live).
+export const sameWhat = (live?: boolean) => (live ? "against the same attackers" : "on the same payments");

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
-import type { Lane } from "../data/types";
+import type { Actor } from "../data/types";
 import { C } from "../palette";
 import { useArena } from "../store";
 import { Board } from "./Board";
@@ -41,7 +41,7 @@ function Cast() {
   // Event times each creature reacts to: throws for devils and shoppers, zaps for angels.
   const { throws, zaps, shopperThrows } = useMemo(() => {
     const throws = new Map<string, number[]>();
-    const zaps = new Map<Lane, number[]>();
+    const zaps = new Map<Actor, number[]>();
     const shopperThrows = SHOPPER_SPOTS.map(() => [] as number[]);
     for (const c of model.coins) {
       if (!c.drawn) continue;
@@ -63,13 +63,14 @@ function Cast() {
         const learns = !round.metrics.frozen && (a === "orchestrator" || (round.rulebooks.find((r) => r.lane === a)?.added ?? 0) > 0);
         return (
           <group key={a} position={p} rotation-y={Math.atan2(p[0], p[2])}>
-            <Angel actor={a} pos={[0, 0, 0]} zaps={a === "orchestrator" ? [] : zaps.get(a) ?? []} learns={learns} order={i} />
+            <Angel actor={a} pos={[0, 0, 0]} zaps={zaps.get(a) ?? []} learns={learns} order={i} />
           </group>
         );
       })}
+      {/* Keyed by attacker alone: most devils carry over between rounds, so only new ones mount. */}
       {model.devils.map((d) => (
         <Devil
-          key={`${roundIndex}-${d.attacker.attacker_id}`}
+          key={d.attacker.attacker_id}
           id={d.attacker.attacker_id}
           name={attackerName(d.attacker.name)}
           source={d.attacker.source}

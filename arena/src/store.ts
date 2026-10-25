@@ -33,10 +33,14 @@ export interface Hover {
 // "after" is TagTeam. Without a baseline file there is only "after".
 export type Stage = "before" | "after";
 
+// The data sets the arena can play (App.tsx): PaySim against a live XGBoost is the default.
+export type DataSet = "paysim" | "marketplace" | "real" | "eth";
+
 export interface Runs {
   after: Replay;
   before: Replay | null;
   baseline: Baseline | null;
+  dataset: DataSet;
 }
 
 interface ArenaState {

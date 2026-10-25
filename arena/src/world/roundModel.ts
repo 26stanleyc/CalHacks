@@ -2,7 +2,7 @@
 // appears or leaves, each payment's flight, spawn beams and news drops. Everything is a
 // function of the round-local clock, so scrubbing and replay speed come for free.
 
-import type { Actor, AttackerInfo, Lane, Payment, Replay, ShelfId } from "../data/types";
+import type { Actor, AttackerInfo, Payment, Replay, ShelfId } from "../data/types";
 import { FLIGHT, LEARN_START, THROW_WINDOW, waveStart } from "../store";
 import { GATE, SHOPPER_SPOTS, shelfSlot, type Vec3 } from "./layout";
 
@@ -23,7 +23,7 @@ export interface CoinFlight {
   intercept: number; // when a blocked coin is zapped
   land: number;
   outcome: Outcome;
-  zappers: Lane[];
+  zappers: Actor[]; // who fires at a stopped coin
   attack: boolean;
   drawn: boolean; // only a readable sample of coins is drawn; all of them count
 }
@@ -41,6 +41,7 @@ export interface NewsFall {
 
 export interface RoundModel {
   devils: DevilPlacement[];
+  slots: Map<string, number>; // each devil's spot on its shelf, carried into the next round
   coins: CoinFlight[];
   beams: SpawnBeam[];
   news: NewsFall[];
@@ -67,19 +68,14 @@ const hash = (s: string) => {
   return (h >>> 0) / 4294967296;
 };
 
-export function buildRoundModel(replay: Replay, index: number): RoundModel {
+// Who stands on the board in a round: attackers that ran, plus those kept on a shelf last round
+// but not drawn this round (idle). Real exports can list an attacker twice; keep one each.
+const castCache = new WeakMap<Replay, AttackerInfo[][]>();
+function castOf(replay: Replay, index: number): AttackerInfo[] {
+  let cached = castCache.get(replay);
+  if (!cached) castCache.set(replay, (cached = []));
+  if (cached[index]) return cached[index];
   const round = replay.rounds[index];
-
-  const newIds = new Set<string>([
-    ...round.actions.flatMap((a) => (a.attacker_id ? [a.attacker_id] : [])),
-    ...round.news.flatMap((n) => n.attacker_ids),
-  ]);
-  const kept = new Set(round.shelves.flatMap((s) => [...s.attacker_ids, ...(s.outsider_slot ? [s.outsider_slot] : [])]));
-
-  // Slots per shelf: outsider in the middle, everyone else around it.
-  const bySlot: Record<ShelfId, number> = {};
-  const outsiderShelf = new Map(round.shelves.filter((s) => s.outsider_slot).map((s) => [s.outsider_slot!, s.shelf]));
-  // Attackers kept in the arena but not drawn this round still stand on their shelves, idle.
   const ran = new Set(round.attackers.map((a) => a.attacker_id));
   const idle =
     index > 0
@@ -88,9 +84,72 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
           .filter((id) => !ran.has(id))
           .flatMap((id) => latestAttacker(replay, index, id)?.info ?? [])
       : [];
-  // Real exports can list an attacker twice in a round; keep one devil per attacker.
-  const unique = [...new Map([...round.attackers, ...idle].map((a) => [a.attacker_id, a])).values()];
-  const sorted = unique.sort((a, b) => Number(b.source === "outsider") - Number(a.source === "outsider"));
+  return (cached[index] = [...new Map([...round.attackers, ...idle].map((a) => [a.attacker_id, a])).values()]);
+}
+
+// Spots round each shelf's middle, fixed for the whole run: six, or more if the shelf ever holds more.
+const ringCache = new WeakMap<Replay, Map<ShelfId, number>>();
+function ringSizes(replay: Replay): Map<ShelfId, number> {
+  let sizes = ringCache.get(replay);
+  if (sizes) return sizes;
+  sizes = new Map();
+  for (let i = 0; i < replay.rounds.length; i++) {
+    const count = new Map<ShelfId, number>();
+    for (const a of castOf(replay, i)) count.set(a.shelf, (count.get(a.shelf) ?? 0) + 1);
+    for (const [shelf, n] of count) sizes.set(shelf, Math.max(sizes.get(shelf) ?? 6, n - 1));
+  }
+  ringCache.set(replay, sizes);
+  return sizes;
+}
+
+export function buildRoundModel(replay: Replay, index: number): RoundModel {
+  const round = replay.rounds[index];
+
+  const newIds = new Set<string>([
+    ...round.actions.flatMap((a) => (a.attacker_id ? [a.attacker_id] : [])),
+    ...round.news.flatMap((n) => n.attacker_ids),
+  ]);
+  const kept = new Set(round.shelves.flatMap((s) => [...s.attacker_ids, ...(s.outsider_slot ? [s.outsider_slot] : [])]));
+  const outsiderShelf = new Map(round.shelves.filter((s) => s.outsider_slot).map((s) => [s.outsider_slot!, s.shelf]));
+  const ran = new Set(round.attackers.map((a) => a.attacker_id));
+  const unique = castOf(replay, index);
+
+  // Spots: the outsider holding a shelf's outsider spot stands in the middle; everyone else keeps
+  // last round's spot on the same shelf while it's free; newcomers (including devils that switched
+  // shelves) fill the free spots in the order they arrived.
+  const firstSeen = new Map<string, number>();
+  replay.rounds.slice(0, index + 1).forEach((r, i) =>
+    r.attackers.forEach((a) => {
+      if (!firstSeen.has(a.attacker_id)) firstSeen.set(a.attacker_id, i);
+    }),
+  );
+  const prev = index > 0 ? getRoundModel(replay, index - 1) : null;
+  const prevShelf = new Map(prev?.devils.map((d) => [d.attacker.attacker_id, d.attacker.shelf]));
+  const slots = new Map<string, number>();
+  const byShelf = new Map<ShelfId, AttackerInfo[]>();
+  for (const a of unique) byShelf.set(a.shelf, [...(byShelf.get(a.shelf) ?? []), a]);
+  for (const [shelf, list] of byShelf) {
+    const taken = new Set<number>();
+    const claim = (id: string, slot: number) => {
+      slots.set(id, slot);
+      taken.add(slot);
+    };
+    const centre = list.find((a) => a.source === "outsider" && outsiderShelf.get(a.attacker_id) === shelf);
+    if (centre) claim(centre.attacker_id, 0);
+    for (const a of list) {
+      const was = prevShelf.get(a.attacker_id) === shelf ? prev!.slots.get(a.attacker_id) : undefined;
+      if (a !== centre && was !== undefined && !taken.has(was)) claim(a.attacker_id, was);
+    }
+    list
+      .filter((a) => !slots.has(a.attacker_id))
+      .sort((a, b) => firstSeen.get(a.attacker_id)! - firstSeen.get(b.attacker_id)! || a.attacker_id.localeCompare(b.attacker_id))
+      .forEach((a) => {
+        let s = 0;
+        while (taken.has(s)) s++;
+        claim(a.attacker_id, s);
+      });
+  }
+  const ring = ringSizes(replay);
 
   const retunes = new Map<string, { at: number; changed: boolean }[]>();
   round.waves.forEach((w) =>
@@ -101,24 +160,14 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
     }),
   );
 
-  const perShelf = new Map<ShelfId, number>();
-  for (const a of sorted) perShelf.set(a.shelf, (perShelf.get(a.shelf) ?? 0) + 1);
-  const devils: DevilPlacement[] = sorted.map((a) => {
-    let slot: number;
-    if (a.source === "outsider" && outsiderShelf.get(a.attacker_id) === a.shelf) slot = 0;
-    else {
-      bySlot[a.shelf] = (bySlot[a.shelf] ?? 0) + 1;
-      slot = bySlot[a.shelf];
-    }
-    return {
-      attacker: a,
-      pos: shelfSlot(a.shelf, slot, (perShelf.get(a.shelf) ?? 0) + 1),
-      appear: newIds.has(a.attacker_id) ? SPAWN_POP + hash(a.attacker_id) * 0.6 : 0,
-      leave: kept.has(a.attacker_id) ? null : LEARN_START + 0.5 + hash(a.attacker_id) * 1.2,
-      retunes: retunes.get(a.attacker_id) ?? [],
-      idle: !ran.has(a.attacker_id),
-    };
-  });
+  const devils: DevilPlacement[] = unique.map((a) => ({
+    attacker: a,
+    pos: shelfSlot(a.shelf, slots.get(a.attacker_id)!, ring.get(a.shelf)!),
+    appear: newIds.has(a.attacker_id) ? SPAWN_POP + hash(a.attacker_id) * 0.6 : 0,
+    leave: kept.has(a.attacker_id) ? null : LEARN_START + 0.5 + hash(a.attacker_id) * 1.2,
+    retunes: retunes.get(a.attacker_id) ?? [],
+    idle: !ran.has(a.attacker_id),
+  }));
   const devilPos = new Map(devils.map((d) => [d.attacker.attacker_id, d.pos]));
 
   const coins: CoinFlight[] = [];
@@ -147,7 +196,9 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
         intercept: launch + FLIGHT * INTERCEPT_FRAC,
         land: launch + FLIGHT,
         outcome,
-        zappers: p.objected_by,
+        // A stop no specialist objected to (model voters, a hard veto, the investigator) is the
+        // orchestrator's final call, so it fires the shot.
+        zappers: outcome === "blocked" || outcome === "false_alarm" ? (p.objected_by.length ? p.objected_by : ["orchestrator"]) : p.objected_by,
         attack,
         drawn,
       });
@@ -159,7 +210,7 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
     .map((a) => ({ actor: a.actor, to: devilPos.get(a.attacker_id!)!, attackerId: a.attacker_id! }));
   const news: NewsFall[] = round.news.map((n) => ({ title: n.title, to: devilPos.get(n.attacker_ids[0]) ?? GATE }));
 
-  return { devils, coins, beams, news };
+  return { devils, slots, coins, beams, news };
 }
 
 // Running totals for the scoreboard at round-clock time t.

@@ -1,15 +1,18 @@
 // The round scrubber doubles as a chart. With a baseline (step 0) loaded, the bar runs straight
-// through both stages: the baseline's rounds first, then TagTeam's, each bar that round's net
-// (honest payments through minus money stolen, drawn from a zero line; higher is better). TagTeam's
-// bars carry a red outline with the baseline's net on the same payments. On a real dataset the bars are the
-// share of each round's fraud stopped instead, on a 0-100% scale. Without a baseline, each
-// bar is how much a fresh attacker could still steal from the frozen defense (exploitability;
-// lower is better).
+// through both stages: the baseline's rounds first, then TagTeam's, each bar that round's money
+// lost (fraud that got through plus honest payments stopped; from zero, lower is better). TagTeam's
+// bars carry an outline with the baseline's loss on the same round. A bar far taller than the rest
+// (the baseline's untrained first round) is cut at the top and marked, so it doesn't flatten every
+// other round; its real value is in its label. On a real dataset the bars are the share of each round's
+// fraud stopped instead, on a 0-100% scale, with the baseline's share outlined on TagTeam's bars. Without
+// a baseline, each bar is how much a fresh attacker could still steal from the frozen defense
+// (exploitability; lower is better).
 
+import { useEffect, useRef } from "react";
 import { flowByRound } from "../data/baseline";
 import type { Replay } from "../data/types";
 import { useArena, ROUND_LEN, type Stage } from "../store";
-import { money } from "./words";
+import { money, sameWhat } from "./words";
 
 const SPEEDS = [1, 2, 4, 8];
 
@@ -39,12 +42,20 @@ export function Timeline() {
   const stage = useArena((s) => s.stage);
   const { jump, toggle, setSpeed, setStage } = useArena.getState();
   const compare = !!runs?.before;
+  // The bar's height changes with width (the key wraps); the panels above it read --timeline-h.
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current!;
+    const ro = new ResizeObserver(() => el.parentElement!.style.setProperty("--timeline-h", `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const label = runs?.baseline?.label ?? "";
 
-  // On a real dataset honest money dwarfs fraud, so net bars look the same for both defenses; there each
+  // On a real dataset honest money dwarfs fraud, so money bars look the same for both defenses; there each
   // bar is the share of that round's fraud payments stopped instead (higher is better).
   const caught = !!runs?.after.dataset;
-  const perRound = (r: Replay) => (caught ? stoppedShare(r) : flowByRound(r).map((f) => f.net));
+  const perRound = (r: Replay) => (caught ? stoppedShare(r) : flowByRound(r).map((f) => f.lost));
   let segments: Segment[];
   if (compare) {
     const before = perRound(runs!.before!);
@@ -62,19 +73,34 @@ export function Timeline() {
   // Attack money ramps up over the run, so a steady net under heavier attack means the defense is
   // keeping up. Say where it peaks rather than assuming it rises every round.
   const attempted = compare ? flowByRound(runs!.after).map((f) => f.attempted) : [];
-  // A dataset's fraud doesn't adapt or grow on purpose, so the note is only for simulated runs.
   const peak = attempted.reduce((best, v, i) => (v > attempted[best] ? i : best), 0);
-  const growing = !replay.dataset && attempted.length > 1 && attempted[peak] > attempted[0] * 1.2;
+  // A dataset's fraud doesn't adapt or grow on purpose, so the note is only for simulated runs.
+  const growing = !caught && attempted.length > 1 && attempted[peak] > attempted[0] * 1.2;
   const beforeCount = compare ? runs!.before!.rounds.length : 0;
 
-  // Net can go negative, so in comparison mode bars hang from a zero line spanning every value.
+  // Losses start at zero. An isolated outlier (more than 1.5x the next tallest bar, like XGBoost
+  // untrained in round 1) is cut and marked at the next tallest bar's height instead of flattening
+  // every other bar; nothing else is cut.
   const values = segments.flatMap((s) => (s.ghost === null ? [s.value] : [s.value, s.ghost]));
-  const lo = compare ? Math.min(0, ...values) : 0;
-  const span = Math.max(...values, 1) - lo;
-  const zero = ((0 - lo) / span) * 100;
-  const netBox = (v: number) => {
-    const h = Math.max((Math.abs(v) / span) * 100, 3);
-    return { bottom: `${v >= 0 ? zero : zero - h}%`, height: `${h}%` };
+  const [top = 1, next = 1] = [...new Set(values)].sort((a, b) => b - a);
+  const span = caught ? 1 : Math.max(compare && top > 1.5 * next ? next : top, 1);
+  const clipped = (v: number) => compare && !caught && v > span;
+  // Totals per half, for the group labels: what each defense lost over the whole run.
+  const lostBefore = segments.filter((s) => s.stage === "before").reduce((a, s) => a + s.value, 0);
+  const lostAfter = segments.filter((s) => s.stage === "after").reduce((a, s) => a + s.value, 0);
+  const lessPct = lostBefore > 0 ? Math.round((1 - lostAfter / lostBefore) * 100) : 0;
+  const k = (cents: number) => `$${(cents / 100_000).toFixed(1)}k`;
+  const lossBox = (v: number) => ({ bottom: "0%", height: `${Math.max((Math.min(v, span) / span) * 100, 3)}%` });
+  // The TagTeam half shows the difference itself: how much less TagTeam lost than XGBoost that round,
+  // up from a zero line (TagTeam lost less) or down in red (it lost more). Same outlier rule as above.
+  const saved = (s: Segment) => (s.ghost ?? 0) - s.value;
+  const savings = segments.filter((s) => s.stage === "after").map((s) => Math.abs(saved(s)));
+  const [sTop = 1, sNext = 1] = [...new Set(savings)].sort((a, b) => b - a);
+  const sSpan = Math.max(sTop > 1.5 * sNext ? sNext : sTop, 1);
+  const ZERO = 30; // % from the bottom: room below the line for rounds TagTeam lost more
+  const saveBox = (v: number) => {
+    const h = Math.max((Math.min(Math.abs(v), sSpan) / sSpan) * (v >= 0 ? 100 - ZERO : ZERO), 2);
+    return v >= 0 ? { bottom: `${ZERO}%`, height: `${h}%` } : { bottom: `${ZERO - h}%`, height: `${h}%` };
   };
   const go = (s: Segment) => {
     if (s.stage !== stage) setStage(s.stage, s.stage === "after");
@@ -91,7 +117,7 @@ export function Timeline() {
   });
 
   return (
-    <footer className="timeline">
+    <footer className="timeline" ref={ref}>
       <button className="play" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
         {playing ? (
           <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="3" width="4" height="14" rx="1.5" /><rect x="12" y="3" width="4" height="14" rx="1.5" /></svg>
@@ -99,30 +125,41 @@ export function Timeline() {
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 5 3.5z" /></svg>
         )}
       </button>
-      <div className="track">
+      <div className={`track${segments.length > 24 ? " dense" : ""}`}>
         <div className={`bars${compare ? " net" : ""}`} role="group" aria-label="Rounds">
           {segments.map((s, i) => {
             const who = compare ? (s.stage === "before" ? `${label}, round ${s.round}` : `TagTeam, round ${s.round}`) : `Round ${s.round}`;
             const what = caught
               ? `${Math.round(s.value * 100)}% of phishing stopped`
-              : compare ? `net ${money(s.value)}` : `${money(s.value)} still stealable`;
-            const extra =
-              s.ghost === null ? "" : `; ${label} on the same payments: ${caught ? `${Math.round(s.ghost * 100)}% stopped` : `net ${money(s.ghost)}`}`;
+              : compare ? `${money(s.value)} lost` : `${money(s.value)} still stealable`;
+            const extra = s.ghost === null
+              ? ""
+              : caught
+              ? `; ${label} on the same payments: ${Math.round(s.ghost * 100)}% stopped`
+              : `; ${label} ${sameWhat(runs?.baseline?.live)}: ${money(s.ghost)} lost; TagTeam ${saved(s) >= 0 ? `lost ${money(saved(s))} less` : `lost ${money(-saved(s))} more`}`;
+            const diff = compare && !caught && s.stage === "after";
             return (
               <button
                 key={`${s.stage}-${s.index}`}
                 className={`bar${i === current ? " current" : ""}${i < current ? " past" : ""}${s.frozen ? " frozen" : ""}`}
-                onClick={() => go(s)}
+                onClick={(e) => {
+                  go(s);
+                  if (e.detail > 0) e.currentTarget.blur(); // after a mouse click, Space goes back to play/pause
+                }}
                 aria-label={`${who}: ${what}${extra}`}
                 title={`${who}: ${what}${extra.replace("; ", "\n")}`}
               >
-                {compare && <span className="zero" style={{ bottom: `${zero}%` }} />}
-                {s.ghost !== null && <span className={`ghost${s.ghost < 0 ? " loss" : ""}`} style={netBox(s.ghost)} />}
+                {diff && <span className="zero" style={{ bottom: `${ZERO}%` }} />}
+                {caught && s.ghost !== null && <span className="ghost" style={lossBox(s.ghost)} />}
+                {!diff && clipped(s.value) && <span className="cut-label">{k(s.value)}</span>}
+                {diff && Math.abs(saved(s)) > sSpan && <span className="cut-label">{k(saved(s))}</span>}
                 <span
-                  className="fill"
+                  className={`fill${(diff ? Math.abs(saved(s)) > sSpan : clipped(s.value)) ? " clipped" : ""}`}
                   style={
-                    compare
-                      ? { ...netBox(s.value), background: s.value < 0 ? "var(--shaky)" : s.stage === "before" ? "var(--model)" : "var(--seraph)" }
+                    diff
+                      ? { ...saveBox(saved(s)), background: saved(s) >= 0 ? "var(--seraph)" : "var(--shaky)" }
+                      : compare
+                      ? { ...lossBox(s.value), background: caught && s.stage === "after" ? "var(--seraph)" : "var(--model)" }
                       : {
                           height: `${18 + (s.value / span) * 82}%`,
                           background: `color-mix(in oklab, var(--shaky) ${Math.round((s.value / span) * 100)}%, var(--held))`,
@@ -139,10 +176,10 @@ export function Timeline() {
             {compare && (
               <>
                 <span className="group-mark before" style={{ gridColumn: `1 / ${beforeCount + 1}` }}>
-                  {label.split(",")[0]} only
+                  {label.split(",")[0]} only{!caught && ` · lost ${k(lostBefore)}`}
                 </span>
                 <span className="group-mark after" style={{ gridColumn: `${beforeCount + 1} / ${segments.length + 1}` }}>
-                  TagTeam
+                  TagTeam{!caught && ` · lost ${k(lostAfter)}${lessPct > 0 ? `, ${lessPct}% less` : ""}`}
                 </span>
               </>
             )}
@@ -153,20 +190,28 @@ export function Timeline() {
             ))}
           </div>
         )}
-        {compare ? (
+        {compare && caught ? (
           <p className="key">
             <span>
-              {caught ? "Share of each round's phishing payments stopped." : "Net each round: honest payments through minus stolen."}{" "}
-              <b>Higher is better</b>
+              Share of each round's phishing payments stopped. <b>Higher is better</b>
             </span>
             <span><i className="tagteam" /> TagTeam</span>
             <span><i className="model" /> {label.split(",")[0]}</span>
             <span><i className="ghost-key" /> {label.split(",")[0]} on the same payments</span>
-            {!caught && <span><i className="negative" /> More stolen than paid</span>}
+          </p>
+        ) : compare ? (
+          <p className="key">
+            <span>
+              Left: money {label.split(",")[0]} lost each round. Right: how much less TagTeam lost than {label.split(",")[0]}{" "}
+              {sameWhat(runs?.baseline?.live)}, round by round.
+            </span>
+            <span><i className="model" /> {label.split(",")[0]} lost</span>
+            <span><i className="tagteam" /> TagTeam lost less</span>
+            <span><i className="negative" /> TagTeam lost more</span>
+            <span><i className="cut-key" /> Cut: taller than shown (amount on the bar)</span>
             {growing && (
               <span className="growth">
                 Attacks ramp up: {money(attempted[0])} tried in round 1, peaking at {money(attempted[peak])} in round {peak + 1}.
-                A steady net under heavier attack means the defense is keeping up.
               </span>
             )}
           </p>
@@ -176,7 +221,15 @@ export function Timeline() {
       </div>
       <div className="speeds" role="group" aria-label="Playback speed">
         {SPEEDS.map((s) => (
-          <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s)} aria-pressed={s === speed}>
+          <button
+            key={s}
+            className={s === speed ? "on" : ""}
+            onClick={(e) => {
+              setSpeed(s);
+              if (e.detail > 0) e.currentTarget.blur();
+            }}
+            aria-pressed={s === speed}
+          >
             {s}×
           </button>
         ))}

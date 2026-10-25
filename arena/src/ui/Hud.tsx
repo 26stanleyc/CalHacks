@@ -3,7 +3,7 @@ import { flowByRound } from "../data/baseline";
 import type { DatasetInfo, Replay } from "../data/types";
 import { useArena, phaseAt, ROUND_LEN, waveStart, THROW_WINDOW, FLIGHT, LEARN_START, type Stage } from "../store";
 import { getRoundModel, tallyAt } from "../world/roundModel";
-import { ACTOR_NAME, attackerName, money, ruleName, shelfName } from "./words";
+import { ACTOR_NAME, attackerName, money, ruleName, sameWhat, shelfName } from "./words";
 
 // A moment in a dataset: a UTC date and time when it has real dates ("Jul 28, 08:00"), otherwise hours
 // since its first payment as h:mm ("2:40").
@@ -19,8 +19,8 @@ const span = (from: number, to: number, start: string | null) =>
   `${clock(from, start)} to ${clock(to, start)}${start ? " UTC" : ""}`;
 
 // `ds` is set for a dataset run: each round is ds.round_hours of the dataset, three waves to a round.
-function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string, ds?: DatasetInfo,
-                   pretrained = false): string {
+function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string, retrains: boolean,
+                   ds?: DatasetInfo, pretrained = false): string {
   const p = phaseAt(t);
   const wave =
     p.kind !== "wave"
@@ -34,6 +34,7 @@ function phaseLine(stage: Stage, round: number, t: number, spawns: number, froze
     if (round === 0 && p.kind !== "learn" && !pretrained) return `${model} hasn't trained yet, so this round it lets every payment through`;
     if (p.kind === "spawn") return `${model} is guarding the checkpoint alone`;
     if (p.kind === "wave") return wave;
+    if (retrains) return `${model} retrains on every payment labelled so far`;
     // Recorded data doesn't adapt, so a dataset run doesn't claim it does.
     if (round === 0 && !pretrained) return `${model} trains once, on this round's fraud`;
     return `${model} stays frozen${ds ? "" : " while the attackers adapt"}`;
@@ -102,7 +103,10 @@ export function Hud() {
         <h1>
           Round {r.round} <span>of {replay.rounds.length}</span>
         </h1>
-        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label), replay.dataset, !!runs?.baseline?.pretrained)}</p>
+        <p>
+          {phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label),
+            (runs?.baseline?.contender ?? "xgboost_frozen") !== "xgboost_frozen", replay.dataset, !!runs?.baseline?.pretrained)}
+        </p>
         {r.metrics.frozen && <p className="frozen">Learning frozen</p>}
       </header>
       <section className={`scoreboard${before ? " breach" : ""}`} aria-label="This round's score">
@@ -116,7 +120,7 @@ export function Hud() {
         </div>
         <p className="fine">
           {attacks > 0 && <>Caught {Math.round((tally.blocked / attacks) * 100)}% of attack payments<br /></>}
-          {flaggedNow} honest {flaggedNow === 1 ? "shopper" : "shoppers"} flagged out of {honest}
+          {flaggedNow} honest {flaggedNow === 1 ? "payment" : "payments"} flagged out of {honest}
           {done && !runs?.before && <><br />{held} of 24 shelves held after learning</>}
         </p>
         <p className={`run-total${ours.net < 0 ? " negative" : ""}`}>
@@ -128,7 +132,7 @@ export function Hud() {
         </p>
         {theirs && (
           <p className="versus">
-            {shortName(label)} on the same payments: net <b>{money(theirs.net)}</b> ({money(theirs.stolen)} stolen,{" "}
+            {shortName(label)} {sameWhat(runs?.baseline?.live)}: net <b>{money(theirs.net)}</b> ({money(theirs.stolen)} stolen,{" "}
             {theirs.flagged} honest flagged).{" "}
             <span className={ours.net >= theirs.net ? "saved" : "behind"}>
               {ours.net >= theirs.net
@@ -174,7 +178,8 @@ export function StageBanner() {
       {showDeploy && (
         <p className="deploy-note" role="status">
           <b>TagTeam deployed.</b> Without it, {shortName(label)} netted {money(them.net)}
-          {firstNegative > 0 ? `, first going negative in round ${firstNegative}` : ""}. Same payments, same attackers.
+          {firstNegative > 0 ? `, first going negative in round ${firstNegative}` : ""}.{" "}
+          {runs.baseline.live ? "Same attackers, each adapting to the defense in front of it." : "Same payments, same attackers."}
         </p>
       )}
       {atEnd && (
@@ -183,9 +188,10 @@ export function StageBanner() {
             Net {money(us.net)}
             {ratio && ratio >= 1.1 ? `, ${ratio.toFixed(1)}× ${shortName(label)}'s.` : ` against ${money(them.net)}.`}
           </b>{" "}
-          On the same payments, {money(us.stolen)} of fraud got through against {money(them.stolen)}
+          {runs.baseline.live ? "Against the same attackers" : "On the same payments"}, {money(us.stolen)} of fraud got through against{" "}
+          {money(them.stolen)}
           {them.stolen > 0 && ` (${Math.round((Math.abs(saved) / them.stolen) * 100)}% ${saved >= 0 ? "less" : "more"})`}, and{" "}
-          {us.flagged} honest shoppers were flagged against {them.flagged}.{" "}
+          {us.flagged} honest {runs.baseline.live ? "payments" : "shoppers"} were flagged against {them.flagged}.{" "}
           <button className="replay" onClick={() => setStage("before")}>
             Replay step 0
           </button>
@@ -220,11 +226,20 @@ function Feed() {
   r.news.forEach((n) =>
     items.push({ at: 0.2, key: n.report_id, tone: "news", text: `New scam in the news: "${n.title}" became ${n.attacker_ids.length} attackers` }),
   );
-  r.actions
-    .filter((a) => a.action === "spawn")
-    .forEach((a, i) =>
+  // Spawns that actually built an attacker: one line each while they're few enough to read; past
+  // two, one line for them all.
+  const spawns = r.actions.filter((a) => a.action === "spawn" && a.granted && a.attacker_id && names.has(a.attacker_id));
+  if (spawns.length > 2)
+    items.push({
+      at: 0.4,
+      key: "spawns",
+      tone: "angel",
+      text: `Defenders built ${spawns.length} attackers to test the team's weak spots`,
+    });
+  else
+    spawns.forEach((a, i) =>
       items.push({
-        at: 0.4 + i * 0.25,
+        at: 0.4 + i * 1.2,
         key: `spawn-${a.actor}`,
         tone: "angel",
         text: `${ACTOR_NAME[a.actor]} built ${names.get(a.attacker_id!) ?? "an attacker"} to test ${shelfName(a.shelf!).toLowerCase()}`,
