@@ -158,8 +158,10 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 .steps { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
 .steps li { border-top: 2px solid var(--engrave); padding-top: 22px; }
 .steps p { margin-top: 12px; color: var(--paper-dim); font-size: 16px; }
-.voters { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.voters li { border: 0; padding: 4px 11px; border-radius: 999px; background: rgba(99, 139, 240, 0.16); color: var(--defense-text); font-size: 14px; font-weight: 700; }
+.lanes { margin: 20px 0 0; display: grid; gap: 8px; }
+.lanes div { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: baseline; }
+.lanes dt { justify-self: start; padding: 4px 11px; border-radius: 999px; background: rgba(99, 139, 240, 0.16); color: var(--defense-text); font-size: 14px; font-weight: 700; }
+.lanes dd { margin: 0; font-size: 14px; }
 .shelf-thumb { display: block; width: 168px; margin-top: 20px; }
 .shelf-thumb .cell-h { fill: #7fd18b; }
 .shelf-thumb .cell-w { fill: #f4c26b; }
@@ -212,7 +214,7 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 .method { margin-top: 32px; font-size: 14.5px; color: var(--paper-dim); max-width: 78ch; }
 
 /* Built on */
-.built dl { margin: 32px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
+.built dl { margin: 32px 0 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 32px; }
 .built dt { font: 600 18px var(--display); }
 .built dd { margin: 8px 0 0; color: var(--paper-dim); font-size: 15.5px; }
 
@@ -275,7 +277,10 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 .chapter .steps, .chapter .headline-figures, .chapter .results-chart { margin-top: 32px; }
 .chapter .built dl { margin-top: 0; }
 .closing-note { margin-top: 40px; color: var(--paper-dim); max-width: 60ch; }
-.chapter-pager { margin-top: 72px; padding-top: 22px; border-top: 1px solid var(--engrave); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+/* Sticks to the bottom of the window, so Next is on screen without scrolling. */
+.chapter-pager {
+  position: sticky; bottom: 0; z-index: 2; background: var(--note);
+  margin-top: 72px; padding: 14px 0; border-top: 1px solid var(--engrave); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .pager { display: grid; gap: 2px; background: none; border: none; color: var(--paper); font: 800 20px var(--display); cursor: pointer; padding: 4px 0; }
 .pager span { font: 700 13px var(--text); color: var(--paper-dim); }
 .pager.next { text-align: right; }

@@ -59,6 +59,15 @@ function PaymentSlip() {
   );
 }
 
+// What each specialist looks at, from its lane's features in engine/features.py.
+const LANES: { name: string; what: string }[] = [
+  { name: "Timing", what: "How fast and how regularly the agent pays, and instructions hidden in its payment note." },
+  { name: "Graph", what: "How many agents share one owner, wallet or contact, and whether the agent is brand new." },
+  { name: "Identity", what: "Whether the human behind the agent is verified, and how long they've existed." },
+  { name: "Velocity", what: "The amount: above normal, just under a limit, or far off the item's usual price." },
+  { name: "Mandate", what: "Whether the human asked for this: spending caps, allowed stores and categories, and the store page itself." },
+];
+
 // A static thumbnail of the arena's 24 shelves for the how-it-works section.
 const SHELF_SAMPLE = [
   "h", "h", "w", "h", "w", "s",
@@ -113,7 +122,7 @@ const CHAPTERS: { id: ChapterId; title: string; teaser: string }[] = [
   { id: "why", title: "Why it matters", teaser: "Card fraud tools ask the wrong question about AI agents." },
   { id: "how", title: "How it works", teaser: "Five specialists check every payment, then attack themselves." },
   { id: "results", title: "What it saves", teaser: "About a quarter cheaper than XGBoost retrained every round, after day one." },
-  { id: "built", title: "Built on", teaser: "Fetch.ai, Bitdeer, Coinbase x402 and Apify." },
+  { id: "built", title: "Built on", teaser: "Fetch.ai, Bitdeer, Coinbase x402, Apify and CRS." },
 ];
 
 const viewFromHash = (): View => {
@@ -315,11 +324,14 @@ function HowChapter() {
             themselves, in milliseconds. An orchestrator makes the call. Close calls go to an investigator agent that
             pulls linked accounts, scans the store page, and explains its decision.
           </p>
-          <ul className="voters" aria-label="The five specialists">
-            {SEALS.map((s) => (
-              <li key={s.name}>{s.name}</li>
+          <dl className="lanes" aria-label="The five specialists">
+            {LANES.map((l) => (
+              <div key={l.name}>
+                <dt>{l.name}</dt>
+                <dd>{l.what}</dd>
+              </div>
             ))}
-          </ul>
+          </dl>
         </li>
         <li>
           <h3>Attack itself</h3>
@@ -334,7 +346,7 @@ function HowChapter() {
           <h3>Read the news</h3>
           <p>
             TagTeam scrapes public reports of new scams with Apify. Each one becomes a watch rule and a few new
-            attackers, so the defense trains on a scam before attackers use it.
+            attacking agents that copy the scam, so the defense trains on it before real attackers use it.
           </p>
           <figure className="clipping" aria-label="Example: a scam report becomes a watch rule and three attackers">
             <p className="kicker">Scam report</p>
@@ -399,7 +411,17 @@ function BuiltChapter() {
         </div>
         <div>
           <dt>Apify</dt>
-          <dd>Scam reports from the news, and scans of store pages for hidden instructions.</dd>
+          <dd>
+            Scam reports from the news, each turned into attacking agents that copy the scam, and scans of store pages
+            for hidden instructions.
+          </dd>
+        </div>
+        <div>
+          <dt>CRS Credit API</dt>
+          <dd>
+            On close calls, checks the human behind the agent: fills in missing details, verifies their identity, and
+            scores their email and phone for fraud.
+          </dd>
         </div>
       </dl>
       <p className="closing-note">
