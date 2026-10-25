@@ -388,3 +388,16 @@ def test_attackers_hiding_contact_details_get_data_append_on_a_round():
         assert "crs_data_prefill" not in tools
         assert ("crs_data_append" in tools) == (d.crs.score >= crs.append_min)
         assert d.action != Action.ALLOW or tools[-1] == "crs_fraud_finder"  # allowing needs a low FraudFinder score
+
+
+def test_a_reverse_lookup_naming_someone_else_blocks_an_allow():
+    out = run(FakeCrs(prefill={"status": "found", "fields": ["name"], "matches_payer": False}), THIN, code_action=Action.ALLOW)
+    assert out.action == Action.STEP_UP and "belongs to someone else" in out.crs.reasons
+
+
+def test_fraudfinder_red_flags_appear_in_the_reasons():
+    class Flagged(FakeCrs):
+        def fraud_finder(self, principal_id):
+            return {"risk_score": 88, "risk_level": "high", "signals": ["email first seen 3 days ago", "prepaid VoIP phone"]}
+    out = run(Flagged())
+    assert out.action == Action.BLOCK and "88: email first seen 3 days ago, prepaid VoIP phone" in out.crs.reasons

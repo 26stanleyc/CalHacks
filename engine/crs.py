@@ -18,12 +18,20 @@ Honest shoppers send all their details. Some attacker-made accounts hide them (`
 throwaway accounts often send no phone or email, or no name and address; bought identities sometimes
 send no contact details. That tests whether CRS still works on partial data.
 
+What else of CRS's answers is used, and how:
+- Reverse append also says whose phone or email it is. If it belongs to someone other than the
+  payer (CRS's P12 test person comes back as a different name), the payment isn't allowed.
+- FraudFinder's details behind its score (a days-old email, a prepaid or VoIP phone, a phone or
+  address registered to someone else, a proxy IP far from the address, ...) are named in the
+  reasons. They explain the score; they don't count a second time in the decision.
+
 How the results fold into the decision:
 | CRS result                                       | Action  |
 |--------------------------------------------------|---------|
 | identity verification fails                      | block   |
 | FraudFinder risk is high                         | block   |
-| identity passes and FraudFinder risk is low      | allow   |
+| identity passes, FraudFinder low, and the phone  | allow   |
+| or email (if looked up) is the payer's           |         |
 | anything else (review, medium risk, a check that | step_up |
 | couldn't run for missing details, ...)           |         |
 The investigator's guards apply too: never allow a payment whose memo reads as an injection, and
@@ -57,6 +65,8 @@ account), the payment keeps its code decision, stepping up instead of allowing, 
 import hashlib
 import json
 import os
+import re
+from datetime import date
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -139,7 +149,8 @@ class MockCrs:
         thin = kind in ("real_thin", "synthetic")
         fields = ["name", "address"] + ([] if thin else ["dob", "phone", "ssn_last4"])
         years = round((0.2 + 1.8 * u) if thin else (3 + 27 * u), 1)
-        return {"status": "found", "fields": fields, "record_age_years": years}
+        return {"status": "found", "fields": fields, "record_age_years": years,
+                "matches_payer": not (kind == "synthetic" and u > 0.8)}  # a borrowed or recycled number
 
     def data_append(self, principal_id: str) -> dict:
         kind, u = self._kind(principal_id), _unit(principal_id, "append")
@@ -163,8 +174,12 @@ class MockCrs:
             score = int(5 + 30 * u) if u < 0.92 else int(45 + 25 * u)
         else:
             score = int(75 + 25 * u) if u < 0.6 else int(40 + 30 * u) if u < 0.9 else int(10 + 25 * u)
-        return {"risk_score": score, "risk_level": risk_level(score), "email_age_days": int(3650 * (1 - score / 100) * u) + 1,
-                "disposable_domain": score >= 75 and u > 0.5}
+        email_days = int(3650 * (1 - score / 100) * u) + 1
+        signals = ([f"email first seen {email_days} days ago"] if email_days < 90 else []) + (
+            ["disposable email domain"] if score >= 75 and u > 0.5 else []) + (
+            ["prepaid VoIP phone"] if score >= 75 and u < 0.5 else []) + (
+            ["phone registered to someone else"] if score >= 60 and u > 0.3 else [])
+        return {"risk_score": score, "risk_level": risk_level(score), "signals": signals}
 
 
 PERSONAS: dict[str, dict] = json.loads(Path(__file__).with_name("crs_personas.json").read_text())["personas"]
@@ -184,11 +199,16 @@ class CrsUnavailable(RuntimeError):
     """CRS refused or couldn't be reached."""
 
 
-def parse_prefill(body: dict) -> dict:
+def parse_prefill(body: dict, payer: tuple[str, str] | None = None) -> dict:
+    """payer: (first, last) name the payer gave, to check the phone or email is theirs."""
     records = (body.get("data") or {}).get("records") or []
     if not records:
         return {"status": "no_record"}
-    return {"status": "found", "fields": sorted(k for k, v in records[0].items() if v), "records": len(records)}
+    out = {"status": "found", "fields": sorted(k for k, v in records[0].items() if v), "records": len(records)}
+    if payer:
+        names = {(str(r.get("firstName", "")).upper(), str(r.get("lastName", "")).upper()) for r in records}
+        out["matches_payer"] = (payer[0].upper(), payer[1].upper()) in names
+    return out
 
 
 def parse_identity(body: dict) -> dict:
@@ -206,14 +226,44 @@ def parse_identity(body: dict) -> dict:
     return {"result": "review", "codes": codes, "reason": text}  # e.g. an address mismatch or a fraud alert
 
 
-def parse_fraud_finder(body: dict) -> dict:
+def parse_fraud_finder(body: dict, today: date | None = None) -> dict:
     risk = body.get("risk") or {}
     if "score" not in risk:
         raise CrsUnavailable("FraudFinder returned no risk score")
     score = int(risk["score"])
-    return {"risk_score": score, "risk_level": risk_level(score),
-            "email_status": (body.get("email_validation") or {}).get("status"),
-            "phone_line": (risk.get("phone") or {}).get("line_type")}
+    return {"risk_score": score, "risk_level": risk_level(score), "signals": fraud_signals(body, today or date.today())}
+
+
+def fraud_signals(body: dict, today: date) -> list[str]:
+    """The red flags behind a FraudFinder score, in words, for the reasons."""
+    risk, email = body.get("risk") or {}, body.get("email_validation") or {}
+    phone, postal, ip = risk.get("phone") or {}, risk.get("postal") or {}, risk.get("ip") or {}
+    out = []
+    if email.get("status") in ("invalid", "risky", "unverifiable"):
+        out.append(f"email {email['status']}")
+    if email.get("domain_type") == "disposable":
+        out.append("disposable email domain")
+    first_seen = (body.get("eam") or {}).get("date_first_seen")
+    if first_seen:
+        days = (today - date.fromisoformat(first_seen[:10])).days
+        if 0 <= days < 90:
+            out.append(f"email first seen {days} days ago")
+    line = " ".join(w for w in ("prepaid" if phone.get("prepaid") else "",
+                                "VoIP" if phone.get("line_type") == "voip" else "") if w)
+    if line:
+        out.append(f"{line} phone")
+    if phone.get("status") in ("dead", "invalid"):
+        out.append(f"phone {phone['status']}")
+    if "no_match" in ((phone.get("owner") or {}).get("first_name_match"), (phone.get("owner") or {}).get("last_name_match")):
+        out.append("phone registered to someone else")
+    if postal.get("last_name_match") == "no_match":
+        out.append("address registered to someone else")
+    if ip.get("proxy_type") or ip.get("hosting_facility"):
+        out.append("IP is a proxy or hosting provider")
+    miles = re.search(r"(\d+)", str(postal.get("ip_postal_distance") or ""))
+    if miles and int(miles.group(1)) >= 500:
+        out.append(f"IP {postal['ip_postal_distance']} from the address")
+    return out
 
 
 def _json(response: httpx.Response) -> dict:
@@ -273,7 +323,8 @@ class HttpCrs:
 
     def data_prefill(self, principal_id: str) -> dict:
         persona, body = self._ask("data_prefill", "/accurate-append/reverse", principal_id)
-        return {"persona": persona} | parse_prefill(body)
+        given = PERSONAS[persona]["identity_verification"]
+        return {"persona": persona} | parse_prefill(body, (given["firstName"], given["lastName"]))
 
     def data_append(self, principal_id: str) -> dict:
         """Forward append has no sandbox test data (calls would go to the live AccurateAppend service),
@@ -338,10 +389,14 @@ class CrsEscalation:
         notes: list[str] = []
         idv = risk = None
         try:
+            someone_else = False
             if has_contact and (thin or not has_name):  # 1. Data Append, reverse
                 prefill = self.client.data_prefill(tx.principal_id)
                 calls.append(_call("crs_data_prefill", tx, prefill))
-                if prefill.get("status") == "found":
+                someone_else = prefill.get("matches_payer") is False and "name_address" not in hidden
+                if someone_else:
+                    notes.append("their phone or email belongs to someone else")
+                elif prefill.get("status") == "found":
                     has_name = True
                 else:
                     notes.append("CRS has no record of this person")
@@ -368,16 +423,16 @@ class CrsEscalation:
         if idv and idv["result"] == "fail":
             action, reasons = Action.BLOCK, f"identity verification failed ({idv['reason']})"
         elif risk and risk["risk_level"] == "high":
-            action, reasons = Action.BLOCK, f"FraudFinder risk is high ({risk['risk_score']}); added to the CRS watch list"
+            action, reasons = Action.BLOCK, f"FraudFinder risk is high ({_risk_text(risk)}); added to the CRS watch list"
             entry = {"principal_id": tx.principal_id, "tx_id": tx.tx_id, "risk_score": risk["risk_score"]}
             self.watched[tx.principal_id] = entry
             self.new_watches.append(entry)
-        elif idv and idv["result"] == "pass" and risk and risk["risk_level"] == "low":
-            action, reasons = Action.ALLOW, f"identity verified and FraudFinder risk is low ({risk['risk_score']})"
+        elif idv and idv["result"] == "pass" and risk and risk["risk_level"] == "low" and not someone_else:
+            action, reasons = Action.ALLOW, f"identity verified and FraudFinder risk is low ({_risk_text(risk)})"
         else:
             action = Action.STEP_UP
             reasons = ", ".join([f"identity verification: {idv['result']}" if idv else "identity not verified (no name and address)",
-                                 f"FraudFinder risk {risk['risk_level']} ({risk['risk_score']})" if risk
+                                 f"FraudFinder risk {risk['risk_level']} ({_risk_text(risk)})" if risk
                                  else "no FraudFinder (no email)"])
         if hidden:
             notes.insert(0, f"payer didn't send their {_details_text(hidden)}")
@@ -399,6 +454,11 @@ class CrsEscalation:
         tag = "CRS check (mocked)" if self.client.mocked else "CRS check"
         return decision.model_copy(update={"action": action, "crs": report,
                                            "explanation": f"{tag}: {reasons[:1].upper()}{reasons[1:]}."})
+
+
+def _risk_text(risk: dict) -> str:
+    signals = risk.get("signals") or []
+    return f"{risk['risk_score']}: {', '.join(signals)}" if signals else str(risk["risk_score"])
 
 
 def _details_text(hidden: list[str]) -> str:

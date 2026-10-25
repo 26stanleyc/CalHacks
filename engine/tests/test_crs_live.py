@@ -2,6 +2,7 @@
 (engine/tests/fixtures/crs, test person P01), served by a fake transport: no test calls CRS."""
 
 import json
+from datetime import date
 from pathlib import Path
 
 import httpx
@@ -10,7 +11,7 @@ import pytest
 from contracts.conformance import sample_tx
 from contracts.schemas import Action, Decision, FeatureVector, IdentityStatus
 from engine.crs import (PERSONA_GROUPS, PERSONAS, THIN_HISTORY_S, CrsEscalation, HttpCrs, MockCrs, crs_from_env,
-                        parse_fraud_finder, parse_identity, parse_prefill)
+                        fraud_signals, parse_fraud_finder, parse_identity, parse_prefill)
 
 BASE = "https://api-sandbox.stitchcredit.com/api"
 FIXTURES = Path(__file__).parent / "fixtures" / "crs"
@@ -81,9 +82,35 @@ def test_identity_messages_map_to_fail_or_review(codes, result):
     assert parse_identity(with_messages(*codes))["result"] == result
 
 
-def test_saved_fraudfinder_score_is_low():
-    out = parse_fraud_finder(SAVED["fraud_finder"])
-    assert (out["risk_score"], out["risk_level"], out["email_status"], out["phone_line"]) == (11, "low", "valid", "mobile")
+def test_saved_fraudfinder_score_is_low_with_no_red_flags():
+    out = parse_fraud_finder(SAVED["fraud_finder"], today=date(2026, 10, 25))
+    assert (out["risk_score"], out["risk_level"], out["signals"]) == (11, "low", [])
+
+
+def test_fraudfinder_red_flags_are_named():
+    risky = json.loads(json.dumps(SAVED["fraud_finder"]))
+    risky["eam"]["date_first_seen"] = "2026-10-22"
+    risky["email_validation"].update(status="risky", domain_type="disposable")
+    risky["risk"]["phone"].update(line_type="voip", prepaid=True, status="dead")
+    risky["risk"]["phone"]["owner"]["last_name_match"] = "no_match"
+    risky["risk"]["postal"].update(last_name_match="no_match", ip_postal_distance="1240 miles")
+    risky["risk"]["ip"].update(proxy_type="tor", hosting_facility=True)
+    assert fraud_signals(risky, date(2026, 10, 25)) == [
+        "email risky", "disposable email domain", "email first seen 3 days ago", "prepaid VoIP phone", "phone dead",
+        "phone registered to someone else", "address registered to someone else", "IP is a proxy or hosting provider",
+        "IP 1240 miles from the address"]
+
+
+def test_reverse_append_says_whether_the_phone_is_the_payers():
+    assert parse_prefill(SAVED["data_prefill"], ("Margaret", "Okafor"))["matches_payer"] is True
+    assert parse_prefill(SAVED["data_prefill"], ("VICTOR", "ANAND"))["matches_payer"] is False
+
+
+def test_a_phone_belonging_to_someone_else_is_never_allowed():
+    crs = client(FakeSandbox())
+    crs.persona = lambda principal_id: "P12"  # CRS's identity-mismatch person; the fake answers with P01's records
+    out = check(crs, THIN)
+    assert out.action == Action.STEP_UP and "belongs to someone else" in out.crs.reasons
 
 
 # --- the client ------------------------------------------------------------------------------------
@@ -140,7 +167,9 @@ def test_test_persons_stand_in_by_what_a_bureau_would_know():
 # --- live responses through the decision ----------------------------------------------------------
 
 def test_saved_p01_responses_allow_a_thin_file_payment_with_all_three_calls():
-    out = check(client(FakeSandbox()), THIN)
+    crs = client(FakeSandbox())
+    crs.persona = lambda principal_id: "P01"  # the fake sandbox answers with P01's saved responses
+    out = check(crs, THIN)
     assert out.action == Action.ALLOW and not out.crs.mocked
     assert [c.tool for c in out.crs.tool_calls] == ["crs_data_prefill", "crs_identity_verification", "crs_fraud_finder"]
     assert out.explanation.startswith("CRS check: ")
