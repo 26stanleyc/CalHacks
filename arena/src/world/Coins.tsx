@@ -145,11 +145,11 @@ export function Coins({ model, soloFrom }: { model: RoundModel; soloFrom?: Vec3 
     <group>
       {/* Unlit, so the packets glow; the same look as the console theme on stanley/arena-console. */}
       <instancedMesh ref={coins} args={[undefined, undefined, Math.max(1, drawn.length)]} key={drawn.length} frustumCulled={false}>
-        <octahedronGeometry args={[0.11, 0]} />
+        <octahedronGeometry args={[0.15, 0]} />
         <meshBasicMaterial />
       </instancedMesh>
       <instancedMesh ref={zaps} args={[undefined, undefined, ZAP_POOL]} frustumCulled={false}>
-        <cylinderGeometry args={[0.03, 0.03, 1, 6]} />
+        <cylinderGeometry args={[0.045, 0.045, 1, 6]} />
         <meshBasicMaterial color={BEAM} />
       </instancedMesh>
       <instancedMesh ref={flashes} args={[undefined, flashMat, FLASH_POOL]} frustumCulled={false}>
