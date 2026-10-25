@@ -28,6 +28,17 @@ def shelf_id(key: dict | None) -> str:
     return f"{key['style']}/{key['amount']}/{key['side']}" if key else ""
 
 
+def plain_reason(reason: str) -> str:
+    """The defender's own sentence, without the engine's budget bookkeeping tacked on the end, e.g.
+    '... (its first choice was taken) (granted (2 points left))'."""
+    for tail in ("(granted", "(over budget", "(denied", "(its first choice was taken)"):
+        cut = reason.rfind(" " + tail)
+        if cut > 0:
+            reason = reason[:cut]
+    reason = reason.strip()
+    return reason[:1].upper() + reason[1:]
+
+
 def export(conn, run_id: str) -> dict:
     from contracts.config import model_for
 
@@ -37,22 +48,27 @@ def export(conn, run_id: str) -> dict:
     seed, defense = rows("select seed, defense from runs where run_id = %s", run_id)[0]
     metrics = {r: p for r, p in rows("select round, payload from round_metrics where run_id = %s order by round", run_id)}
 
-    attackers = defaultdict(list)
+    titles = {}  # threat-intel attacker id -> a human name from its report
+    for payload, ids in rows("select payload, attacker_ids from threat_reports where report_id like %s", f"{run_id}/%"):
+        for k, aid in enumerate(ids or []):
+            titles[aid] = payload.get("title", aid) + ("" if k == 0 else f" (variation {k})")
+
+    attackers = defaultdict(dict)  # round -> attacker id -> its last row that round (an attacker can be logged twice)
     first_round: dict[str, int] = {}
     for rnd, p in rows("select round, payload from attackers where run_id = %s order by id", run_id):
         first_round.setdefault(p["attacker_id"], rnd)
         pb = p["playbook"]
-        attackers[rnd].append({"attacker_id": p["attacker_id"], "name": p["name"], "source": p["source"],
-                               "model": p.get("model"), "parent": p.get("parent"), "lineage": p.get("lineage"),
-                               "generation": p.get("generation", 0), "shelf": shelf_id(pb.get("shelf")),
-                               "strategy": pb.get("strategy", ""), "params": pb.get("params", {}),
-                               "profit_cents": p.get("profit_cents", 0)})
+        attackers[rnd][p["attacker_id"]] = {
+            "attacker_id": p["attacker_id"], "name": titles.get(p["attacker_id"], p["name"]), "source": p["source"],
+            "model": p.get("model"), "parent": p.get("parent"), "lineage": p.get("lineage"),
+            "generation": p.get("generation", 0), "shelf": shelf_id(pb.get("shelf")), "strategy": pb.get("strategy", ""),
+            "params": pb.get("params", {}), "profit_cents": p.get("profit_cents", 0)}
 
     actions = defaultdict(list)
     for rnd, actor, action, granted, reason, detail in rows(
             "select round, actor, action, granted, reason, detail from defender_actions "
             "where run_id = %s and action in ('spawn', 'request_feature', 'request_scan', 'skip') order by id", run_id):
-        entry = {"actor": actor, "action": action, "granted": granted, "reason": reason}
+        entry = {"actor": actor, "action": action, "granted": granted, "reason": plain_reason(reason)}
         if detail.get("target_shelf"):
             entry["shelf"] = detail["target_shelf"]
         if detail.get("attacker_id"):
@@ -124,7 +140,7 @@ def export(conn, run_id: str) -> dict:
     for rnd in sorted(metrics):
         waves = sorted({w for (r, w) in payments if r == rnd})
         rounds.append({"round": rnd, "metrics": {k: metrics[rnd].get(k, 0) for k in METRIC_KEYS},
-                       "attackers": attackers[rnd], "actions": actions[rnd], "news": news[rnd],
+                       "attackers": list(attackers[rnd].values()), "actions": actions[rnd], "news": news[rnd],
                        "waves": [{"wave": w, "payments": payments[(rnd, w)], "retunes": retunes[(rnd, w)]} for w in waves],
                        "shelves": shelves[rnd], "rulebooks": books[rnd]})
     return {"run_id": run_id, "seed": seed, "defense": defense,

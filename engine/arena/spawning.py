@@ -155,7 +155,8 @@ Write a playbook:
 - strategy: one or two sentences in plain words.
 - params: a starting value for every number in realism_limits, each inside its limits.
 - param_bounds: an allowed [low, high] range for each number, inside realism_limits.
-- free_text_payloads: memos to send if memo_rate > 0.
+- free_text_payloads: 1 to 3 memo texts. Required whenever memo_rate > 0 (hijack-injection shelves need
+  memo_rate of at least 0.3); an attacker with memos to send but no memo text is thrown away.
 - reasoning: one line on why this should get past the whole defense.
 A cheap optimizer will tune the numbers against a frozen copy of the defense afterwards."""
 
@@ -305,10 +306,46 @@ def _spawn_brief(parent: str, target: ShelfKey, archive: Archive, rulebook, roun
 
 def draft_spawn(parent: str, target: ShelfKey, archive: Archive, brain: Brain, rulebook, round_no: int,
                 seed: int) -> SpawnDraft | None:
-    """The model's draft for one spawned attacker (no shared state, so several can be asked at once)."""
+    """The model's draft for one spawned attacker (no shared state, so several can be asked at once).
+    A draft that wouldn't make a valid playbook is sent back once with its problems to fix."""
     _, data, _ = _spawn_brief(parent, target, archive, rulebook, round_no, seed)
-    return brain.ask(spawn_role(parent), SpawnDraft, SPAWN_INSTRUCTIONS.format(
-        parent=parent, style=target.style.value, amount=target.amount.value, side=target.side.value), data)
+    instructions = SPAWN_INSTRUCTIONS.format(parent=parent, style=target.style.value, amount=target.amount.value,
+                                             side=target.side.value)
+    draft = brain.ask(spawn_role(parent), SpawnDraft, instructions, data)
+    problems = draft_problems(draft, target) if draft is not None else []
+    if problems:
+        repaired = brain.ask(spawn_role(parent), SpawnDraft, instructions,
+                             {**data, "your_previous_draft": draft.model_dump(mode="json"), "problems_to_fix": problems})
+        if repaired is not None:
+            draft = repaired
+    if draft is not None and not draft.free_text_payloads and shelf_bounds(target).get("memo_rate", (0.0, 0.0))[0] == 0:
+        draft = draft.model_copy(update={"params": {**draft.params, "memo_rate": 0.0}})  # memos optional here: send none
+    return draft
+
+
+def _playbook_from(draft: SpawnDraft, target: ShelfKey, attacker_id: str) -> Playbook:
+    """The draft as a playbook. The tuner may only search numbers that keep the attacker on its target
+    shelf: the draft's bounds, intersected with the shelf's. Raises if the draft can't make one."""
+    on_shelf = shelf_bounds(target)
+    bounds = {}
+    for name, (lo, hi) in on_shelf.items():
+        given = draft.param_bounds.get(name)
+        if given is not None and len(given) == 2:
+            lo, hi = max(lo, float(given[0])), min(hi, float(given[1]))
+        bounds[name] = (lo, hi) if lo <= hi else on_shelf[name]
+    params = playbooks.clamp({k: float(v) for k, v in draft.params.items() if k in REALISM}, bounds)
+    return Playbook(playbook_id=f"{attacker_id}-pb0", attacker_id=attacker_id, strategy=str(draft.strategy)[:500],
+                    params=params, param_bounds=bounds, shelf=target,
+                    free_text_payloads=[str(p)[:500] for p in draft.free_text_payloads][:5])
+
+
+def draft_problems(draft: SpawnDraft, target: ShelfKey) -> list[str]:
+    """Why this draft wouldn't become an attacker (empty when it would)."""
+    try:
+        playbook = _playbook_from(draft, target, "check")
+    except Exception as exc:
+        return [f"the draft doesn't make a playbook: {str(exc)[:200]}"]
+    return playbooks.validate(playbook)
 
 
 NOT_ASKED = object()
@@ -324,25 +361,11 @@ def build_spawned(parent: str, target: ShelfKey, archive: Archive, brain: Brain,
     if draft is None:
         return None
     attacker_id = f"spawned-r{round_no}-{parent}-{target.style.value}-{target.amount.value}"
-    # The tuner may only search numbers that keep the attacker on its target shelf: the draft's bounds,
-    # intersected with the shelf's.
-    on_shelf = shelf_bounds(target)
-    bounds = {}
-    for name, (lo, hi) in on_shelf.items():
-        given = draft.param_bounds.get(name)
-        if given is not None and len(given) == 2:
-            lo, hi = max(lo, float(given[0])), min(hi, float(given[1]))
-        bounds[name] = (lo, hi) if lo <= hi else on_shelf[name]
     try:
-        params = playbooks.clamp({k: float(v) for k, v in draft.params.items() if k in REALISM}, bounds)
-        playbook = Playbook(playbook_id=f"{attacker_id}-pb0", attacker_id=attacker_id, strategy=str(draft.strategy)[:500],
-                            params=params, param_bounds=bounds, shelf=target,
-                            free_text_payloads=[str(p)[:500] for p in draft.free_text_payloads][:5])
+        playbook = _playbook_from(draft, target, attacker_id)
     except Exception:
         return None
-    if not playbook.free_text_payloads and playbook.params["memo_rate"] > 0:
-        return None
-    if playbooks.validate(playbook):
+    if playbooks.validate(playbook):  # includes memos to send with no memo text
         return None
     tuning = tune(playbook, lambda pb: sandbox.run(pb, source=AttackerSource.SPAWNED, seed=seed, round_no=round_no + 1,
                                                     step_up_pass=INSIDER_STEP_UP_PASS).profit_cents, rng, tries=tries)
