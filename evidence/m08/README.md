@@ -5,10 +5,10 @@ and an Agentverse mailbox. By default they call the real engine served by `engin
 (`ENGINE_SOURCE=http`). That is the same engine the dashboard uses, so chat and dashboard
 always agree. The canned `StubEngine` is used only when `ENGINE_SOURCE=stub` is set explicitly.
 
-| agent | address |
-|---|---|
-| fraud-desk | `agent1q2hr8875u86ac49yd8tf7ehg5cygl2y7vzdaxse8jq0fxlwqevm0zfnz9m7` |
-| merchant-scanner | `agent1qd73ye5agcd0xleqkg6u75nsc0khr74znjeynl8x5ywedaux84ytu49snwx` |
+| agent | ASI:One handle | address |
+|---|---|---|
+| fraud-desk | `@fraud-desk` | `agent1q2hr8875u86ac49yd8tf7ehg5cygl2y7vzdaxse8jq0fxlwqevm0zfnz9m7` |
+| merchant-scanner | `@merchant-scanner` | `agent1qd73ye5agcd0xleqkg6u75nsc0khr74znjeynl8x5ywedaux84ytu49snwx` |
 
 Agentverse profiles:
 - <https://agentverse.ai/agents/details/agent1q2hr8875u86ac49yd8tf7ehg5cygl2y7vzdaxse8jq0fxlwqevm0zfnz9m7/profile>
@@ -74,7 +74,7 @@ Everyone else is still refused. Tests: `integrations/tests/test_asi_one.py`, the
 ## 3. The ASI:One steps (manual, for the recording)
 
 1. Open <https://asi1.ai> and sign in with the account that owns `AGENTVERSE_API_KEY`.
-2. Start a **fresh** chat. Search for `fraud-desk`, or paste its address from the table above.
+2. Start a **fresh** chat. Type `@fraud-desk` and pick it from the list (robot icon). The handles were set by hand on the Agentverse account that owns the agents (the one whose `AGENTVERSE_API_KEY` is in `.env`); an agent without a handle doesn't appear under `@` in ASI:One.
 3. Send the three M8 prompts:
    1. `Check this payment: agent a-1 paying merchant m-7 $49 for a USB-C charger, mandate under $30`
       → **Blocked**, hard veto `mandate:over_cap`, with a tx id like `asi-…`
@@ -89,7 +89,7 @@ Everyone else is still refused. Tests: `integrations/tests/test_asi_one.py`, the
    3. The same message with `budget $30` → **Blocked** by the mandate veto. No card, nothing charged.
 5. Optional:
    - `Run a round`, which is refused unless your address is allowlisted (§2).
-   - Open merchant-scanner and ask:
+   - Ask `@merchant-scanner`:
      `Is https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html safe for my shopping agent?`
 
 ## 4. Still needs a human

@@ -208,14 +208,18 @@ def test_a_long_new_request_is_not_mistaken_for_an_answer():
 # --- failures are reported, not hidden -----------------------------------------------
 
 
-@pytest.mark.parametrize("settlement", [Recording(fail=True), Recording(raises=True)])
-def test_a_failed_settlement_says_nothing_was_charged_and_can_be_retried(settlement):
+@pytest.mark.parametrize("failure", [{"fail": True}, {"raises": True}])
+def test_a_failed_settlement_says_nothing_was_charged_and_approving_again_retries(failure):
+    settlement = Recording(**failure)
     router = desk(settlement=settlement)
-    open_purchase(router)
+    pid = purchase_id(open_purchase(router))
     answer = router.handle(USER, "approve")
-    assert "didn't go through" in answer and "Nothing was charged" in answer
-    assert router.purchases.settled == 0
-    assert open_purchase(router).card is not None  # buying again works
+    assert "didn't go through" in answer and "Nothing was charged" in answer and "Approve again" in answer
+    assert router.purchases.settled == 0 and pid in router.purchases.pending
+    settlement.fail = settlement.raises = False  # the facilitator recovers
+    assert "basescan" in router.handle(USER, json.dumps({"action": APPROVE, "purchase_id": pid}))
+    assert len(settlement.calls) == 2 and router.purchases.settled == 1
+    assert "no open purchase" in router.handle(USER, f"approve {pid}")  # and only once
 
 
 def test_no_wallet_means_no_payment():
