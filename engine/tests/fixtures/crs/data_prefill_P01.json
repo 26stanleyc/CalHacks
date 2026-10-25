@@ -1,0 +1,19 @@
+{
+ "success": true,
+ "message": "Unified reverse completed successfully",
+ "data": {
+  "transactionId": "TC-REVERSE-0001",
+  "records": [
+   {
+    "firstName": "MARGARET",
+    "lastName": "OKAFOR",
+    "houseNo": "1420",
+    "streetName": "WILLOW CREEK DR",
+    "address": "1420 WILLOW CREEK DR",
+    "city": "SAN JOSE",
+    "state": "CA",
+    "postalCode": "95125"
+   }
+  ]
+ }
+}

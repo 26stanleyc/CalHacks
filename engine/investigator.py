@@ -229,6 +229,7 @@ class Investigator:
                             if tx.mandate else None),
                 "votes": [{"voter": v.voter, "score": v.score, "vote": v.vote.value, "rule_ids": v.rule_ids} for v in decision.votes],
                 "combined_score": decision.weighted_score, "code_decision": decision.action.value,
+                "crs": decision.crs.model_dump(mode="json", include={"tool_calls", "decision", "reasons"}) if decision.crs else None,
                 "features": features.values}
         calls: list[ToolCall] = []
         outputs: list[dict] = []

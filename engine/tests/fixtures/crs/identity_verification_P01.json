@@ -1,0 +1,173 @@
+{
+ "fileNumber": "01",
+ "fileSummary": {
+  "fileHitIndicator": "SUBJECT_HIT",
+  "creditDataStatus": {
+   "suppressed": false,
+   "doNotPromote": {
+    "indicator": false
+   },
+   "freeze": {
+    "indicator": false
+   },
+   "minor": false,
+   "disputed": false
+  }
+ },
+ "indicative": {
+  "names": [
+   {
+    "person": {
+     "first": "MARGARET",
+     "middle": "A",
+     "last": "OKAFOR"
+    },
+    "source": "INPUT"
+   }
+  ],
+  "addresses": [
+   {
+    "status": "CURRENT",
+    "street": {
+     "unparseds": [],
+     "number": "1420",
+     "name": "WILLOW CREEK DR"
+    },
+    "location": {
+     "city": "SAN JOSE",
+     "state": "CA",
+     "zipCode": "95125"
+    },
+    "source": "INPUT"
+   }
+  ],
+  "socialSecurities": [
+   {
+    "number": "666701001",
+    "identificationIssuance": {
+     "type": "SSN",
+     "status": "ISSUED_AFTER_21",
+     "yearRange": {
+      "startYear": "2001",
+      "endYear": "2001"
+     },
+     "state": "KY",
+     "ageObtained": {
+      "rangeStart": "+35",
+      "rangeEnd": "+36"
+     }
+    },
+    "source": "INPUT",
+    "masked": false
+   },
+   {
+    "number": "666701001",
+    "source": "FILE",
+    "masked": false
+   }
+  ],
+  "dateOfBirths": [
+   {
+    "value": "1984-03-14T00:00:00.000+00:00",
+    "source": "INPUT"
+   }
+  ],
+  "ages": [],
+  "phones": [
+   {
+    "number": {
+     "qualifier": "PERSONAL"
+    },
+    "source": "INPUT"
+   }
+  ],
+  "employments": [],
+  "creditCards": [],
+  "genders": [],
+  "vehicles": []
+ },
+ "originalInputs": [],
+ "custom": {
+  "idmanagerVerAnalysisV2": {
+   "verificationSummary": {
+    "riskIndicator": "MEDIUM",
+    "bestMatch": "FILE",
+    "verificationPoint": 30,
+    "lowerThreshold": 5,
+    "upperThreshold": 49,
+    "keyMessages": {
+     "keyMessages": [
+      {
+       "code": "KMSG07",
+       "text": "ADDRESS RELATED ALERT"
+      }
+     ]
+    }
+   },
+   "fraudAnalysis": {
+    "region": {
+     "zipVsCity": "INVALID",
+     "zipVsState": "VALID",
+     "phoneVsState": "NOT_AVAILABLE",
+     "phoneVsZIP": "NOT_AVAILABLE",
+     "phoneVsZIPDistance": "0000.000",
+     "source": "INPUT"
+    },
+    "employment": {},
+    "distance": {
+     "minimum": {
+      "noAnalysisReason": "NOT_AVAILABLE"
+     },
+     "maximum": {
+      "noAnalysisReason": "NOT_AVAILABLE"
+     },
+     "source": "INPUT"
+    }
+   },
+   "verificationAnalysises": [
+    {
+     "verificationStatus": "SUBJECT_FOUND",
+     "firstNameVerification": "MATCH",
+     "middleNameVerification": "INPUT_NOT_AVAILABLE",
+     "lastNameVerification": "MATCH",
+     "nameSuffixVerification": "MATCH_NOT_PERFORMED",
+     "currentAddressVerification": "NO_MATCH",
+     "previousAddressVerification": "INPUT_NOT_AVAILABLE",
+     "phoneNumberVerification": "INPUT_NOT_AVAILABLE",
+     "ssnVerification": "MATCH",
+     "dateOfBirthVerification": "NOT_FOUND",
+     "source": "FILE"
+    },
+    {
+     "verificationStatus": "SUBJECT_NOT_FOUND",
+     "firstNameVerification": "NOT_FOUND",
+     "middleNameVerification": "MATCH_NOT_PERFORMED",
+     "lastNameVerification": "NOT_FOUND",
+     "nameSuffixVerification": "MATCH_NOT_PERFORMED",
+     "currentAddressVerification": "NOT_FOUND",
+     "previousAddressVerification": "MATCH_NOT_PERFORMED",
+     "phoneNumberVerification": "INPUT_NOT_AVAILABLE",
+     "ssnVerification": "NOT_FOUND",
+     "dateOfBirthVerification": "NOT_FOUND",
+     "source": "VENDOR_FILE"
+    }
+   ]
+  }
+ },
+ "addOnProducts": [
+  {
+   "code": "FRDMS",
+   "status": "DELIVERED",
+   "idMismatchAlerts": [],
+   "addressAnalysises": [],
+   "idManagerVerification": {
+    "messages": [],
+    "deceases": [],
+    "identificationIssuances": [],
+    "returnMessage": "CODES_AND_TEXT",
+    "searchStatus": "HIT"
+   },
+   "creditorContacts": []
+  }
+ ]
+}
