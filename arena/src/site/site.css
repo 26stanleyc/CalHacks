@@ -20,7 +20,6 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
 body {
   margin: 0;
   background: var(--note);
@@ -39,10 +38,15 @@ h1, h2, h3 { font-family: var(--display); margin: 0; }
 h2 { font-size: 40px; line-height: 1.1; font-weight: 800; letter-spacing: -0.015em; }
 h3 { font-size: 21px; line-height: 1.25; font-weight: 600; }
 p { margin: 0; }
-main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 
 /* Top bar */
+/* Fixed over the pages, on a fade so a page's text never runs under it. */
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: calc(var(--topbar-h, 82px) + 18px); z-index: 29; pointer-events: none;
+  background: linear-gradient(var(--note) 72%, rgba(15, 38, 32, 0));
+}
 .topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
   max-width: 1180px; margin: 0 auto; padding: 22px 40px;
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
 }
@@ -75,7 +79,7 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 /* Hero */
 .hero {
   position: relative; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); gap: 64px;
-  align-items: center; padding-top: 72px !important;
+  align-items: center; width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 40px;
 }
 .hero-engraving {
   position: absolute; inset: -40px -40vw 0; width: calc(100% + 80vw); height: 120%; z-index: -1;
@@ -92,11 +96,7 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
   padding: 26px 28px 96px; overflow: hidden;
   box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
 }
-.slip-engraving {
-  position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #93ae96; stroke-width: 0.9; opacity: 0.8;
-}
-.slip-engraving .rosette { stroke: #7c9d86; opacity: 0.6; }
-.slip > *:not(.slip-engraving) { position: relative; }
+.slip > * { position: relative; }
 .slip-head {
   display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 12px;
   border-bottom: 1.5px solid rgba(18, 48, 42, 0.25); font: 800 18px var(--display);
@@ -228,7 +228,7 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 }
 
 @media (max-width: 900px) {
-  main > section { padding: 88px 20px 0; }
+  .hero { padding: 0 20px; }
   .topbar, .site-footer { padding-left: 20px; padding-right: 20px; }
   .hero, .why { grid-template-columns: 1fr; gap: 48px; }
   .steps, .headline-figures, .results-chart, .built dl { grid-template-columns: 1fr; gap: 28px; }
@@ -245,85 +245,117 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
   .seals li, .stamp { animation: none; }
 }
 
-/* Chapters: the home view ends in four tiles; each opens a full chapter. */
-.chapter-tiles {
-  max-width: 1180px; margin: 56px auto 0; padding: 0 40px 88px;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
-  border-top: 1px solid var(--engrave);
+/* The deck: every page fills the window, and only the current one shows. A page taller than the
+   window scrolls inside itself; Site.tsx turns the page once it's scrolled to its end. */
+html, body { height: 100%; overflow: hidden; }
+.deck { position: fixed; inset: 0; overflow: hidden; }
+.page {
+  position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; visibility: hidden;
+  background: var(--note); padding: calc(var(--topbar-h, 82px) + 12px) 0 118px; scrollbar-width: thin; scrollbar-color: var(--engrave) transparent;
 }
-.chapter-tile {
-  display: grid; gap: 6px; align-content: start; text-align: left; padding: 22px 22px 26px 0; margin-right: 22px;
-  background: none; border: none; border-bottom: 2px solid transparent; color: var(--paper); cursor: pointer;
-  transition: border-color 0.2s ease;
-}
-.chapter-tile:hover { border-bottom-color: var(--defense); }
-.chapter-tile .tile-title { font: 800 22px/1.15 var(--display); letter-spacing: -0.01em; width: fit-content; }
-.chapter-tile .tile-teaser { font-size: 15px; color: var(--paper-dim); }
-.chapter-tile:hover .tile-title { color: var(--defense-text); }
+.page.active, .page.leaving { visibility: visible; }
+.page.active { z-index: 2; }
+.page.leaving { z-index: 1; }
+/* Short pages sit in the middle of the window; long ones start at the top. */
+.page-inner { min-height: 100%; display: flex; flex-direction: column; justify-content: center; }
 
-.chapter { max-width: 1180px; margin: 0 auto; padding: 32px 40px 80px; }
-.chapter-top { display: flex; justify-content: space-between; align-items: center; }
-.chapter-top .back {
-  background: none; border: none; color: var(--defense-text); font: 700 15px var(--text); padding: 6px 0; cursor: pointer;
+/* Turning the page. Forward: the next page wipes in left to right through a soft edge while the old one
+   sinks back, dims and blurs. Back: the wipe runs right to left and the old page lifts away. */
+@media (prefers-reduced-motion: no-preference) {
+  .page.active.entering {
+    mask-image: linear-gradient(90deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
+    animation: page-wipe 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .page.active.entering[data-dir="-1"] {
+    mask-image: linear-gradient(270deg, #000 42%, transparent 58%); animation-name: page-wipe-back;
+  }
+  .page.leaving { animation: page-sink 850ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .page.leaving[data-dir="-1"] { animation-name: page-lift; }
 }
-.chapter-top .back::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-left: 2px solid; border-bottom: 2px solid; transform: rotate(45deg) translateY(-1px); }
-.chapter-top .count { font-size: 14px; color: var(--paper-dim); font-variant-numeric: tabular-nums; }
-.chapter-title { font: 800 clamp(40px, 5vw, 60px)/1.02 var(--display); letter-spacing: -0.025em; margin: 28px 0 32px; width: fit-content; }
+@keyframes page-wipe { from { mask-position: 100% 0; } to { mask-position: 0 0; } }
+@keyframes page-wipe-back { from { mask-position: 0 0; } to { mask-position: 100% 0; } }
+@keyframes page-sink { to { opacity: 0.15; transform: translateY(-5%) scale(0.96); filter: blur(4px); } }
+@keyframes page-lift { to { opacity: 0.15; transform: translateY(5%) scale(0.96); filter: blur(4px); } }
+
+/* Each time a page arrives, its title rises and then its pieces come up one after another. */
+@media (prefers-reduced-motion: no-preference) {
+  .page.active :is(.chapter-title, .hero-copy > *, .slip) { animation: rise 700ms 120ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .page.active .hero-copy > :nth-child(2) { animation-delay: 220ms; }
+  .page.active .hero-copy > :nth-child(3) { animation-delay: 320ms; }
+  .page.active .slip { animation-delay: 260ms; }
+  .page.active :is(.section-lede, .why-copy > p, .statement > li, .steps > li, .headline-figures > li, .results-chart, .method, .built dl > div, .closing-note, .closing-cta) {
+    animation: rise 650ms 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .page.active :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(2) { animation-delay: 360ms; }
+  .page.active :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(3) { animation-delay: 460ms; }
+  .page.active :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(4) { animation-delay: 560ms; }
+  .page.active :is(.why-copy > p, .statement > li, .steps > li, .headline-figures > li, .built dl > div):nth-child(5) { animation-delay: 660ms; }
+  .page.active :is(.results-chart, .method, .closing-note, .closing-cta) { animation-delay: 560ms; }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(22px); } }
+
+/* Sections */
+.chapter { width: 100%; max-width: 1180px; margin: 0 auto; padding: 8px 40px 24px; }
+.chapter-title { font: 800 clamp(40px, 5vw, 60px)/1.02 var(--display); letter-spacing: -0.025em; margin: 0 0 32px; width: fit-content; }
 .chapter-lead { font: 800 30px/1.15 var(--display); color: var(--paper) !important; margin: 0 0 6px !important; max-width: 20ch; }
 .chapter .steps, .chapter .headline-figures, .chapter .results-chart { margin-top: 32px; }
 .chapter .built dl { margin-top: 0; }
 .closing-note { margin-top: 40px; color: var(--paper-dim); max-width: 60ch; }
-/* Sticks to the bottom of the window, so Next is on screen without scrolling. */
-.chapter-pager {
-  position: sticky; bottom: 0; z-index: 2; background: var(--note);
-  margin-top: 72px; padding: 14px 0; border-top: 1px solid var(--engrave); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.pager { display: grid; gap: 2px; background: none; border: none; color: var(--paper); font: 800 20px var(--display); cursor: pointer; padding: 4px 0; }
-.pager span { font: 700 13px var(--text); color: var(--paper-dim); }
-.pager.next { text-align: right; }
-.pager:hover { color: var(--defense-text); }
+.closing-cta { display: flex; justify-content: center; padding: 24px 40px 40px; }
+.page .site-footer { width: 100%; }
 
-/* Transitions inside the overview (same page). "in": the chapter wipes in left to right through a
-   soft gradient edge while its title morphs out of the tile. "out": the wipe runs the other way.
-   "next"/"prev": a horizontal swipe. Cross-page transitions to the arena are in transitions.css. */
-html[data-nav="in"] .chapter-tile.focus .tile-title,
-html[data-nav="in"] .chapter-title,
-html[data-nav="out"] .chapter-tile.focus .tile-title,
-html[data-nav="out"] .chapter-title { view-transition-name: chapter-title; }
-::view-transition-group(chapter-title) { animation-duration: 620ms; animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1); }
-
-html:active-view-transition-type(in)::view-transition-old(root) { animation: 620ms ease both vt-dim; }
-html:active-view-transition-type(in)::view-transition-new(root) {
-  animation: 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both vt-wipe;
-  mask-image: linear-gradient(90deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
+/* The next-page button, fixed at the foot of every page; on the last page it goes back to the top. */
+.scroll-cue {
+  position: fixed; left: 50%; bottom: 18px; z-index: 30; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 16px 8px; border: none; border-radius: 999px;
+  background: rgba(15, 38, 32, 0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); cursor: pointer;
+  color: var(--paper-dim); font: 700 12px var(--text); letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap;
+  transition: color 0.2s ease;
+  animation: cue-in 500ms 300ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-html:active-view-transition-type(out)::view-transition-old(root) { animation: 620ms ease both vt-dim; }
-html:active-view-transition-type(out)::view-transition-new(root) {
-  animation: 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both vt-wipe-back;
-  mask-image: linear-gradient(270deg, #000 42%, transparent 58%); mask-size: 260% 100%; mask-repeat: no-repeat;
+.scroll-cue:hover { color: var(--paper); }
+.scroll-cue svg {
+  width: 40px; height: 40px; padding: 9px; margin-top: 6px; border: 1px solid var(--engrave); border-radius: 50%;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: border-color 0.2s ease;
 }
-html:active-view-transition-type(next)::view-transition-old(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-out-left; }
-html:active-view-transition-type(next)::view-transition-new(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-in-right; }
-html:active-view-transition-type(prev)::view-transition-old(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-out-right; }
-html:active-view-transition-type(prev)::view-transition-new(root) { animation: 460ms cubic-bezier(0.4, 0, 0.2, 1) both vt-in-left; }
+.scroll-cue.up svg { margin: 0 0 6px; }
+.scroll-cue:hover svg { border-color: var(--paper-dim); }
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-cue svg { animation: cue-bob 1.8s ease-in-out infinite; }
+  .scroll-cue.up svg { animation-name: cue-bob-up; }
+}
+@keyframes cue-bob { 50% { transform: translateY(5px); } }
+@keyframes cue-bob-up { 50% { transform: translateY(-5px); } }
+@keyframes cue-in { from { opacity: 0; transform: translate(-50%, 10px); } }
 
-@keyframes vt-wipe { from { mask-position: 100% 0; } to { mask-position: 0 0; } }
-@keyframes vt-wipe-back { from { mask-position: 0 0; } to { mask-position: 100% 0; } }
-@keyframes vt-dim { to { opacity: 0.25; filter: blur(2px); } }
-@keyframes vt-out-left { to { transform: translateX(-28%); opacity: 0; } }
-@keyframes vt-in-right { from { transform: translateX(28%); opacity: 0; } }
-@keyframes vt-out-right { to { transform: translateX(28%); opacity: 0; } }
-@keyframes vt-in-left { from { transform: translateX(-28%); opacity: 0; } }
+/* Page dots down the right edge: where you are, and a jump to any page. Labels show on hover. */
+.page-dots { position: fixed; right: 26px; top: 50%; z-index: 30; transform: translateY(-50%); display: grid; gap: 6px; }
+.page-dots button {
+  position: relative; width: 22px; height: 22px; padding: 0; border: none; background: none; cursor: pointer;
+  display: grid; place-items: center;
+}
+.page-dots button::before {
+  content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--engrave);
+  transition: height 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), background-color 0.25s ease;
+}
+.page-dots button:hover::before { background: var(--paper-dim); }
+.page-dots button.on::before { height: 22px; background: var(--paper); }
+.page-dots span {
+  position: absolute; right: 30px; top: 50%; transform: translate(6px, -50%); opacity: 0; pointer-events: none;
+  padding: 4px 10px; border-radius: 999px; background: rgba(15, 38, 32, 0.9); border: 1px solid var(--engrave);
+  color: var(--paper); font: 700 13px var(--text); white-space: nowrap; transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.page-dots button:hover span, .page-dots button:focus-visible span { opacity: 1; transform: translate(0, -50%); }
 
 @media (max-width: 900px) {
-  .chapter-tiles { grid-template-columns: 1fr 1fr; padding: 0 20px 64px; }
-  .chapter { padding: 24px 20px 64px; }
+  .chapter { padding: 8px 20px 24px; }
+  .page-dots { right: 8px; }
 }
-@media (max-width: 480px) {
-  .chapter-tiles { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .page-dots { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }

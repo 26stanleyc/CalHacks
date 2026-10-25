@@ -70,12 +70,6 @@ export function Timeline() {
     }));
   }
   const current = segments.findIndex((s) => s.stage === stage && s.index === round);
-  // Attack money ramps up over the run, so a steady net under heavier attack means the defense is
-  // keeping up. Say where it peaks rather than assuming it rises every round.
-  const attempted = compare ? flowByRound(runs!.after).map((f) => f.attempted) : [];
-  const peak = attempted.reduce((best, v, i) => (v > attempted[best] ? i : best), 0);
-  // A dataset's fraud doesn't adapt or grow on purpose, so the note is only for simulated runs.
-  const growing = !caught && attempted.length > 1 && attempted[peak] > attempted[0] * 1.2;
   const beforeCount = compare ? runs!.before!.rounds.length : 0;
 
   // Losses start at zero. An isolated outlier (more than 1.5x the next tallest bar, like XGBoost
@@ -193,7 +187,7 @@ export function Timeline() {
         {compare && caught ? (
           <p className="key">
             <span>
-              Share of each round's phishing payments stopped. <b>Higher is better</b>
+              Phishing stopped per round <b>Higher is better</b>
             </span>
             <span><i className="tagteam" /> TagTeam</span>
             <span><i className="model" /> {label.split(",")[0]}</span>
@@ -201,19 +195,9 @@ export function Timeline() {
           </p>
         ) : compare ? (
           <p className="key">
-            <span>
-              Left: money {label.split(",")[0]} lost each round. Right: how much less TagTeam lost than {label.split(",")[0]}{" "}
-              {sameWhat(runs?.baseline?.live)}, round by round.
-            </span>
             <span><i className="model" /> {label.split(",")[0]} lost</span>
             <span><i className="tagteam" /> TagTeam lost less</span>
             <span><i className="negative" /> TagTeam lost more</span>
-            <span><i className="cut-key" /> Cut: taller than shown (amount on the bar)</span>
-            {growing && (
-              <span className="growth">
-                Attacks ramp up: {money(attempted[0])} tried in round 1, peaking at {money(attempted[peak])} in round {peak + 1}.
-              </span>
-            )}
           </p>
         ) : (
           <p className="caption">Bar height: how much a fresh attacker could still steal after each round</p>

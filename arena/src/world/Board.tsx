@@ -1,6 +1,5 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { ALL_SHELVES } from "../data/mock";
 import { C, M, shelfColor } from "../palette";
@@ -106,25 +105,9 @@ function Cloud({ x, z, y, s, speed }: { x: number; z: number; y: number; s: numb
   );
 }
 
-function HalfLabel({ angle, text }: { angle: number; text: string }) {
-  const r = 9.4;
-  return (
-    <Html position={[Math.cos(angle) * r, 0.4, Math.sin(angle) * r]} center zIndexRange={[10, 0]}>
-      <div className="plaque">{text}</div>
-    </Html>
-  );
-}
-
 export function Board() {
   const field = useMemo(() => [...ring(1), ...ring(2), ...ring(3)], []);
   const beach = useMemo(() => [...ring(5), ...ring(6)], []);
-  // Centroid direction of each half of the shelf ring, for the two labels.
-  const halfAngle = (side: "merchant" | "buyer") => {
-    const ids = ALL_SHELVES.filter((id) => id.endsWith(side));
-    const x = ids.reduce((s, id) => s + SHELF_TILE[id].x, 0);
-    const z = ids.reduce((s, id) => s + SHELF_TILE[id].z, 0);
-    return Math.atan2(z, x);
-  };
   return (
     <group>
       <Gate />
@@ -151,8 +134,6 @@ export function Board() {
       <Cloud x={-17} z={-15} y={1.2} s={1.3} speed={0.05} />
       <Cloud x={14} z={-19} y={1.6} s={1.6} speed={0.04} />
       <Cloud x={21} z={2} y={1} s={1.1} speed={0.06} />
-      <HalfLabel angle={halfAngle("merchant")} text="Attacks on stores" />
-      <HalfLabel angle={halfAngle("buyer")} text="Attacks on shoppers" />
     </group>
   );
 }

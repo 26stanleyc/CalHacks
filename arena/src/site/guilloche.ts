@@ -18,18 +18,3 @@ export function waveBand(width: number, height: number, lines: number, amplitude
   }
   return out.join(" ");
 }
-
-// A hypotrochoid rosette centred on (cx, cy): the classic guilloché seal.
-export function rosette(cx: number, cy: number, R: number, r: number, d: number, steps = 1400): string {
-  // R and r are integers, so the curve closes after r / gcd(R, r) turns.
-  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
-  const turns = r / gcd(R, r);
-  let path = "";
-  for (let i = 0; i <= steps; i++) {
-    const t = (i / steps) * Math.PI * 2 * turns;
-    const x = cx + (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t);
-    const y = cy + (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t);
-    path += `${i ? "L" : "M"}${f(x)} ${f(y)}`;
-  }
-  return path + "Z";
-}

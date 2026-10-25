@@ -1,7 +1,7 @@
 // Payments in flight. Every drawn payment is a coin arcing from its thrower to the gate.
 // A stopped coin is shot by the specialists that objected (or the orchestrator, when the call was
 // its alone) and tumbles out of the sky; a stolen coin drops into the vault and flashes it red.
-// Honest coins are gold, attack coins crimson.
+// Payments are small glowing packets: gold for honest payments, red for attacks.
 
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
@@ -12,6 +12,10 @@ import { GATE, actorPos, type Vec3 } from "./layout";
 import { INTERCEPT_FRAC, type CoinFlight, type RoundModel } from "./roundModel";
 
 const ARC = 2.2;
+// Packet and beam colours. Red and blue match the console theme.
+const HONEST = "#F5C443"; // gold, not the console's pale green, which vanishes on the daylight board
+const ATTACK = "#FF5A44";
+const BEAM = "#638BF0";
 const FALL = 0.7; // seconds a shot-down coin tumbles before it's gone
 const GRAVITY = 9;
 const ZAP_POOL = 120;
@@ -45,13 +49,13 @@ export function Coins({ model, soloFrom }: { model: RoundModel; soloFrom?: Vec3 
   const coins = useRef<THREE.InstancedMesh>(null);
   const zaps = useRef<THREE.InstancedMesh>(null);
   const flashes = useRef<THREE.InstancedMesh>(null);
-  const flashMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85, depthWrite: false }), []);
+  const flashMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.6, depthWrite: false }), []);
 
   useLayoutEffect(() => {
     const mesh = coins.current;
     if (!mesh) return;
     const col = new THREE.Color();
-    drawn.forEach((c, i) => mesh.setColorAt(i, col.set(c.attack ? C.cursed : C.coin)));
+    drawn.forEach((c, i) => mesh.setColorAt(i, col.set(c.attack ? ATTACK : HONEST)));
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [drawn]);
 
@@ -119,13 +123,13 @@ export function Coins({ model, soloFrom }: { model: RoundModel; soloFrom?: Vec3 
       else a.set(GATE[0], GATE[1] + 0.5, GATE[2]);
       tmp.position.copy(a);
       tmp.rotation.set(0, 0, 0);
-      const big = c.outcome === "stolen" ? 0.4 : c.outcome === "honest" ? 0.25 : 0.45;
+      const big = c.outcome === "stolen" ? 0.28 : c.outcome === "honest" ? 0.12 : 0.26;
       tmp.scale.setScalar(Math.sin(Math.PI * k) * big);
       tmp.updateMatrix();
       fm.setMatrixAt(f, tmp.matrix);
       fm.setColorAt(
         f,
-        col.set(c.outcome === "blocked" ? "#9DB8FF" : c.outcome === "false_alarm" ? "#B9B4C2" : c.outcome === "stolen" ? C.imp : C.coin),
+        col.set(c.outcome === "blocked" ? "#9DB8FF" : c.outcome === "false_alarm" ? "#B9B4C2" : c.outcome === "stolen" ? C.imp : HONEST),
       );
       f++;
     }
@@ -139,13 +143,14 @@ export function Coins({ model, soloFrom }: { model: RoundModel; soloFrom?: Vec3 
 
   return (
     <group>
-      <instancedMesh ref={coins} args={[undefined, undefined, Math.max(1, drawn.length)]} key={drawn.length} castShadow frustumCulled={false}>
-        <cylinderGeometry args={[0.2, 0.2, 0.06, 20]} />
-        <meshStandardMaterial roughness={0.3} metalness={0.3} emissive="#3a2a00" />
+      {/* Unlit, so the packets glow; the same look as the console theme on stanley/arena-console. */}
+      <instancedMesh ref={coins} args={[undefined, undefined, Math.max(1, drawn.length)]} key={drawn.length} frustumCulled={false}>
+        <octahedronGeometry args={[0.15, 0]} />
+        <meshBasicMaterial />
       </instancedMesh>
       <instancedMesh ref={zaps} args={[undefined, undefined, ZAP_POOL]} frustumCulled={false}>
-        <cylinderGeometry args={[0.07, 0.07, 1, 6]} />
-        <meshBasicMaterial color="#4F7BFF" />
+        <cylinderGeometry args={[0.045, 0.045, 1, 6]} />
+        <meshBasicMaterial color={BEAM} />
       </instancedMesh>
       <instancedMesh ref={flashes} args={[undefined, flashMat, FLASH_POOL]} frustumCulled={false}>
         <sphereGeometry args={[1, 16, 16]} />

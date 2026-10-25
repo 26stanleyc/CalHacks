@@ -41,9 +41,9 @@ const renumber = (replay: Replay) => replay.rounds.forEach((r) => r.waves.forEac
 // adds step 0: the same traffic, decided by the baseline.
 const DATA_SETS: Record<DataSet, { label: string; replay: string; baseline: string }> = {
   paysim: { label: "PaySim", replay: "paysim/replay.json", baseline: "paysim/xgboost.json" },
-  marketplace: { label: "Simulated marketplace", replay: "replay.json", baseline: "baseline.json" },
+  marketplace: { label: "Simulated", replay: "replay.json", baseline: "baseline.json" },
   real: { label: "Real cards: ULB / Worldline", replay: "real/replay.json.gz", baseline: "real/baseline.json" },
-  eth: { label: "Real Ethereum phishing", replay: "eth/replay.json.gz", baseline: "eth/baseline.json" },
+  eth: { label: "Ethereum", replay: "eth/replay.json.gz", baseline: "eth/baseline.json" },
 };
 const ALL = Object.keys(DATA_SETS) as DataSet[];
 const DEFAULT: DataSet = "paysim";
@@ -134,16 +134,26 @@ function DataSwitch({ data, loading, onChange }: { data: DataSet; loading: boole
                 </b>
               </p>
             )}
-            <p className="source">
-            {dataset.source}.{" "}
-            <a href={dataset.url} target="_blank" rel="noreferrer">
-              Source
-            </a>
-            , {dataset.license}. Amounts in {dataset.currency}; {dataset.round_hours} hours of payments per round.
-            </p>
           </>
         )
       )}
+    </section>
+  );
+}
+
+// Where a public dataset's payments come from. Opened from the toolbar, so it doesn't sit on screen.
+function DataSource() {
+  const dataset = useArena((s) => s.runs?.after.dataset);
+  if (!dataset) return null;
+  return (
+    <section className="data-source">
+      <p>
+        {dataset.source}.{" "}
+        <a href={dataset.url} target="_blank" rel="noreferrer">
+          Source
+        </a>
+        , {dataset.license}. Amounts in {dataset.currency}; {dataset.round_hours} hours of payments per round.
+      </p>
     </section>
   );
 }
@@ -178,11 +188,22 @@ function Legend() {
   );
 }
 
+type Panel = "grid" | "key" | "about";
+function PanelButton({ id, open, onToggle, children }: { id: Panel; open: Panel | null; onToggle: (p: Panel) => void; children: string }) {
+  return (
+    <button aria-pressed={open === id} onClick={() => onToggle(id)}>
+      {children}
+    </button>
+  );
+}
+
 export default function App() {
   const replay = useArena((s) => s.replay);
   const setRuns = useArena((s) => s.setRuns);
   const [data, setData] = useState<DataSet>(initialData);
   const [shown, setShown] = useState<DataSet | null>(null); // the data set on screen; lags `data` while loading
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const togglePanel = (p: Panel) => setPanel((open) => (open === p ? null : p));
   useEffect(() => {
     let current = true;
     loadRuns(data).then((runs) => {
@@ -226,11 +247,18 @@ export default function App() {
           <StageBanner />
           <div className="hud-right">
             <DataSwitch data={data} loading={shown !== data} onChange={choose} />
-            {/* The grid is our arena's attack taxonomy; a dataset's fraud has amounts but no attack styles. */}
-            {!replay.dataset && <ShelfMap />}
+            {/* Detail panels stay closed until asked for, so the board isn't covered. */}
+            <div className="panel-toggles" role="group" aria-label="Panels">
+              {/* The grid is our arena's attack taxonomy; a dataset's fraud has amounts but no attack styles. */}
+              {!replay.dataset && <PanelButton id="grid" open={panel} onToggle={togglePanel}>Attack grid</PanelButton>}
+              {replay.dataset && <PanelButton id="about" open={panel} onToggle={togglePanel}>About the data</PanelButton>}
+              <PanelButton id="key" open={panel} onToggle={togglePanel}>Key</PanelButton>
+            </div>
+            {panel === "grid" && !replay.dataset && <ShelfMap />}
+            {panel === "about" && <DataSource />}
+            {panel === "key" && <Legend />}
             <UnitCard />
           </div>
-          <Legend />
           <Timeline />
         </>
       ) : (

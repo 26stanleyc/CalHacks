@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { ResultsChart } from "./ResultsChart";
 import { DEMO_HREF, Mark } from "./brand";
-import { rosette, waveBand } from "./guilloche";
+import { waveBand } from "./guilloche";
 
 // The hero: one agent payment, stamped by each specialist in turn. A malicious buying agent hides
 // instructions for the fraud checker in its own payment note (the more common direction of prompt
@@ -18,10 +17,6 @@ const SEALS: { name: string; verdict: "pass" | "flag" | "block"; why: string }[]
 function PaymentSlip() {
   return (
     <figure className="slip" aria-label="Example: a shopping agent hides instructions in its payment note, and five specialists block it">
-      <svg className="slip-engraving" viewBox="0 0 520 380" preserveAspectRatio="none" aria-hidden="true">
-        <path d={waveBand(520, 380, 26, 7, 3)} />
-        <path className="rosette" d={rosette(440, 70, 60, 11, 34)} />
-      </svg>
       <div className="slip-head">
         <span>x402 payment</span>
         <span className="serial">Base Sepolia, USDC</span>
@@ -111,170 +106,230 @@ const STATS: { figure: string; what: string; source: string; href: string }[] = 
   },
 ];
 
-// The overview is a hero plus four chapters. Opening a chapter wipes it in while its title morphs
-// out of the chapter tile; moving between chapters swipes; going back wipes the other way. Each
-// chapter has its own #hash, so the back button and links work.
-type ChapterId = "why" | "how" | "results" | "built";
-type View = "home" | ChapterId;
-type Nav = "in" | "out" | "next" | "prev";
+// The overview is a deck of full-screen pages: the hero, then the four sections. Only one page is
+// on screen at a time. Scrolling past a page's end (wheel, arrow keys, a swipe or the arrow button)
+// turns to the next: the new page wipes in over the old one, which sinks away. A page taller than
+// the window scrolls inside itself first. Each page has its own #hash.
+type SectionId = "why" | "how" | "results" | "built";
+type PageId = "top" | SectionId;
 
-const CHAPTERS: { id: ChapterId; title: string; teaser: string }[] = [
-  { id: "why", title: "Why it matters", teaser: "Card fraud tools ask the wrong question about AI agents." },
-  { id: "how", title: "How it works", teaser: "Five specialists check every payment, then attack themselves." },
-  { id: "results", title: "What it saves", teaser: "About a quarter cheaper than XGBoost retrained every round, after day one." },
-  { id: "built", title: "Built on", teaser: "Fetch.ai, Bitdeer, Coinbase x402, Apify and CRS." },
+const SECTIONS: { id: SectionId; title: string }[] = [
+  { id: "why", title: "Why it matters" },
+  { id: "how", title: "How it works" },
+  { id: "results", title: "What it saves" },
+  { id: "built", title: "Built on" },
 ];
-
-const viewFromHash = (): View => {
-  const id = location.hash.slice(1);
-  return CHAPTERS.some((c) => c.id === id) ? (id as ChapterId) : "home";
-};
-
-function navKind(from: View, to: View): Nav {
-  if (to === "home") return "out";
-  if (from === "home") return "in";
-  const i = CHAPTERS.findIndex((c) => c.id === from);
-  const j = CHAPTERS.findIndex((c) => c.id === to);
-  return j > i ? "next" : "prev";
-}
+const PAGES: { id: PageId; title: string }[] = [{ id: "top", title: "Top" }, ...SECTIONS];
+const TURN_MS = 850; // matches the page animations in site.css
+const pageFromHash = () => Math.max(0, PAGES.findIndex((p) => p.id === location.hash.slice(1)));
 
 export function Site() {
-  const [view, setView] = useState<View>(viewFromHash);
-  // The tile a chapter opens from or returns to.
-  const [focus, setFocus] = useState<ChapterId | null>(() => (view === "home" ? null : view));
-  const viewRef = useRef(view);
-  viewRef.current = view;
+  const [index, setIndex] = useState(pageFromHash);
+  const [turn, setTurn] = useState<{ from: number; dir: 1 | -1 } | null>(null);
+  const indexRef = useRef(index);
+  indexRef.current = index;
+  const pages = useRef<(HTMLElement | null)[]>([]);
+  const lockedUntil = useRef(0); // no page turns before this time
+  const lastInnerScroll = useRef(0); // when the current page last scrolled inside itself
 
-  const show = useCallback((to: View, push: boolean) => {
-    const from = viewRef.current;
-    if (to === from) return;
-    const kind = navKind(from, to);
-    const update = () =>
-      flushSync(() => {
-        if (to !== "home") setFocus(to);
-        setView(to);
-        window.scrollTo(0, 0);
-      });
-    if (push) history.pushState(null, "", to === "home" ? location.pathname : `#${to}`);
-    // The kind picks the animation in site.css; it also says which elements share a morph.
-    document.documentElement.dataset.nav = kind;
-    if (kind === "in") flushSync(() => setFocus(to as ChapterId));
-    const doc = document as Document & { startViewTransition?: (o: unknown) => unknown };
-    if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return update();
-    doc.startViewTransition({ update, types: [kind] });
+  const go = useCallback((to: number) => {
+    const from = indexRef.current;
+    if (to < 0 || to >= PAGES.length || to === from) return;
+    lockedUntil.current = performance.now() + TURN_MS + 200;
+    const dir = to > from ? 1 : -1;
+    // Going forward starts the next page at its top; going back lands at the end of the page above.
+    const el = pages.current[to];
+    if (el) el.scrollTop = dir === 1 ? 0 : el.scrollHeight;
+    setTurn({ from, dir });
+    setIndex(to);
+    history.replaceState(null, "", to === 0 ? location.pathname : `#${PAGES[to].id}`);
   }, []);
 
   useEffect(() => {
-    const onPop = () => show(viewFromHash(), false);
+    if (!turn) return;
+    const id = setTimeout(() => setTurn(null), TURN_MS);
+    return () => clearTimeout(id);
+  }, [turn]);
+
+  // The header is fixed over the pages; pages leave room for it.
+  useEffect(() => {
+    const top = document.querySelector<HTMLElement>(".topbar");
+    if (!top) return;
+    const set = () => document.documentElement.style.setProperty("--topbar-h", `${top.offsetHeight}px`);
+    set();
+    addEventListener("resize", set);
+    return () => removeEventListener("resize", set);
+  }, []);
+
+  useEffect(() => {
+    // Has the current page scrolled as far as it goes in this direction?
+    const atEdge = (dir: number) => {
+      const el = pages.current[indexRef.current];
+      if (!el) return true;
+      return dir > 0 ? el.scrollTop + el.clientHeight >= el.scrollHeight - 2 : el.scrollTop <= 2;
+    };
+    const turnBy = (dir: number) => go(indexRef.current + dir);
+    const onWheel = (e: WheelEvent) => {
+      const now = performance.now();
+      const dir = Math.sign(e.deltaY);
+      if (!dir) return;
+      if (now < lockedUntil.current) {
+        // A trackpad keeps sending wheel events after a flick; hold the lock until they stop.
+        e.preventDefault();
+        lockedUntil.current = Math.max(lockedUntil.current, now + 120);
+        return;
+      }
+      if (!atEdge(dir)) return; // let the page scroll inside itself
+      e.preventDefault();
+      // The flick that scrolled this page to its end shouldn't also turn it.
+      if (now - lastInnerScroll.current < 250) return;
+      if (Math.abs(e.deltaY) < 8) return;
+      turnBy(dir);
+    };
     const onKey = (e: KeyboardEvent) => {
-      const v = viewRef.current;
-      if (v === "home") return;
-      const i = CHAPTERS.findIndex((c) => c.id === v);
-      if (e.key === "Escape") show("home", true);
-      else if (e.key === "ArrowRight" && CHAPTERS[i + 1]) show(CHAPTERS[i + 1].id, true);
-      else if (e.key === "ArrowLeft" && CHAPTERS[i - 1]) show(CHAPTERS[i - 1].id, true);
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, summary")) return;
+      const down = ["ArrowDown", "PageDown"].includes(e.key) || (e.key === " " && !e.shiftKey);
+      const up = ["ArrowUp", "PageUp"].includes(e.key) || (e.key === " " && e.shiftKey);
+      if (e.key === "Home") return void (e.preventDefault(), go(0));
+      if (e.key === "End") return void (e.preventDefault(), go(PAGES.length - 1));
+      if (!down && !up) return;
+      e.preventDefault();
+      if (performance.now() < lockedUntil.current) return;
+      const dir = down ? 1 : -1;
+      const el = pages.current[indexRef.current];
+      if (!atEdge(dir) && el) el.scrollBy({ top: dir * el.clientHeight * 0.8, behavior: "smooth" });
+      else turnBy(dir);
     };
-    window.addEventListener("popstate", onPop);
-    window.addEventListener("keydown", onKey);
+    let touchY: number | null = null;
+    let touchEdge = { up: false, down: false };
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches[0].clientY;
+      touchEdge = { up: atEdge(-1), down: atEdge(1) };
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchY === null || performance.now() < lockedUntil.current) return;
+      const dy = touchY - e.changedTouches[0].clientY;
+      touchY = null;
+      if (dy > 60 && touchEdge.down) turnBy(1);
+      else if (dy < -60 && touchEdge.up) turnBy(-1);
+    };
+    const onHash = () => go(pageFromHash());
+    addEventListener("wheel", onWheel, { passive: false });
+    addEventListener("keydown", onKey);
+    addEventListener("touchstart", onTouchStart, { passive: true });
+    addEventListener("touchend", onTouchEnd);
+    addEventListener("hashchange", onHash);
     return () => {
-      window.removeEventListener("popstate", onPop);
-      window.removeEventListener("keydown", onKey);
+      removeEventListener("wheel", onWheel);
+      removeEventListener("keydown", onKey);
+      removeEventListener("touchstart", onTouchStart);
+      removeEventListener("touchend", onTouchEnd);
+      removeEventListener("hashchange", onHash);
     };
-  }, [show]);
+  }, [go]);
 
+  const last = PAGES.length - 1;
   return (
     <>
-      <main>{view === "home" ? <Home focus={focus} open={(id) => show(id, true)} /> : <Chapter id={view} go={(v) => show(v, true)} />}</main>
-      <footer className="site-footer">
-        <span className="wordmark small">
-          <Mark size={20} />
-          TagTeam
-        </span>
-        <span>Built at Cal Hacks by Ryan, Eric and Stanley.</span>
-      </footer>
-    </>
-  );
-}
-
-function Home({ focus, open }: { focus: ChapterId | null; open: (id: ChapterId) => void }) {
-  return (
-    <>
-      <section className="hero">
-        <svg className="hero-engraving" viewBox="0 0 1600 640" preserveAspectRatio="none" aria-hidden="true">
-          <path d={waveBand(1600, 640, 44, 16, 2.5)} />
-        </svg>
-        <div className="hero-copy">
-          <h1>AI agents can pay now. TagTeam makes sure they should.</h1>
-          <p className="lede">
-            TagTeam is a fraud layer for x402, the payment rail built for AI agents. It sits at the checkpoint every
-            payment passes through. Five specialist agents check each one, and the defense keeps itself sharp by
-            building the attackers most likely to beat it.
-          </p>
-          <div className="actions">
-            <a className="button primary" href={DEMO_HREF}>
-              Open the live arena
-            </a>
-            <button className="button" onClick={() => open("how")}>
-              How it works
-            </button>
-          </div>
-        </div>
-        <PaymentSlip />
-      </section>
-      <nav className="chapter-tiles" aria-label="Learn more">
-        {CHAPTERS.map((c) => (
-          <button key={c.id} className={`chapter-tile${focus === c.id ? " focus" : ""}`} onClick={() => open(c.id)}>
-            <span className="tile-title">{c.title}</span>
-            <span className="tile-teaser">{c.teaser}</span>
+      <main className="deck">
+        {PAGES.map((p, i) => {
+          const state = i === index ? (turn ? "active entering" : "active") : turn?.from === i ? "leaving" : "";
+          return (
+            <section
+              key={p.id}
+              id={p.id === "top" ? undefined : p.id}
+              ref={(el) => {
+                pages.current[i] = el;
+              }}
+              className={`page page-${p.id} ${state}`}
+              data-dir={turn?.dir ?? 1}
+              aria-hidden={i !== index}
+              inert={i !== index}
+              onScroll={() => (lastInnerScroll.current = performance.now())}
+            >
+              <div className="page-inner">
+                {p.id === "top" ? (
+                  <Hero go={go} />
+                ) : (
+                  <div className={`chapter chapter-${p.id}`}>
+                    <h2 className="chapter-title">{p.title}</h2>
+                    {p.id === "why" && <WhyChapter />}
+                    {p.id === "how" && <HowChapter />}
+                    {p.id === "results" && <ResultsChapter />}
+                    {p.id === "built" && <BuiltChapter />}
+                  </div>
+                )}
+                {i === last && (
+                  <>
+                    <div className="closing-cta">
+                      <a className="button primary" href={DEMO_HREF}>
+                        Open the live arena
+                      </a>
+                    </div>
+                    <footer className="site-footer">
+                      <span className="wordmark small">
+                        <Mark size={20} />
+                        TagTeam
+                      </span>
+                      <span>Built at Cal Hacks by Ryan, Eric and Stanley.</span>
+                    </footer>
+                  </>
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </main>
+      <nav className="page-dots" aria-label="Pages">
+        {PAGES.map((p, i) => (
+          <button key={p.id} className={i === index ? "on" : ""} aria-current={i === index ? "true" : undefined} onClick={() => go(i)}>
+            <span>{p.title}</span>
           </button>
         ))}
       </nav>
+      {index < last ? (
+        <button key="next" className="scroll-cue" onClick={() => go(index + 1)} aria-label={`Next: ${PAGES[index + 1].title}`}>
+          <span>{index === 0 ? "Scroll" : PAGES[index + 1].title}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+      ) : (
+        <button key="top" className="scroll-cue up" onClick={() => go(0)} aria-label="Back to the top">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 15l6-6 6 6" />
+          </svg>
+          <span>Back to top</span>
+        </button>
+      )}
     </>
   );
 }
 
-function Chapter({ id, go }: { id: ChapterId; go: (v: View) => void }) {
-  const i = CHAPTERS.findIndex((c) => c.id === id);
-  const prev = CHAPTERS[i - 1];
-  const next = CHAPTERS[i + 1];
+function Hero({ go }: { go: (to: number) => void }) {
   return (
-    <article className={`chapter chapter-${id}`} aria-labelledby="chapter-title">
-      <div className="chapter-top">
-        <button className="back" onClick={() => go("home")}>
-          Overview
-        </button>
-        <span className="count">
-          {i + 1} of {CHAPTERS.length}
-        </span>
-      </div>
-      <h2 id="chapter-title" className="chapter-title">
-        {CHAPTERS[i].title}
-      </h2>
-      {id === "why" && <WhyChapter />}
-      {id === "how" && <HowChapter />}
-      {id === "results" && <ResultsChapter />}
-      {id === "built" && <BuiltChapter />}
-      <nav className="chapter-pager" aria-label="Chapters">
-        {prev ? (
-          <button className="pager prev" onClick={() => go(prev.id)}>
-            <span>Previous</span>
-            {prev.title}
-          </button>
-        ) : (
-          <span />
-        )}
-        {next ? (
-          <button className="pager next" onClick={() => go(next.id)}>
-            <span>Next</span>
-            {next.title}
-          </button>
-        ) : (
+    <section className="hero">
+      <svg className="hero-engraving" viewBox="0 0 1600 640" preserveAspectRatio="none" aria-hidden="true">
+        <path d={waveBand(1600, 640, 44, 16, 2.5)} />
+      </svg>
+      <div className="hero-copy">
+        <h1>AI agents can pay now. TagTeam makes sure they should.</h1>
+        <p className="lede">
+          TagTeam is a fraud layer for x402, the payment rail built for AI agents. It sits at the checkpoint every
+          payment passes through. Five specialist agents check each one, and the defense keeps itself sharp by
+          building the attackers most likely to beat it.
+        </p>
+        <div className="actions">
           <a className="button primary" href={DEMO_HREF}>
             Open the live arena
           </a>
-        )}
-      </nav>
-    </article>
+          <button className="button" onClick={() => go(PAGES.findIndex((p) => p.id === "how"))}>
+            How it works
+          </button>
+        </div>
+      </div>
+      <PaymentSlip />
+    </section>
   );
 }
 
