@@ -9,14 +9,17 @@ Shared by the hello agent and both public agents (spec 3.7). What it sets up:
 - Mailbox registration on startup from `AGENTVERSE_API_KEY`, the same call the local
   agent inspector's "Connect" button makes, so there is nothing to click by hand.
 
-The answer itself comes from a `respond(sender, text) -> str` callback. It runs in a
-worker thread: the routing LLM call is blocking, and the agent's event loop has to stay
-free to acknowledge and answer other messages.
+The answer itself comes from a `respond(sender, text)` callback returning a string, or a
+`Reply` that also carries an ASI:One interactive card. It runs in a worker thread: the
+routing LLM call is blocking, and the agent's event loop has to stay free to acknowledge
+and answer other messages.
 """
 
 import asyncio
+import json
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from uagents import Agent, Context, Protocol
@@ -24,6 +27,7 @@ from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
     EndSessionContent,
+    MetadataContent,
     StartSessionContent,
     TextContent,
     chat_protocol_spec,
@@ -36,7 +40,29 @@ logger = logging.getLogger(__name__)
 # ASI:One renders long replies poorly, and our answers are short by design.
 MAX_REPLY_CHARS = 3_000
 
-Responder = Callable[[str, str], str]
+
+@dataclass
+class Reply:
+    """An answer, optionally with an ASI:One interactive card as (card_kind, card_payload)."""
+
+    text: str
+    card: tuple[str, dict] | None = None
+
+
+Responder = Callable[[str, str], "str | Reply"]
+
+
+def card_content(kind: str, payload: dict) -> MetadataContent:
+    """An ASI:One interactive card (card protocol v1). Every metadata value must be a string."""
+    return MetadataContent(
+        metadata={
+            "card_protocol_version": "1",
+            "requires_card_interaction": "true",
+            "card_kind": kind,
+            "card_payload": json.dumps(payload),
+            "preferred_drawer_width_px": "540",
+        }
+    )
 
 
 def build_chat_agent(
@@ -93,10 +119,13 @@ def build_chat_agent(
             ctx.logger.exception("Responder failed")
             answer = "Something went wrong on my side. Please try that again."
 
-        await ctx.send(
-            sender,
-            ChatMessage(content=[TextContent(text=_trim(answer)), EndSessionContent()]),
-        )
+        reply = answer if isinstance(answer, Reply) else Reply(text=answer)
+        content = [TextContent(text=_trim(reply.text))]
+        if reply.card is not None:
+            content.append(card_content(*reply.card))  # the session stays open for the click
+        else:
+            content.append(EndSessionContent())
+        await ctx.send(sender, ChatMessage(content=content))
 
     @protocol.on_message(ChatAcknowledgement)
     async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> None:

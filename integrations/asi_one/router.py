@@ -16,6 +16,8 @@ from typing import Any
 
 from contracts.entrypoints import Engine, NotAllowed
 from contracts.llm import LLMClient, Message
+from integrations.asi_one.agent_base import Reply
+from integrations.asi_one.buy import BUY_SPEC, Purchases
 from integrations.asi_one.tools import EntryPointTools, ToolResult
 from integrations.settings import chat_allowlist
 
@@ -41,7 +43,8 @@ Your tools: {tool_names}."""
 
 FRAUD_DESK_ROLE = (
     "the public face of a fraud-defense layer that sits at the x402 payment facilitator. "
-    "You check payments, explain past decisions, report how the defense is doing, and show the threat watchlist."
+    "You buy products safely for users (scan the page, check the payment, ask them, pay), check payments, "
+    "explain past decisions, report how the defense is doing, and show the threat watchlist."
 )
 MERCHANT_SCANNER_ROLE = (
     "a scanner that checks merchant product pages for hidden instructions aimed at AI shopping agents."
@@ -49,6 +52,7 @@ MERCHANT_SCANNER_ROLE = (
 
 HELP_FRAUD_DESK = (
     "I'm the Fraud Desk for an x402 payment-defense layer. I can:\n"
+    "- buy something safely: \"buy https://shop.example/charger for me, budget $30\"\n"
     "- check a payment: \"check this payment: agent a-1 paying m-7 $49 for a charger, mandate under $30\"\n"
     "- explain a past decision: \"why was tx-123 blocked?\"\n"
     "- report how the defense is doing: \"how is the defense doing?\"\n"
@@ -75,9 +79,10 @@ class RouterTurn:
     text: str
     tool: str | None = None
     answer: str = ""
-    routed_by: str = "llm"  # "llm", "keywords" or "none"
+    routed_by: str = "llm"  # "llm", "keywords", "purchase" or "none"
     refused: bool = False
     results: list[ToolResult] = field(default_factory=list)
+    card: tuple[str, dict] | None = None
 
 
 class ChatRouter:
@@ -94,6 +99,7 @@ class ChatRouter:
         tool_names: tuple[str, ...] | None = None,
         allowlist: set[str] | None = None,
         include_team_tools: bool = True,
+        purchases: Purchases | None = None,
     ) -> None:
         self.engine = engine
         self.llm = llm
@@ -102,7 +108,9 @@ class ChatRouter:
         self.help_text = help_text
         self.allowlist = chat_allowlist() if allowlist is None else allowlist
         self.tools = EntryPointTools(engine, allowlist=self.allowlist, include_team_tools=include_team_tools)
-        self.tool_names = tuple(s.name for s in self.tools.specs(tool_names))
+        self.purchases = purchases
+        self.tool_specs = self.tools.specs(tool_names) + ([BUY_SPEC] if purchases is not None else [])
+        self.tool_names = tuple(s.name for s in self.tool_specs)
         self.turns: list[RouterTurn] = []
 
     # -- public --------------------------------------------------------------------------
@@ -111,6 +119,11 @@ class ChatRouter:
         """The answer to send back. Never raises: a chat agent has to reply to something."""
         turn = self.handle_turn(sender, text)
         return turn.answer
+
+    def reply(self, sender: str, text: str) -> Reply:
+        """The answer plus its interactive card, if any. What the chat agents send."""
+        turn = self.handle_turn(sender, text)
+        return Reply(text=turn.answer, card=turn.card)
 
     def handle_turn(self, sender: str, text: str) -> RouterTurn:
         message = (text or "").strip()[:MAX_MESSAGE_CHARS]
@@ -121,6 +134,18 @@ class ChatRouter:
             self.turns.append(turn)
             return turn
 
+        if self.purchases is not None:  # "approve buy-..." or a card click, before any routing
+            try:
+                answered = self.purchases.answer(sender, message)
+            except Exception as exc:
+                logger.exception("Answering a purchase failed")
+                answered = ToolResult(tool="buy", text=_failure_text(exc), ok=False)
+            if answered is not None:
+                turn.tool, turn.routed_by = "buy", "purchase"
+                turn.results, turn.answer = [answered], answered.text
+                self.turns.append(turn)
+                return turn
+
         name, arguments, routed_by = self._route(message)
         turn.tool, turn.routed_by = name, routed_by
 
@@ -130,7 +155,10 @@ class ChatRouter:
             return turn
 
         try:
-            result = self.tools.call(name, arguments, sender=sender)
+            if name == "buy":
+                result = self.purchases.start({"request_text": message, **arguments}, sender)
+            else:
+                result = self.tools.call(name, arguments, sender=sender)
         except NotAllowed:
             # The full address, on its own line, so it can be copied into .env as it is.
             if sender in self.allowlist:  # we allowed it, the engine (engine.serve) did not
@@ -159,6 +187,7 @@ class ChatRouter:
 
         turn.results = [result]
         turn.answer = result.text
+        turn.card = result.card
         self.turns.append(turn)
         return turn
 
@@ -182,7 +211,7 @@ class ChatRouter:
                     Message(role="user", content=f"{DATA_OPEN}\n{message}\n{DATA_CLOSE}"),
                 ],
                 role="chat",
-                tools=self.tools.specs(self.tool_names),
+                tools=self.tool_specs,
                 max_tokens=512,
             )
         except Exception:
@@ -244,8 +273,17 @@ def keyword_route(message: str, available: tuple[str, ...]) -> tuple[str | None,
     lowered = message.lower()
 
     url = _URL.search(message)
+    if url and "buy" in available and any(
+        w in lowered for w in ("buy", "purchase", "order", "get me", "pay for", "checkout", "check out")
+    ):
+        purchase: dict[str, Any] = {"url": url.group(0).rstrip(".,;)?!")}
+        budgets = [_money_to_cents(m.group(1)) for m in _CAP.finditer(message)]
+        if budgets:
+            purchase["per_payment_cap_cents"] = min(budgets)
+        return "buy", purchase
+
     if url and "scan_page" in available:
-        return "scan_page", {"url": url.group(0).rstrip(".,;)")}
+        return "scan_page", {"url": url.group(0).rstrip(".,;)?!")}
 
     if "explain" in available:
         tx_id = _TX_ID.search(message)
