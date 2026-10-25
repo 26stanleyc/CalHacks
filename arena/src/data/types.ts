@@ -150,6 +150,7 @@ export interface Baseline {
   trained_on: string;
   // A payment missing here was allowed and settled (real-data exports leave those out to stay small).
   decisions: Record<string, { action: Action; settled: boolean }>;
+  pretrained?: boolean; // fitted on a training period before round 1, so it decides round 1 trained
   totals: BaselineTotals;
   ours_totals: BaselineTotals;
 }

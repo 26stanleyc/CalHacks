@@ -19,7 +19,8 @@ const span = (from: number, to: number, start: string | null) =>
   `${clock(from, start)} to ${clock(to, start)}${start ? " UTC" : ""}`;
 
 // `ds` is set for a dataset run: each round is ds.round_hours of the dataset, three waves to a round.
-function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string, ds?: DatasetInfo): string {
+function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string, ds?: DatasetInfo,
+                   pretrained = false): string {
   const p = phaseAt(t);
   const wave =
     p.kind !== "wave"
@@ -29,11 +30,13 @@ function phaseLine(stage: Stage, round: number, t: number, spawns: number, froze
         : `Wave ${p.wave} of 3: attackers try to pay their way through the gate`;
   if (stage === "before") {
     // The baseline only trains after round 1's labels arrive, so round 1 is decided untrained.
-    if (round === 0 && p.kind !== "learn") return `${model} hasn't trained yet, so this round it lets every payment through`;
+    // A pretrained baseline (fitted on days before the test window) is already trained in round 1.
+    if (round === 0 && p.kind !== "learn" && !pretrained) return `${model} hasn't trained yet, so this round it lets every payment through`;
     if (p.kind === "spawn") return `${model} is guarding the checkpoint alone`;
     if (p.kind === "wave") return wave;
     // Recorded data doesn't adapt, so a dataset run doesn't claim it does.
-    return round === 0 ? `${model} trains once, on this round's fraud` : `${model} stays frozen${ds ? "" : " while the attackers adapt"}`;
+    if (round === 0 && !pretrained) return `${model} trains once, on this round's fraud`;
+    return `${model} stays frozen${ds ? "" : " while the attackers adapt"}`;
   }
   if (p.kind === "spawn") {
     if (ds) return `Next: the dataset's payments from ${span(round * ds.round_hours, (round + 1) * ds.round_hours, ds.start)}`;
@@ -99,7 +102,7 @@ export function Hud() {
         <h1>
           Round {r.round} <span>of {replay.rounds.length}</span>
         </h1>
-        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label), replay.dataset)}</p>
+        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label), replay.dataset, !!runs?.baseline?.pretrained)}</p>
         {r.metrics.frozen && <p className="frozen">Learning frozen</p>}
       </header>
       <section className={`scoreboard${before ? " breach" : ""}`} aria-label="This round's score">
