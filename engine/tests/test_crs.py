@@ -43,6 +43,11 @@ class FakeCrs:
         self.called.append("fraudfinder")
         return {"risk_score": {"low": 10, "medium": 50, "high": 90}[self.risk], "risk_level": self.risk}
 
+    def credit_report(self, principal_id):
+        self.called.append("credit")
+        return {"score": 700, "bureaus_with_file": 3, "bureaus_scored": 3, "deceased": False, "frozen": False,
+                "no_file": False}
+
 
 def decision(score: float, action: Action = Action.STEP_UP, vetoed_by: str | None = None) -> Decision:
     return Decision(tx_id="tx-sample", action=action, weighted_score=score, votes=[], vetoed_by=vetoed_by)
@@ -378,7 +383,10 @@ def test_attackers_hiding_contact_details_get_data_append_on_a_round():
     on_file = set(world.identities)
     crs = CrsEscalation(MockCrs(world.identities, on_file), low=0.3, high=0.7, max_per_round=10,
                         hidden=lambda p: () if p in on_file else ("phone", "email"))
-    engine = FraudEngine(world=world, allowlist={TEAM}, arena=False, hijacker=False, crs=crs)
+    # Enrollment off: this is a test of the escalation path, and the trust line would hard-veto most
+    # of these accounts over cap before any escalation could run (see test_trust_line.py).
+    engine = FraudEngine(world=world, allowlist={TEAM}, arena=False, hijacker=False, crs=crs,
+                         crs_enrollment=False)
     for _ in range(2):
         engine.run_round(requested_by=TEAM)
     hiding = [d for d in engine.store.decisions if d.crs and d.crs.hidden and d.crs.watch != "on_list"]
