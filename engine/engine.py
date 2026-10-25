@@ -55,6 +55,7 @@ from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
 from engine.investigator import Investigator
 from engine.learning.labels import Record, realized_cost
 from engine.learning.loop import LearningLoop
+from engine.page_cache import PrescannedPages
 from engine.pipeline import DefensePipeline
 from engine.sim.world import World
 from engine.store import LogStore, MemoryStore, log_bundle
@@ -143,7 +144,8 @@ class FraudEngine:
         self.learning = LearningLoop(self.pipeline, self.brain, self.store, self.run_id, FP_CAP, lock=self._lock,
                                      drafts=drafts, stacking=stacking)
         self.escalation_cap = escalation_cap
-        self.investigator = Investigator(self.brain, self.pipeline, self.scanner,
+        self.pages = PrescannedPages(self.scanner)  # payments never wait on a live page scan
+        self.investigator = Investigator(self.brain, self.pipeline, self.pages,
                                          page_url_for=getattr(self.world, "page_url_for", lambda tx: None))
         self.escalation_seconds: list[float] = []  # every escalated case's decision time
         # The threat-intel watchlist (M11, bonus): needs the arena (its attackers join the archive).
@@ -274,7 +276,7 @@ class FraudEngine:
         return with_tx_id(decision, tx_id)
 
     def scan_page(self, url: str) -> PageScan:
-        return self.scanner.scan(url)
+        return self.pages.scan_now(url)
 
     def get_metrics(self, run_id: str | None = None, round: int | None = None) -> RoundMetrics:
         run = run_id or self.run_id
