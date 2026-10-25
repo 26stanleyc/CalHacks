@@ -3,7 +3,7 @@
 import type { Actor, Lane } from "../data/types";
 import { useArena, waveStart, THROW_WINDOW, FLIGHT } from "../store";
 import { getRoundModel, latestAttacker } from "../world/roundModel";
-import { ACTOR_NAME, SOURCE_LINE, modelName, money, paramLines, shelfName } from "./words";
+import { ACTOR_NAME, SOURCE_LINE, attackerName, modelName, money, paramLines, ruleName, shelfName } from "./words";
 
 function Close() {
   const select = useArena((s) => s.select);
@@ -45,7 +45,7 @@ function AttackerCard({ id }: { id: string }) {
         <span className={`token devil ${a.source}`} aria-hidden="true" />
         <div>
           <p className="kind">{SOURCE_LINE[a.source]} attacker</p>
-          <h2>{a.name}</h2>
+          <h2>{attackerName(a.name)}</h2>
         </div>
       </div>
       <p className="origin">{origin}</p>
@@ -58,7 +58,7 @@ function AttackerCard({ id }: { id: string }) {
         </dd>
         <dt>Runs on</dt>
         <dd>{modelName(a.model)}</dd>
-        <dt>Stolen so far</dt>
+        <dt>Profit so far</dt>
         <dd>{money(a.profit_cents)}</dd>
       </dl>
       <h3>Plan</h3>
@@ -121,7 +121,7 @@ function DefenderCard({ actor }: { actor: Actor }) {
   const payments = r.waves.flatMap((w) => w.payments).filter((p) => actor !== "orchestrator" && p.objected_by.includes(actor as Lane));
   const stopped = payments.filter((p) => p.is_fraud && !p.settled).length;
   const falseAlarms = payments.filter((p) => !p.is_fraud && !p.settled).length;
-  const spawnName = (id?: string) => r.attackers.find((a) => a.attacker_id === id)?.name ?? "an attacker";
+  const spawned = now?.attacker_id ? r.attackers.find((a) => a.attacker_id === now.attacker_id) : undefined;
 
   return (
     <article className="card angel-card">
@@ -155,9 +155,13 @@ function DefenderCard({ actor }: { actor: Actor }) {
           <h3>This round's move</h3>
           <p>
             Built{" "}
-            <button className="link" onClick={() => select({ kind: "attacker", id: now.attacker_id! })}>
-              {spawnName(now.attacker_id)}
-            </button>{" "}
+            {spawned ? (
+              <button className="link" onClick={() => select({ kind: "attacker", id: spawned.attacker_id })}>
+                {attackerName(spawned.name)}
+              </button>
+            ) : (
+              "an attacker"
+            )}{" "}
             to test {shelfName(now.shelf!).toLowerCase()}. {now.reason}
           </p>
         </>
@@ -175,7 +179,7 @@ function DefenderCard({ actor }: { actor: Actor }) {
           </h3>
           <ul className="rules">
             {book.rules.slice(-6).map((rule) => (
-              <li key={rule}>{rule}</li>
+              <li key={rule}>{ruleName(rule)}</li>
             ))}
             {book.watch_rules.map((rule) => (
               <li key={rule} className="watch">
@@ -196,7 +200,7 @@ function ShelfCard({ id }: { id: string }) {
   const r = replay.rounds[round];
   const s = r.shelves.find((x) => x.shelf === id)!;
   const rate = s.attempts ? s.caught / s.attempts : null;
-  const name = (aid: string) => latestAttacker(replay, round, aid)?.info.name ?? aid;
+  const name = (aid: string) => attackerName(latestAttacker(replay, round, aid)?.info.name ?? aid);
   const ids = [...(s.outsider_slot ? [s.outsider_slot] : []), ...s.attacker_ids];
 
   return (

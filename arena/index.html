@@ -3,10 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fraud arena</title>
+    <meta name="description" content="TagTeam is the fraud layer for x402: five specialist agents check every payment an AI agent makes, and the defense trains against the attackers most likely to beat it." />
+    <title>TagTeam</title>
+    <!-- Stylesheets are linked here, not imported from JS, so the page is styled on its first
+         frame: the frame the page transition animates in. -->
+    <link rel="stylesheet" href="/node_modules/@fontsource/bricolage-grotesque/600.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/bricolage-grotesque/800.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/atkinson-hyperlegible/400.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/atkinson-hyperlegible/700.css" />
+    <link rel="stylesheet" href="/src/site/site.css" />
+    <link rel="stylesheet" href="/src/site/transitions.css" />
+    <style>
+      html { background: #0f2620; }
+    </style>
+    <script type="speculationrules">
+      { "prerender": [{ "source": "document", "where": { "href_matches": "/demo/*" }, "eagerness": "moderate" }] }
+    </script>
   </head>
   <body>
+    <!-- The header is static HTML so it exists on the first frame and can glide between pages. -->
+    <header class="topbar">
+      <a class="wordmark" href="/"><svg class="mark" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="10.5" cy="14" r="7.5" class="mark-defense" /><circle cx="17.5" cy="14" r="7.5" class="mark-attack" /></svg>TagTeam</a>
+      <nav aria-label="Pages"><a href="/" aria-current="page">Overview</a><a href="/demo/">Live arena</a></nav>
+    </header>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/site/main.tsx" blocking="render"></script>
   </body>
 </html>

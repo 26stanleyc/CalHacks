@@ -1,11 +1,18 @@
-# Arena
+# TagTeam site and arena
 
-A 3D replay of a training run as a little battle on a hex island. Five angel specialists and the orchestrator guard the x402 gate in the middle. Devil attackers stand on the 24 arena shelves around the edge and throw payments (coins) at the gate. Angels zap the coins they catch, and stolen coins drop into the vault.
+Two pages, one Vite app:
+
+- **`/`, the overview:** who TagTeam is, what it does, why it matters, and what it saves. Every figure on it is sourced. Industry numbers link to their articles. The results come from `evidence/head-to-head/bitdeer-stacking.md` on `stanley/core-engine`: real Bitdeer models, seeds 100–102, 6 rounds each.
+- **`/demo/`, the live arena:** a 3D replay of a training run as a battle on a hex island. Five angel specialists and the orchestrator guard the x402 gate in the middle. Devil attackers stand on the 24 arena shelves around the edge and throw payments (coins) at the gate. Angels zap the coins they catch, and stolen coins drop into the vault.
 
 ```bash
 npm install
-npm run dev   # http://localhost:5174
+npm run dev   # http://localhost:5174 (overview) and http://localhost:5174/demo/ (arena)
 ```
+
+Moving between the pages uses the browser's cross-page View Transitions: the page cross-fades and the TagTeam header glides into place. Hovering a page link prerenders the other page, so the switch is near-instant. For the header to glide, it and the stylesheets have to be on each page's first frame. That's why the headers are static HTML in `index.html` and `demo/index.html`, and the CSS is linked there rather than imported from JS. Edit the header in both files.
+
+The overview's look borrows from security printing, the engraved line work on banknotes that exists to stop forgery: a banknote-green ground, paper-coloured ink, blue for the defense and red for fraud. The arena keeps its daylight island so creatures read on a projector, with its panels in the same green.
 
 ## What's on screen
 
@@ -30,7 +37,11 @@ Keys: space plays and pauses, the left and right arrows step rounds, Esc closes 
 
 ## Data
 
-The app plays `public/replay.json` if it exists, and otherwise a deterministic mock run (`src/data/mock.ts`). The format is `src/data/types.ts`. Every field comes from a table in `contracts/db.sql`, so an exporter needs one query per table per round:
+The app plays `public/replay.json` if it exists, and otherwise a deterministic mock run (`src/data/mock.ts`). The checked-in replay is a recorded run on real Bitdeer models: `h2h-real-42-202610241623`, 4 rounds, 2,056 payments. To re-export a run, go to the `stanley-core-engine` worktree and run:
+
+```bash
+uv run python -m engine.export_replay <run_id> --out ../arena-viz/arena/public/replay.json
+``` The format is `src/data/types.ts`. Every field comes from a table in `contracts/db.sql`, so an exporter needs one query per table per round:
 
 | Replay field | Source |
 |---|---|

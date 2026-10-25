@@ -1,6 +1,6 @@
 import { useArena, phaseAt, ROUND_LEN, waveStart, THROW_WINDOW, FLIGHT, LEARN_START } from "../store";
 import { getRoundModel, tallyAt } from "../world/roundModel";
-import { ACTOR_NAME, money, shelfName } from "./words";
+import { ACTOR_NAME, attackerName, money, ruleName, shelfName } from "./words";
 
 function phaseLine(t: number, spawns: number, frozen: boolean): string {
   const p = phaseAt(t);
@@ -61,12 +61,18 @@ interface FeedItem {
   tone: "angel" | "devil" | "news";
 }
 
+// Triggers read "caught 3 of 4" (mock) or "caught on 3 of 4 attempts; rewrote the strategy" (engine).
+function changingPlan(name: string, trigger: string): string {
+  const m = trigger.match(/caught (?:on )?(\d+) of (\d+)/);
+  return m ? `${name} got caught ${m[1]} of ${m[2]} times and is changing its plan` : `${name} is changing its plan`;
+}
+
 function Feed() {
   const replay = useArena((s) => s.replay)!;
   const round = useArena((s) => s.round);
   const tq = useArena((s) => Math.floor(s.t * 4) / 4);
   const r = replay.rounds[round];
-  const names = new Map(r.attackers.map((a) => [a.attacker_id, a.name]));
+  const names = new Map(r.attackers.map((a) => [a.attacker_id, attackerName(a.name)]));
 
   const items: FeedItem[] = [];
   r.news.forEach((n) =>
@@ -77,7 +83,7 @@ function Feed() {
     .forEach((a, i) =>
       items.push({
         at: 0.4 + i * 0.25,
-        key: `spawn-${a.attacker_id}`,
+        key: `spawn-${a.actor}`,
         tone: "angel",
         text: `${ACTOR_NAME[a.actor]} built ${names.get(a.attacker_id!) ?? "an attacker"} to test ${shelfName(a.shelf!).toLowerCase()}`,
       }),
@@ -91,7 +97,7 @@ function Feed() {
           at: waveStart(w.wave) + THROW_WINDOW + FLIGHT,
           key: `retune-${w.wave}-${x.attacker_id}`,
           tone: "devil",
-          text: `${names.get(x.attacker_id)} got ${x.trigger} and is changing its plan`,
+          text: changingPlan(names.get(x.attacker_id) ?? "An attacker", x.trigger),
         }),
       ),
   );
@@ -103,7 +109,7 @@ function Feed() {
           at: LEARN_START + 0.5 + i * 0.3,
           key: `rule-${b.lane}`,
           tone: "angel",
-          text: `${ACTOR_NAME[b.lane]} added a rule: ${b.rules[b.rules.length - 1]}`,
+          text: `${ACTOR_NAME[b.lane]} added a rule: ${ruleName(b.rules[b.rules.length - 1])}`,
         }),
       );
 

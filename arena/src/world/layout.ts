@@ -53,13 +53,10 @@ export const SHELF_TILE: Record<ShelfId, Tile> = Object.fromEntries(
   ALL_SHELVES.map((id, i) => [id, ring4[i]]),
 );
 
-// Up to five creatures share a shelf tile; the outsider always takes the centre slot.
+// Up to seven creatures share a shelf tile: the outsider in the centre, the rest in a ring.
 const SLOT_OFFSETS: [number, number][] = [
   [0, 0],
-  [0.48, 0.18],
-  [-0.48, 0.18],
-  [0.0, -0.5],
-  [0.0, 0.52],
+  ...[0, 1, 2, 3, 4, 5].map((k): [number, number] => [0.52 * Math.cos(Math.PI / 6 + (k * Math.PI) / 3), 0.52 * Math.sin(Math.PI / 6 + (k * Math.PI) / 3)]),
 ];
 export function shelfSlot(id: ShelfId, slot: number): Vec3 {
   const t = SHELF_TILE[id];

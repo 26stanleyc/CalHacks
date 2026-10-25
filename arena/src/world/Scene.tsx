@@ -10,6 +10,7 @@ import { Angel, Devil, Shopper } from "./creatures";
 import { ACTORS, SHOPPER_SPOTS, actorPos } from "./layout";
 import { getRoundModel } from "./roundModel";
 import { Spawns } from "./Spawns";
+import { attackerName } from "../ui/words";
 
 function Clock() {
   const tick = useArena((s) => s.tick);
@@ -65,7 +66,7 @@ function Cast() {
         <Devil
           key={`${roundIndex}-${d.attacker.attacker_id}`}
           id={d.attacker.attacker_id}
-          name={d.attacker.name}
+          name={attackerName(d.attacker.name)}
           source={d.attacker.source}
           pos={d.pos}
           appear={d.appear}

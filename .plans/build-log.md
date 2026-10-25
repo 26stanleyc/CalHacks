@@ -284,6 +284,51 @@ The engine suite passed: 58 passed, 3 skipped.
 
 **Demo angle:** ⭐ the "arena grid" beat from the demo script. Pause during learning and point at cells turning green; the halos show where the defenders aimed this round.
 
+### Sat Oct 24, ~05:30 · TagTeam overview page · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- New landing page at `/` with the 3D arena moved to `/demo/`. Both pages share a nav and the TagTeam mark.
+- The design borrows from security printing, since anti-counterfeiting is literally fraud defense: a banknote-green ground and engraved wave lines. The hero is a payment slip that the five specialists stamp one by one, ending in a "Blocked" stamp. It's the spec's hijacked-shopper example: $99.99 against a mandate of "a charger under $30".
+- Sections:
+  - **Why it matters:** the agent is the real credential holder, so the questions become "who's responsible?" and "is this what they asked for?"
+  - **How it works:** check every payment, attack itself, read the news.
+  - **What it saves:** two bar charts with a table view, and a method note.
+  - **Built on:** Fetch.ai uAgents, Bitdeer, Coinbase x402 and Apify.
+- The arena's panels switched to the same dark green; the island stays daylight.
+
+**Numbers on the page and their sources:**
+- **Results** come from `evidence/head-to-head/bitdeer-stacking.md` (real Bitdeer models, seeds 100–102, 6 rounds each):
+  - 48% lower total cost than static rules ($58.3k vs $111.2k)
+  - 45% less lost to never-seen attacks in their first round ($11.9k vs $21.6k)
+  - honest shoppers flagged at 1.14% vs 4.23% for rules + XGBoost
+- **The page says plainly** that rules + XGBoost is about level with us on total cost ($55.5k), and that these are first readings.
+- **Industry figures:**
+  - $1.5T agentic commerce spending by 2030 (Juniper Research via Retail Systems, 29 Jun 2026)
+  - about half of x402 transactions artificial (Artemis via Forkast, 10 Jul 2026)
+  - $206B merchant online payment fraud losses 2021–2025 (Juniper via Fintech Global, 2 Jul 2021)
+
+**Proof:** `npm run build` passes for both pages, and the overview doesn't load three.js. Checked in the browser at 1280×800 and on a phone with no sideways scroll; chart labels stay inside their panels.
+
+**Demo angle:** ⭐ open on the overview for the 30 s "problem" beat: the stamped slip shows a hijacked agent being stopped. The "What it saves" section is the proof slide. Then click **Live arena**.
+
+### Sat Oct 24, ~17:15 · Arena plays a real run · Stanley (branch `stanley/arena-viz`, not merged)
+**Did:**
+- The arena now plays `arena/public/replay.json`: run `h2h-real-42-202610241623` on real Bitdeer models, 4 rounds and 2,056 payments. It was exported by `engine/export_replay.py` on `stanley/core-engine` (the sister session).
+- Adapted the arena to real data:
+  - the engine's playbook parameter names
+  - rule ids shown as plain words
+  - tidier news-attacker names
+  - one devil per attacker even when the export lists it twice
+  - room for 7 devils on a shelf
+  - honest coins sampled to 24 per wave
+  - a legend entry for held-out exam attackers
+  - "Profit so far" shown with a minus sign when negative
+- Sent the exporter cleanups upstream: duplicate attackers, raw names, spawns without an attacker id, and engine bookkeeping in reasons.
+- Page transitions: the overview and arena cross-fade with the browser's View Transitions, the TagTeam header glides between pages, and hovering a link prerenders the other page.
+
+**Proof:** `npm run build` passes. In a visible tab, every round of the real run renders, with no React key errors. Both transition directions run to completion, and the header is captured on both pages.
+
+**Demo angle:** ⭐ "this is a real run": every devil, rule and payment on screen came from GLM and DeepSeek on Bitdeer. The real run shows learning: 38% of attack payments caught in round 1, 57% in round 4. Say it plainly: 4 rounds, one seed.
+
 ---
 
 ## Entry template

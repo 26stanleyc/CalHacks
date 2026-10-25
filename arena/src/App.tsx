@@ -11,7 +11,7 @@ import { Scene } from "./world/Scene";
 // Plays public/replay.json when the engine has exported one, otherwise the mock run.
 async function loadReplay(): Promise<Replay> {
   try {
-    const res = await fetch("replay.json");
+    const res = await fetch(`${import.meta.env.BASE_URL}replay.json`);
     if (res.ok && res.headers.get("content-type")?.includes("json")) return await res.json();
   } catch {
     // fall through to the mock
@@ -28,6 +28,7 @@ function Legend() {
       <p><i className="ring spawned" /> Built by an angel</p>
       <p><i className="ring outsider" /> Outsider</p>
       <p><i className="ring news" /> From the news</p>
+      <p><i className="ring held_out" /> Exam attacker</p>
     </aside>
   );
 }
@@ -53,17 +54,22 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  if (!replay) return <div className="loading">Setting up the arena</div>;
   return (
     <main className="arena">
-      <Scene />
-      <Hud />
-      <div className="hud-right">
-        <ShelfMap />
-        <UnitCard />
-      </div>
-      <Legend />
-      <Timeline />
+      {replay ? (
+        <>
+          <Scene />
+          <Hud />
+          <div className="hud-right">
+            <ShelfMap />
+            <UnitCard />
+          </div>
+          <Legend />
+          <Timeline />
+        </>
+      ) : (
+        <p className="loading">Setting up the arena</p>
+      )}
     </main>
   );
 }

@@ -58,6 +58,8 @@ export function latestAttacker(replay: Replay, index: number, id: string): { inf
 export const SPAWN_POP = 1.6; // when spawned devils hatch
 export const INTERCEPT_FRAC = 0.62;
 const MAX_DRAWN_ATTACK_COINS = 40;
+// Real runs have ~100 honest payments a wave; draw a sample, but always draw false alarms.
+const MAX_DRAWN_HONEST_COINS = 24;
 
 const hash = (s: string) => {
   let h = 2166136261;
@@ -86,7 +88,9 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
           .filter((id) => !ran.has(id))
           .flatMap((id) => latestAttacker(replay, index, id)?.info ?? [])
       : [];
-  const sorted = [...round.attackers, ...idle].sort((a, b) => Number(b.source === "outsider") - Number(a.source === "outsider"));
+  // Real exports can list an attacker twice in a round; keep one devil per attacker.
+  const unique = [...new Map([...round.attackers, ...idle].map((a) => [a.attacker_id, a])).values()];
+  const sorted = unique.sort((a, b) => Number(b.source === "outsider") - Number(a.source === "outsider"));
 
   const retunes = new Map<string, { at: number; changed: boolean }[]>();
   round.waves.forEach((w) =>
@@ -121,7 +125,9 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
     const n = w.payments.length;
     const attackCount = w.payments.filter((p) => p.source === "attacker").length;
     const drawEvery = Math.max(1, Math.ceil(attackCount / MAX_DRAWN_ATTACK_COINS));
+    const honestEvery = Math.max(1, Math.ceil((n - attackCount) / MAX_DRAWN_HONEST_COINS));
     let attackSeen = 0;
+    let honestSeen = 0;
     w.payments.forEach((p, i) => {
       const launch = start + (i / n) * THROW_WINDOW;
       const attack = p.source === "attacker";
@@ -129,7 +135,9 @@ export function buildRoundModel(replay: Replay, index: number): RoundModel {
       const from = attack
         ? devilPos.get(p.attacker_id!) ?? GATE
         : SHOPPER_SPOTS[Math.floor(hash(p.tx_id) * SHOPPER_SPOTS.length)];
-      const drawn = attack ? attackSeen++ % drawEvery === 0 : true;
+      const drawn = attack
+        ? attackSeen++ % drawEvery === 0
+        : outcome === "false_alarm" || honestSeen++ % honestEvery === 0;
       coins.push({
         payment: p,
         from,
