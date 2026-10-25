@@ -32,8 +32,8 @@ ODbL 1.0 (database) and DbCL 1.0 (contents); the exported files are derived from
 For both:
 - A step-up's outcome isn't in the data, so it uses the engine's simulated rule (engine.engine.resolve: a
   deterministic per-payment draw at the cost matrix's pass and abandon rates), for both contenders.
-- Specialists reflect with the engine's mock brains (deterministic, no LLM calls), and there's no LLM
-  investigator: the replay's defenders say "mock-reflection".
+- Specialists reflect with the engine's mock brains (deterministic, no LLM calls; the replay's defenders
+  say "mock-reflection"), or with the Bitdeer models from .env when --real is given. No LLM investigator.
 - The arena shows the fraud as three groups by amount (source "dataset"). Allowed honest payments carry
   an empty explanation (the arena doesn't show it), and baseline.json lists only the decisions that
   aren't "allow, settled", which is what the arena assumes for a payment it doesn't find there.
@@ -53,6 +53,7 @@ from pathlib import Path
 
 DAY_SECONDS = 86_400
 WAVES = 3
+BURN_IN_CAP = 0.02  # the learning loop's false-alarm budget (LearningLoop fp_cap): a rule firing on more is off
 V_COLUMNS = [f"V{k}" for k in range(1, 29)]
 BANDS = (("under_10", 1_000), ("10_to_100", 10_000), ("over_100", None))  # cents, as the arena's shelves
 DATASETS = {
@@ -92,7 +93,8 @@ def band_name(name: str, currency: str) -> str:
 
 
 # A payment row: (tx_id, ts, amount_cents, payer, payee, extra features, is_fraud), in time order. Each loader
-# returns (rows, start, seconds): the span the rounds divide, and whether ts is a real date (unix time).
+# returns (rows, start, seconds, dated, burn_in): the span the rounds divide, whether ts is a real date
+# (unix time), and the payments just before the window for the shadow burn-in (their labels are never read).
 
 def load_ulb(path: Path) -> tuple[list[tuple], float, float, bool]:
     rows = []
@@ -102,10 +104,11 @@ def load_ulb(path: Path) -> tuple[list[tuple], float, float, bool]:
             rows.append((f"u{i}", float(row["Time"]), round(float(row["Amount"]) * 100), f"card-{i}", f"merchant-{i}",
                          extra, row["Class"].strip('"') == "1"))
     rows.sort(key=lambda r: (r[1], r[0]))
-    return rows, 0.0, rows[-1][1] + 1, False  # Time counts seconds from the first payment: no date
+    return rows, 0.0, rows[-1][1] + 1, False, []  # Time counts seconds from the first payment: no date, nothing before
 
 
-def load_ethereum(folder: Path, days: int, max_payments: int, start: str | None) -> tuple[list[tuple], float, float, bool]:
+def load_ethereum(folder: Path, days: int, max_payments: int, start: str | None,
+                  before_days: int = 0) -> tuple[list[tuple], float, float, bool, list[tuple]]:
     """The window of `days` days with the most payments into phishing addresses, at most `max_payments` in all."""
     import numpy as np
 
@@ -133,22 +136,34 @@ def load_ethereum(folder: Path, days: int, max_payments: int, start: str | None)
     when = lambda d: datetime.fromtimestamp((first + d) * DAY_SECONDS, timezone.utc).date()
     print(f"window {when(lo)} to {when(lo + days - 1)}: {int(per_day[lo:lo + days].sum()):,} payments, "
           f"{int(fraud_per_day[lo:lo + days].sum()):,} to phishing addresses")
-    picked = np.flatnonzero(keep & (day >= first + lo) & (day < first + lo + days))
-    picked = picked[np.lexsort((picked, ts[picked]))]
     addresses = (folder / "addresses.txt").read_text().split("\n")
-    rows = [(f"e{i}", float(ts[i]), int(cents[i]), addresses[src[i]], addresses[dst[i]], {}, bool(fraud[i])) for i in picked]
-    return rows, float((first + lo) * DAY_SECONDS), float(days * DAY_SECONDS), True
+
+    def rows_between(a: int, b: int) -> list[tuple]:
+        picked = np.flatnonzero(keep & (day >= first + a) & (day < first + b))
+        picked = picked[np.lexsort((picked, ts[picked]))]
+        return [(f"e{i}", float(ts[i]), int(cents[i]), addresses[src[i]], addresses[dst[i]], {}, bool(fraud[i])) for i in picked]
+
+    before = rows_between(lo - before_days, lo) if before_days else []  # for a burn-in or a training period
+    return rows_between(lo, lo + days), float((first + lo) * DAY_SECONDS), float(days * DAY_SECONDS), True, before
 
 
-def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, run_id: str, meta: dict) -> tuple[dict, dict]:
+def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, run_id: str, meta: dict,
+        real: bool = False, burn: list[tuple] = (), train: list[tuple] = ()) -> tuple[dict, dict]:
     """TagTeam and the baseline on the same payments, round by round: rounds split [t0, t0 + span) evenly.
+    `burn`: payments before the window for a shadow burn-in. They warm up the shared feature history (both
+    contenders score from it) and TagTeam switches off any seed rule that would flag more than BURN_IN_CAP
+    of them; nothing is decided and no label is read.
+    `train`: labelled payments before the window, a training period. TagTeam learns from them one day at a
+    time as it would live (rules, voters, combiner); the baseline is fitted once on all of them and frozen,
+    so it decides round 1 trained. Neither sees a test payment's label before deciding it.
     Returns (replay, baseline)."""
     from bench.baselines import XGBoostDefense
     from bench.metrics import cost_cents
     from contracts.schemas import Action, FeatureVector, GroundTruth, TrafficSource, Transaction
     from engine.brains import Brain
     from engine.engine import resolve
-    from engine.entrypoints import _voters
+    from contracts.config import model_for
+    from engine.entrypoints import _brain, _voters
     from engine.export_replay import LANES, build
     from engine.learning.labels import Record
     from engine.learning.loop import LearningLoop
@@ -158,9 +173,13 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
     round_s = span / n_rounds
     store = MemoryStore()
     pipeline = DefensePipeline(voters=_voters())
-    loop = LearningLoop(pipeline, Brain(), store, run_id)
+    burned = shadow_burn_in(pipeline, burn, run_id) if burn else {}
+    brain = _brain() if real else Brain()  # real: the Bitdeer models from .env reflect and write rules
+    loop = LearningLoop(pipeline, brain, store, run_id)
     costs = pipeline.orchestrator.costs
     baseline = XGBoostDefense()
+    trained_days = train_period(pipeline, loop, baseline, train, run_id, costs) if train else []
+    offset = len(trained_days)  # the learning loop counts training days as its first rounds
 
     by_round: dict[int, list] = defaultdict(list)
     for tx_id, ts, cents, payer, payee, extra, fraud in rows:
@@ -232,16 +251,24 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
             t["snapshots"].append((rnd, f"dataset/{amount}/buyer", {"attacker_ids": [group], "outsider_slot": None,
                                                                    "attempts": attempts, "caught": caught}))
 
-        loop.learn(rnd, records)
-        baseline.freeze(rnd >= 2)  # one fit, on round 1's labels; it decides each round before learning it
-        baseline.learn(rnd, labeled)
+        loop.learn(rnd + offset, records)
+        if not trained_days:
+            baseline.freeze(rnd >= 2)  # one fit, on round 1's labels; it decides each round before learning it
+            baseline.learn(rnd, labeled)
         print(f"round {rnd}: {len(records):,} payments, {sum(r.truth.is_fraud for r in records)} fraud", flush=True)
 
-    t["versions"] = [(r["round"], r["lane"], r["rules"], r.get("diff")) for r in store.rows["rulebook_versions"]
-                     if r.get("deployed", True)]
+    # Rules the burn-in switched off, or the training period left, are in place from round 1 on, before the
+    # round's own learning; test rounds' versions follow at their own round.
+    deployed = [r for r in store.rows["rulebook_versions"] if r.get("deployed", True)]
+    after_training = {r["lane"]: r["rules"] for r in deployed if r["round"] <= offset}
+    t["versions"] = ([(1, lane, rules, {"retired": off}) for lane, (rules, off) in burned.items()]
+                     + [(1, lane, rules, {}) for lane, rules in after_training.items()]
+                     + [(r["round"] - offset, r["lane"], r["rules"], r.get("diff")) for r in deployed if r["round"] > offset])
     replay = build(t, run_id)
     for d in replay["defenders"]:
-        d["model"] = "engine/mock-reflection"
+        d["model"] = model_for(d["lane"]) if real else "engine/mock-reflection"
+    if real and brain.failures:
+        print(f"{len(brain.failures)} model replies were refused or invalid and fell back to the mock", flush=True)
     replay["dataset"] = {k: meta[k] for k in ("name", "source", "url", "license", "currency")} | {
         "round_hours": round(round_s / 3600, 2),
         "start": datetime.fromtimestamp(t0, timezone.utc).isoformat() if dated else None}
@@ -252,13 +279,78 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
                 "fraud_cost_cents": round(s["fraud_cost_cents"]), "honest_cost_cents": round(s["honest_cost_cents"]),
                 "mean_fp": round(statistics.mean(fps[name]), 5), "max_fp": round(max(fps[name]), 5)}
 
-    trained = ", ".join(str(r) for r in baseline.trained_rounds) or "nothing"
-    out = {"run_id": run_id, "contender": "xgboost_frozen", "label": "XGBoost, trained once",
-           "trained_on": f"Fitted on the labels of round(s) {trained} and frozen from round 2; each round is decided "
-                         f"before its labels are learned, so there's no leakage (round 1 is decided untrained).",
+    if trained_days:
+        trained_on = (f"Fitted once on all labels of the {len(trained_days)} days before the test window ({trained_days[0]} to "
+                      f"{trained_days[-1]}, {len(train):,} payments) and frozen; TagTeam learned from the same days, one at a time.")
+    else:
+        trained = ", ".join(str(r) for r in baseline.trained_rounds) or "nothing"
+        trained_on = (f"Fitted on the labels of round(s) {trained} and frozen from round 2; each round is decided before its "
+                      f"labels are learned, so there's no leakage (round 1 is decided untrained).")
+    out = {"run_id": run_id, "contender": "xgboost_frozen", "label": "XGBoost, trained once", "trained_on": trained_on,
+           "pretrained": bool(trained_days),
            "omitted": "Decisions not listed here are allow, settled.",
            "decisions": decisions, "totals": summary("baseline"), "ours_totals": summary("ours")}
     return replay, out
+
+
+def train_period(pipeline, loop, baseline, train: list[tuple], run_id: str, costs) -> list[str]:
+    """TagTeam learns from the training payments a day at a time, deciding each day before learning its labels,
+    as it would live. The baseline is then fitted once on all of them and frozen. Returns the days (ISO dates)."""
+    from contracts.schemas import GroundTruth, TrafficSource, Transaction
+    from engine.engine import resolve
+    from engine.learning.labels import Record
+
+    days: dict[int, list] = defaultdict(list)
+    for row in train:
+        days[int(row[1] // DAY_SECONDS)].append(row)
+    examples = []
+    for k, day in enumerate(sorted(days), 1):
+        records = []
+        for tx_id, ts, cents, payer, payee, extra, fraud in days[day]:
+            tx = Transaction(tx_id=tx_id, run_id=run_id, round=k, ts=ts, agent_id=payer, principal_id=payer, merchant_id=payee,
+                             category="payment", amount_cents=cents, source=TrafficSource.LEGIT)
+            truth = GroundTruth(tx_id=tx_id, is_fraud=fraud)
+            features = pipeline.featurize(tx, commit=True)
+            decision = pipeline.score(tx, features)
+            settled = resolve(tx, truth, decision, costs.fraud_step_up_pass, costs.legit_step_up_abandon).settled
+            records.append(Record(tx, features, decision, truth, settled=settled))
+            examples.append((features, fraud))
+        loop.learn(k, records)
+        print(f"training day {k}: {len(records):,} payments, {sum(r.truth.is_fraud for r in records)} fraud", flush=True)
+    baseline.voter.retrain(examples)
+    baseline.freeze(True)
+    return [datetime.fromtimestamp(d * DAY_SECONDS, timezone.utc).date().isoformat() for d in sorted(days)]
+
+
+def shadow_burn_in(pipeline, burn: list[tuple], run_id: str) -> dict:
+    """Score the burn-in payments without acting on them and switch off every rule that fires on more than
+    BURN_IN_CAP of them. Label-free: only how often a rule fires on ordinary traffic. Returns
+    {lane: (rules left, ids switched off)} for each lane that changed."""
+    from collections import Counter
+
+    from contracts.schemas import TrafficSource, Transaction
+    from engine.specialists import Specialist
+
+    fired: Counter = Counter()
+    for tx_id, ts, cents, payer, payee, extra, _ in burn:  # the label is never read
+        tx = Transaction(tx_id=tx_id, run_id=run_id, round=0, ts=ts, agent_id=payer, principal_id=payer, merchant_id=payee,
+                         category="payment", amount_cents=cents, source=TrafficSource.LEGIT)
+        features = pipeline.featurize(tx, commit=True)
+        for lane in pipeline.lanes:
+            fired.update(pipeline.vote(lane, tx, features).rule_ids)
+    changed = {}
+    for lane, specialist in pipeline.specialists.items():
+        book = specialist.rulebook
+        off = [r.id for r in book.rules if fired[r.id] / len(burn) > BURN_IN_CAP]
+        if off:
+            rules = [r for r in book.rules if r.id not in off]
+            pipeline.specialists[lane] = Specialist(lane, book.model_copy(update={"rules": rules, "version": book.version + 1}),
+                                                    pipeline.catalog)
+            changed[lane.value] = ([r.model_dump(mode="json") for r in rules], off)
+    print(f"burn-in: {len(burn):,} payments; share of payments each rule fires on: "
+          f"{ {r: f'{n / len(burn):.1%}' for r, n in fired.most_common(8)} }; switched off (over {BURN_IN_CAP:.0%}): {[i for _, o in changed.values() for i in o]}",
+          flush=True)
+    return changed
 
 
 def check(replay: dict, baseline: dict) -> dict:
@@ -289,16 +381,25 @@ def main() -> None:
     parser.add_argument("--days", type=int, default=6, help="ethereum: the window's length in days")
     parser.add_argument("--max-payments", type=int, default=300_000, help="ethereum: the most payments the window may hold")
     parser.add_argument("--start", help="ethereum: the window's first day (YYYY-MM-DD) instead of picking one")
+    parser.add_argument("--real", action="store_true", help="reflect with the Bitdeer models (.env) instead of the mock brains")
+    parser.add_argument("--burn-in-days", type=int, default=0, help="ethereum: days before the window for the shadow burn-in")
+    parser.add_argument("--train-days", type=int, default=0, help="ethereum: labelled days before the window to train both on")
     parser.add_argument("--out", type=Path, required=True, help="a directory: replay.json.gz and baseline.json go there")
     args = parser.parse_args()
 
     data = args.data.expanduser()
     if args.dataset == "ulb":
-        (rows, t0, span, dated), run_id = load_ulb(data), f"ulb-creditcard-{args.rounds}r"
+        (rows, t0, span, dated, burn), run_id, train = load_ulb(data), f"ulb-creditcard-{args.rounds}r", []
     else:
-        rows, t0, span, dated = load_ethereum(data, args.days, args.max_payments, args.start)
+        if args.burn_in_days and args.train_days:
+            parser.error("pick a burn-in or a training period, not both")
+        rows, t0, span, dated, before = load_ethereum(data, args.days, args.max_payments, args.start,
+                                                      args.burn_in_days or args.train_days)
+        burn, train = (before, []) if args.burn_in_days else ([], before)
         run_id = f"eth-phishing-{datetime.fromtimestamp(t0, timezone.utc).date()}-{args.days}d-{args.rounds}r"
-    replay, baseline = run(rows, t0, span, dated, args.rounds, run_id, DATASETS[args.dataset])
+    run_id += ("-real" if args.real else "") + (f"-burnin{args.burn_in_days}d" if burn else "") + (
+        f"-train{args.train_days}d" if train else "")
+    replay, baseline = run(rows, t0, span, dated, args.rounds, run_id, DATASETS[args.dataset], args.real, burn, train)
     args.out.mkdir(parents=True, exist_ok=True)
     # Every payment is in the replay (the arena's scoreboard counts them all), so it's gzipped; the arena unzips it.
     (args.out / "replay.json.gz").write_bytes(gzip.compress(json.dumps(replay, separators=(",", ":"), ensure_ascii=False).encode(), 9, mtime=0))
