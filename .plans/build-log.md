@@ -627,6 +627,25 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** "an attacker hiding their phone and email doesn't escape the check: CRS looks them up from name and address, then verifies".
 
+### Sun Oct 25, 02:45 · CRS merged into core-engine; first recorded run with live CRS · Stanley
+**Did:**
+- **Merged** `stanley/crs-escalation` into `stanley/core-engine`. The engine conflicts were all side by side with M10 merchants. Full suite: 480 passed.
+- **More of CRS's answers used where they mean something:**
+  - The reverse lookup now checks the phone or email belongs to the payer; if not, no allow.
+  - FraudFinder's red flags (new email, prepaid or VoIP phone, phone or address registered to someone else, proxy IP, IP far from the address) are named in the reasons, without counting twice.
+- **Not used, on purpose:** credit reports (a credit pull, ruled out), criminal, eviction and bankruptcy records. Those are lending and tenant screening, not payment fraud.
+- **Recorded `h2h-real-42-202610250153`** on real models with live CRS. Live mode was set for that process only; `.env` stays at 0, so other sessions' benchmarks don't log in to CRS.
+  - 23 live CRS checks, all on fraud: 13 blocked by failed identity checks, 10 stepped up. No honest shopper was checked.
+  - 11 of the 23 payers hid their phone and email.
+- **Finding:** with the learned combiner, the uncertain zone sits below the 0.30 band edge. In round 3, 94 fraud payments and 0 honest ones scored 0.10–0.30. The 20-a-round cap also left 134 in-band payments unchecked in round 4.
+
+**Proof:**
+- `evidence/crs-live-sandbox.md` (recorded-run section);
+- `evidence/head-to-head/bitdeer-crs-live.md`;
+- `engine/tests/test_crs_live.py` (name check, red flags).
+
+**Demo angle:** ⭐ a real CRS sandbox answer in the arena: "identity verification failed: input SSN belongs to a deceased person". Say "CRS sandbox test identities stand in for our simulated shoppers".
+
 ---
 
 ## Entry template

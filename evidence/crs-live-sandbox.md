@@ -13,3 +13,35 @@ once on CRS's sandbox test person **P01** (Margaret Okafor, "Prime"), with the e
 
 Through `CrsEscalation` these three answers allow an in-band payment (identity verified, risk low).
 No credit-report endpoint was called.
+
+## Recorded run with live CRS: `h2h-real-42-202610250153`
+
+Real models (Bitdeer), seed 42, 4 rounds, the merged design plus the CRS step, recorded in the team
+database. Live CRS for this process only (`CRS_ESCALATION=live` on the command line; `.env` stays at 0).
+Band 0.30-0.70, at most 20 checks a round, forward append from 0.50. 348 model calls, 2.16M tokens,
+9.4 minutes a round. Head-to-head table: [head-to-head/bitdeer-crs-live.md](head-to-head/bitdeer-crs-live.md).
+
+| | |
+|---|---|
+| CRS checks | 23 (3 in round 3, 20 in round 4, which hit the cap), all on fraud payments, all live (`mocked: false`) |
+| CRS decision | 13 block (identity failed), 10 step up (identity review plus FraudFinder medium) |
+| Honest shoppers checked | 0 |
+| Payers hiding phone and email | 11: 3 got a forward append (score at least 0.50), 8 verified identity only |
+| Sandbox test persons used | P14 (deceased SSN) 10, P16 (fraud alert) 10, P13 (synthetic) 2, P12 (mismatch) 1 |
+| Watch-list additions | 0 (no FraudFinder score reached high) |
+| CRS unavailable | 0 (one login, no refusals) |
+
+Real TransUnion reasons came through, e.g. "input ssn belongs to a deceased person" and "input ssn not
+associated with input name; input date of birth does not match file".
+
+**Where the band sits.** The learned combiner (from round 3) gives calibrated probabilities with a low base
+rate, so the uncertain zone is lower than 0.30:
+
+| round | honest under 0.10 | honest 0.10-0.30 | honest 0.30-0.70 | fraud 0.10-0.30 | fraud 0.30-0.70 |
+|---|---|---|---|---|---|
+| 3 | 322 | 0 | 0 | 94 | 3 |
+| 4 | 319 | 3 | 1 | 32 | 153 |
+
+In round 4 the 20-check cap left 134 in-band payments unchecked. The cap is spec 11's limit for paid
+calls; sandbox answers for the test persons are free and cached (this run needed a handful of distinct
+requests).
