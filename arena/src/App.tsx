@@ -47,12 +47,17 @@ async function loadRuns(data: DataSet): Promise<Runs> {
   return { after, before: toBaselineReplay(after, baseline), baseline };
 }
 
+// A page can lock the arena to one data set: /ethereum/ is the real Ethereum run as its own demo
+// (<body data-data-set="eth">), with no switch.
+const LOCKED = document.body.dataset.dataSet as DataSet | undefined;
+
 const initialData = (): DataSet => {
+  if (LOCKED) return LOCKED;
   const asked = new URLSearchParams(location.search).get("data");
   return ALL.includes(asked as DataSet) ? (asked as DataSet) : "sim";
 };
 
-// Switches between the simulated marketplace and the real datasets; the choice lives in the URL
+// Switches between the simulated marketplace and the real datasets (on a locked page, just names the source); the choice lives in the URL
 // (?data=eth) so a reload or a shared link keeps it. A dataset is offered only when its files exist,
 // and the switch only appears when there's more than one choice.
 function DataSwitch({ data, loading, onChange }: { data: DataSet; loading: boolean; onChange: (d: DataSet) => void }) {
@@ -67,16 +72,18 @@ function DataSwitch({ data, loading, onChange }: { data: DataSet; loading: boole
       ),
     ).then((found) => setAvailable(["sim", ...ALL.filter((d) => d !== "sim").filter((_, i) => found[i])]));
   }, []);
-  if (available.length < 2) return null;
+  if (available.length < 2 && !LOCKED) return null;
   return (
     <section className="data-switch" aria-label="Data set">
-      <div className="seg" role="group" aria-label="Which payments to play">
-        {available.map((d) => (
-          <button key={d} aria-pressed={data === d} onClick={() => onChange(d)}>
-            {DATA_SETS[d].label}
-          </button>
-        ))}
-      </div>
+      {!LOCKED && ( // a locked page keeps only the source line
+        <div className="seg" role="group" aria-label="Which payments to play">
+          {available.map((d) => (
+            <button key={d} aria-pressed={data === d} onClick={() => onChange(d)}>
+              {DATA_SETS[d].label}
+            </button>
+          ))}
+        </div>
+      )}
       {loading ? (
         <p className="source">Loading the payments…</p>
       ) : (
