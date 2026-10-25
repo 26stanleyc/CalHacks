@@ -28,17 +28,24 @@ async function loadRuns(): Promise<Runs> {
   return { after, before: toBaselineReplay(after, baseline), baseline };
 }
 
+// Two groups: who is on the board, and what the ring under an attacker means.
 function Legend() {
   const before = useArena((s) => s.stage === "before");
   return (
     <aside className="legend" aria-label="Legend">
-      {before ? <p><i className="dot model" /> XGBoost model</p> : <p><i className="dot angel" /> Angel defender</p>}
-      <p><i className="dot devil" /> Devil attacker</p>
-      <p><i className="dot shopper" /> Honest shopper</p>
-      {!before && <p><i className="ring spawned" /> Built by an angel</p>}
-      <p><i className="ring outsider" /> Outsider</p>
-      <p><i className="ring news" /> From the news</p>
-      <p><i className="ring held_out" /> Exam attacker</p>
+      <div className="group">
+        <p className="head">On the board</p>
+        {before ? <p><i className="icon model" /> XGBoost model</p> : <p><i className="icon angel" /> TagTeam defender</p>}
+        <p><i className="icon devil" /> Attacker</p>
+        <p><i className="icon shopper" /> Honest shopper</p>
+      </div>
+      <div className="group">
+        <p className="head">Ring under an attacker</p>
+        <p><i className="ring spawned" /> Built by a defender</p>
+        <p><i className="ring outsider" /> Outsider</p>
+        <p><i className="ring news" /> From scam news</p>
+        <p><i className="ring held_out" /> Held-out test</p>
+      </div>
     </aside>
   );
 }

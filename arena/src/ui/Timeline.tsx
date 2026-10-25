@@ -46,6 +46,9 @@ export function Timeline() {
     }));
   }
   const current = segments.findIndex((s) => s.stage === stage && s.index === round);
+  // Attack money grows round by round, so a steady net means the defense is keeping up.
+  const attempted = compare ? flowByRound(runs!.after).map((f) => f.attempted) : [];
+  const growing = attempted.length > 1 && attempted[attempted.length - 1] > attempted[0] * 1.2;
   const beforeCount = compare ? runs!.before!.rounds.length : 0;
 
   // Net can go negative, so in comparison mode bars hang from a zero line spanning every value.
@@ -100,7 +103,7 @@ export function Timeline() {
                   className="fill"
                   style={
                     compare
-                      ? { ...netBox(s.value), background: s.value < 0 ? "var(--shaky)" : s.stage === "before" ? "#5ad7f2" : "var(--seraph)" }
+                      ? { ...netBox(s.value), background: s.value < 0 ? "var(--shaky)" : s.stage === "before" ? "var(--model)" : "var(--seraph)" }
                       : {
                           height: `${18 + (s.value / span) * 82}%`,
                           background: `color-mix(in oklab, var(--shaky) ${Math.round((s.value / span) * 100)}%, var(--held))`,
@@ -131,11 +134,25 @@ export function Timeline() {
             ))}
           </div>
         )}
-        <p className="caption">
-          {compare
-            ? `Bar height: net each round, honest payments through minus stolen. Red outline: ${label} on the same payments`
-            : "Bar height: how much a fresh attacker could still steal after each round"}
-        </p>
+        {compare ? (
+          <p className="key">
+            <span>
+              Net each round: honest payments through minus stolen. <b>Higher is better</b>
+            </span>
+            <span><i className="tagteam" /> TagTeam</span>
+            <span><i className="model" /> {label.split(",")[0]}</span>
+            <span><i className="ghost-key" /> {label.split(",")[0]} on the same payments</span>
+            <span><i className="negative" /> More stolen than paid</span>
+            {growing && (
+              <span className="growth">
+                Attacks grow each round: {money(attempted[0])} tried in round 1, {money(attempted[attempted.length - 1])} in round{" "}
+                {attempted.length}. A steady net means the defense is keeping up.
+              </span>
+            )}
+          </p>
+        ) : (
+          <p className="caption">Bar height: how much a fresh attacker could still steal after each round</p>
+        )}
       </div>
       <div className="speeds" role="group" aria-label="Playback speed">
         {SPEEDS.map((s) => (

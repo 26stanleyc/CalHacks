@@ -80,11 +80,13 @@ export const flowByRound = (replay: Replay) =>
   replay.rounds.map((r) => {
     let honest = 0;
     let stolen = 0;
+    let attempted = 0; // fraud money tried, whether or not it got through
     for (const w of r.waves)
       for (const p of w.payments) {
+        if (p.is_fraud) attempted += p.amount_cents;
         if (!p.settled) continue;
         if (p.is_fraud) stolen += p.amount_cents;
         else honest += p.amount_cents;
       }
-    return { honest, stolen, net: honest - stolen };
+    return { honest, stolen, attempted, net: honest - stolen };
   });

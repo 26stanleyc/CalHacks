@@ -238,8 +238,9 @@ export function Angel({ actor, pos, zaps, learns, order = 0 }: { actor: Actor; p
 }
 
 // Step 0's defender: one XGBoost model trained once, standing alone at the checkpoint.
-const xgbBody = new THREE.MeshStandardMaterial({ color: "#1a2430", metalness: 0.7, roughness: 0.25, emissive: "#0b2c3a", emissiveIntensity: 0.6 });
-const xgbStripe = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 1.6, 2.0), toneMapped: false });
+// Grey is the baseline's colour everywhere: the pillar, its timeline bars and its outlines.
+const xgbBody = new THREE.MeshStandardMaterial({ color: "#2a333c", metalness: 0.6, roughness: 0.3 });
+const xgbStripe = new THREE.MeshBasicMaterial({ color: "#d5dcd9" });
 export function XgbNode({ pos }: { pos: Vec3 }) {
   const ring = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
