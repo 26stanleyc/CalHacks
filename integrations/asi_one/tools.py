@@ -34,6 +34,7 @@ class ToolResult:
     text: str
     ok: bool = True
     data: Any = None
+    card: tuple[str, dict] | None = None  # (card_kind, card_payload) for an ASI:One interactive card
 
 
 def _as_int(value: Any, default: int | None = None) -> int | None:

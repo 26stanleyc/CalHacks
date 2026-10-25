@@ -9,7 +9,10 @@ seed identity, both mailboxes, the Chat Protocol and the engine behind the agent
 
 The prompts follow the demo: check a payment, ask why *that* payment was blocked (its id is
 read from the first reply), ask how the defense is doing, ask to run a round (this sender
-is not on the allowlist, so it must be refused), then scan a real product page.
+is not on the allowlist, so it must be refused), scan a real product page, then the
+intent-to-action flow: buy that page's item within budget (a review card must come back),
+approve it the way a card click does (it settles through x402 on Base Sepolia), and try
+again over budget (blocked, no card).
 
 The sender's seed is generated into `integrations/.local/` (gitignored), so its address is
 stable on one machine and never on the allowlist unless someone puts it there.
@@ -17,6 +20,7 @@ stable on one machine and never on the allowlist unless someone puts it there.
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import re
@@ -26,7 +30,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from uagents import Agent, Context, Protocol
-from uagents_core.contrib.protocols.chat import ChatAcknowledgement, ChatMessage, TextContent, chat_protocol_spec
+from uagents_core.contrib.protocols.chat import (
+    ChatAcknowledgement,
+    ChatMessage,
+    MetadataContent,
+    TextContent,
+    chat_protocol_spec,
+)
 from uagents_core.identity import Identity
 
 from integrations.asi_one.agent_base import connect_mailbox, ensure_event_loop, local_seed
@@ -35,10 +45,11 @@ from integrations.settings import agent_seed, engine_http_url, engine_source
 
 NAME = "fraud-defense-mailbox-check"
 PORT = 8104
-REPLY_TIMEOUT_S = 120
+REPLY_TIMEOUT_S = 180
 
 SCAN_URL = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
 _TX_IN_REPLY = re.compile(r"\(tx ([^,\s)]+)")
+_PURCHASE_IN_REPLY = re.compile(r"\b(buy-[0-9a-f]{12})\b")
 
 
 @dataclass
@@ -46,8 +57,9 @@ class Step:
     target: str  # "fraud_desk" or "merchant_scanner"
     prompt: str
     expect: str  # what a correct reply looks like, in words, for the transcript
-    passed: object = None  # a callable(reply) -> bool
+    passed: object = None  # a callable(reply, card_kind) -> bool
     reply: str = ""
+    card_kind: str | None = None  # the interactive card that came with the reply, if any
     seconds: float = 0.0
     ok: bool = False
 
@@ -73,19 +85,28 @@ def m8_steps() -> list[Step]:
     return [
         Step("fraud_desk", "Check this payment: agent a-1 paying merchant m-7 $49 for a USB-C charger, mandate under $30",
              "a real decision: Blocked, the mandate's over-cap veto, the specialists that objected",
-             lambda r: r.startswith("Blocked") and "mandate" in r.lower()),
+             lambda r, c: r.startswith("Blocked") and "mandate" in r.lower()),
         Step("fraud_desk", "Why was {tx_id} blocked?",
              "the stored decision for that same payment, with its votes and rules",
-             lambda r: "no record" not in r and ("Blocked" in r or "block" in r.lower())),
+             lambda r, c: "no record" not in r and ("Blocked" in r or "block" in r.lower())),
         Step("fraud_desk", "How is the defense doing?",
              "the engine's latest round metrics, both loss lines",
-             lambda r: "loss" in r.lower()),
+             lambda r, c: "loss" in r.lower()),
         Step("fraud_desk", "Run a round",
              "refused: this sender is not in TEAM_ALLOWLIST_ADDRESSES",
-             lambda r: r == REFUSAL_TEAM_ONLY),
+             lambda r, c: r == REFUSAL_TEAM_ONLY),
         Step("merchant_scanner", f"Is {SCAN_URL} safe for my shopping agent?",
              "a live page scan with an injection score",
-             lambda r: "injection" in r.lower() or "score" in r.lower()),
+             lambda r, c: "injection" in r.lower() or "score" in r.lower()),
+        Step("fraud_desk", f"Buy {SCAN_URL} for me, budget $60",
+             "page scanned, payment checked at the page's price, and a review card to approve",
+             lambda r, c: c == "review" and bool(_PURCHASE_IN_REPLY.search(r))),
+        Step("fraud_desk", '{{"action": "approve_purchase", "purchase_id": "{purchase_id}"}}',
+             "the card's Approve click settles through x402 on Base Sepolia, with a basescan link",
+             lambda r, c: r.startswith("Done.") and "basescan.org/tx/0x" in r),
+        Step("fraud_desk", f"Buy {SCAN_URL} for me, budget $30",
+             "over budget: blocked by the mandate veto, no card, nothing charged",
+             lambda r, c: r.startswith("Blocked") and c is None and "Nothing was charged" in r),
     ]
 
 
@@ -97,10 +118,11 @@ def build_agent(run: Run, out: Path) -> Agent:
 
     async def send_current(ctx: Context) -> None:
         step = run.steps[run.index]
-        if "{tx_id}" in step.prompt:
-            first = run.steps[0].reply
-            found = _TX_IN_REPLY.search(first)
-            step.prompt = step.prompt.format(tx_id=found.group(1) if found else "tx-1234")
+        if "{tx_id}" in step.prompt or "{purchase_id}" in step.prompt:
+            earlier = "\n".join(s.reply for s in run.steps[: run.index])
+            tx_id, purchase_id = _TX_IN_REPLY.search(earlier), _PURCHASE_IN_REPLY.findall(earlier)
+            step.prompt = step.prompt.format(tx_id=tx_id.group(1) if tx_id else "tx-1234",
+                                             purchase_id=purchase_id[-1] if purchase_id else "buy-none")
         run.sent_at = time.monotonic()
         ctx.logger.info("-> %s: %s", step.target, step.prompt)
         await ctx.send(run.addresses[step.target], ChatMessage(content=[TextContent(text=step.prompt)]))
@@ -124,10 +146,15 @@ def build_agent(run: Run, out: Path) -> Agent:
         if sender != run.addresses[step.target] or not msg.text().strip():
             return
         step.reply = msg.text().strip()
+        step.card_kind = next((c.metadata.get("card_kind") for c in msg.content if isinstance(c, MetadataContent)
+                               and c.metadata.get("card_protocol_version") == "1"), None)
+        if step.card_kind:  # check the card parses, as ASI:One would
+            card = next(c for c in msg.content if isinstance(c, MetadataContent))
+            json.loads(card.metadata["card_payload"])
         step.seconds = time.monotonic() - run.sent_at
-        step.ok = bool(step.passed(step.reply))
-        ctx.logger.info("<- %s (%.1fs, %s): %s", step.target, step.seconds, "ok" if step.ok else "UNEXPECTED",
-                        step.reply.splitlines()[0])
+        step.ok = bool(step.passed(step.reply, step.card_kind))
+        ctx.logger.info("<- %s (%.1fs, %s%s): %s", step.target, step.seconds, "ok" if step.ok else "UNEXPECTED",
+                        f", {step.card_kind} card" if step.card_kind else "", step.reply.splitlines()[0])
         await advance(ctx)
 
     @protocol.on_message(ChatAcknowledgement)
@@ -176,7 +203,8 @@ def write_transcript(run: Run, sender: str, out: Path) -> None:
             f"## {n}. {step.target}: {step.prompt}",
             "",
             f"Expected: {step.expect}. **{'As expected' if step.ok else 'NOT as expected'}**, "
-            f"reply after {step.seconds:.1f}s.",
+            f"reply after {step.seconds:.1f}s"
+            + (f", with an interactive `{step.card_kind}` card." if step.card_kind else "."),
             "",
             "```text",
             step.reply,

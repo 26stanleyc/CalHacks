@@ -81,7 +81,13 @@ Everyone else is still refused. Tests: `integrations/tests/test_asi_one.py`, the
    2. `Why was asi-… blocked?`, using the tx id from the reply above. (`tx-1234` from the spec has
       no record, so it only produces "I have no record".)
    3. `How is the defense doing?` → the engine's run id, round and both loss lines
-4. Optional:
+4. **The intent-to-action flow** (the headline for the Fetch challenge):
+   1. `Buy https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html for me, budget $60`
+      → the page is scanned and the payment checked, then a **review card** appears.
+   2. Click **Approve and pay** → "Done. Paid on Base Sepolia through x402:" with a basescan link.
+      Open the link to show the transaction.
+   3. The same message with `budget $30` → **Blocked** by the mandate veto. No card, nothing charged.
+5. Optional:
    - `Run a round`, which is refused unless your address is allowlisted (§2).
    - Open merchant-scanner and ask:
      `Is https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html safe for my shopping agent?`
@@ -103,7 +109,11 @@ Claude cannot do these steps. Check each one off when it's done:
 ## 5. What was verified automatically
 
 **Over the real mailbox, on the real engine:** [`mailbox-transcript.md`](mailbox-transcript.md)
-(5/5 replies as expected).
+(8/8 replies as expected). This includes the buy flow:
+- a `review` card came back;
+- the Approve click, sent as the JSON a direct card click produces, settled for real on Base Sepolia
+  (tx `0x950debfe…65af`, status 1, block 50009050);
+- the over-budget buy was blocked.
 
 The command was `uv run python -m integrations.asi_one.mailbox_check`. A separate uAgent
 (`agent1qg2kazrf…`, not allowlisted) sent each prompt through Agentverse to the running agents and
@@ -121,6 +131,9 @@ Results:
 3. The metrics came from run `m08-mailbox-check`, round 1.
 4. "Run a round" was refused.
 5. The Merchant Scanner did a live Apify scan of a real URL.
+6. A buy within budget got a review card.
+7. Approving it settled one cent of test USDC on Base Sepolia.
+8. A buy over budget was blocked.
 
 **M8 automated checks** (`uv run pytest integrations/tests`):
 - `test_m08_real_engine.py` runs against the real `FraudEngine`, both in-process and over the HTTP
@@ -131,6 +144,12 @@ Results:
      They also change nothing in a round's cost or false positives.
   3. A stranger asking to run a round or freeze is refused. `engine.serve` refuses it even if the chat
      layer's own list were wrong.
+- `test_buy.py` covers the buy flow. It checks that:
+  - nothing settles that the engine blocked, that nobody approved, or twice;
+  - poisoned or unreadable pages stop the purchase before any payment is checked;
+  - only a token amount moves;
+  - failed settlements say nothing was charged;
+  - the card follows the card protocol, and clicks, prose and typed replies all answer it.
 - `test_asi_one.py` covers the chat layer's own rules:
   - the `source=asi_one` tag can't be overridden;
   - the allowlist is read from `.env`, and refusals log the sender's address;
