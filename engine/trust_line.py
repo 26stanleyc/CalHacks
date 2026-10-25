@@ -35,10 +35,22 @@ from contracts.schemas import Mandate
 from engine.crs_enrollment import FAILED, CrsProfile
 
 # band -> (share of the requested cap, what it means)
+#
+# These shares were set by measuring, not by taste (`engine/crs_ablation.py`). An earlier version
+# cut standard to 60% and starter to 25%, which read like sensible underwriting and was wrong here:
+# across three seeds, 65 of 315 honest shoppers land in standard and 14 in starter, and *no* honest
+# shopper lands in restricted. Cutting the caps of people the bureau had just verified pushed false
+# positives to 3.84%, through the project's 2% cap, and bought no fraud reduction, because the fraud
+# was never in those bands.
+#
+# So the trust line bites where the bureau has an actual concern. A verified identity with a file
+# keeps the limit its owner asked for: having less credit history is a reason to lend someone less
+# money, and this is not a loan. Somebody with nothing on file at all starts at half, and an
+# identity the bureau cannot stand behind is held to a floor.
 BANDS: dict[str, tuple[float, str]] = {
     "full": (1.00, "identity verified at the bureau, a scoreable credit file, low fraud risk"),
-    "standard": (0.60, "identity verified, a credit file on record"),
-    "starter": (0.25, "little or nothing on file: the agent starts small and earns the rest"),
+    "standard": (1.00, "identity verified, a credit file on record"),
+    "starter": (0.50, "nothing on file yet: the agent starts smaller and earns the rest"),
     "restricted": (0.02, "the bureau could not stand behind this identity"),
 }
 FLOOR_CENTS = 500  # a restricted agent can still buy something small: $5

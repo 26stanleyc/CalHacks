@@ -34,6 +34,7 @@ exploitability exam (engine/arena/arena.py). Mandate scoring (S7) plugs in later
 """
 
 import hashlib
+import os
 import threading
 from collections import defaultdict
 from dataclasses import dataclass
@@ -181,7 +182,11 @@ class FraudEngine:
         # Enrollment is on whenever CRS is, unless a caller turns it off to measure the escalation
         # path on its own: once the trust line narrows a made-up identity's cap, most of that
         # account's payments are hard-vetoed over cap and never reach an escalation at all.
-        enroll = (self.crs is not None) if crs_enrollment is None else crs_enrollment
+        if crs_enrollment is None:
+            flag = os.environ.get("CRS_ENROLLMENT", "").strip().lower()
+            enroll = (self.crs is not None) if flag == "" else flag not in ("0", "off", "false", "no")
+        else:
+            enroll = crs_enrollment
         self.enrollment = CrsEnrollment(self.crs.client) if (self.crs and enroll) else None
         self.pipeline.features.crs = self.enrollment
         self.trust_lines: dict[str, TrustLine] = {}  # principal -> the limit CRS underwrote for it
