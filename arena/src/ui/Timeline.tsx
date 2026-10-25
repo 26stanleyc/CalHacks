@@ -1,15 +1,24 @@
 // The round scrubber doubles as a chart. With a baseline (step 0) loaded, the bar runs straight
 // through both stages: the baseline's rounds first, then TagTeam's, each bar that round's net
 // (honest payments through minus money stolen, drawn from a zero line; higher is better). TagTeam's
-// bars carry a red outline with the baseline's net on the same payments. Without a baseline, each
+// bars carry a red outline with the baseline's net on the same payments. On a real dataset the bars are the
+// share of each round's fraud stopped instead, on a 0-100% scale. Without a baseline, each
 // bar is how much a fresh attacker could still steal from the frozen defense (exploitability;
 // lower is better).
 
 import { flowByRound } from "../data/baseline";
+import type { Replay } from "../data/types";
 import { useArena, ROUND_LEN, type Stage } from "../store";
 import { money } from "./words";
 
 const SPEEDS = [1, 2, 4, 8];
+
+// Share of each round's fraud payments that didn't get through (0 when a round has none).
+const stoppedShare = (replay: Replay) =>
+  replay.rounds.map((r) => {
+    const fraud = r.waves.flatMap((w) => w.payments).filter((p) => p.is_fraud);
+    return fraud.length ? fraud.filter((p) => !p.settled).length / fraud.length : 0;
+  });
 
 interface Segment {
   stage: Stage;
@@ -32,10 +41,14 @@ export function Timeline() {
   const compare = !!runs?.before;
   const label = runs?.baseline?.label ?? "";
 
+  // On a real dataset honest money dwarfs fraud, so net bars look the same for both defenses; there each
+  // bar is the share of that round's fraud payments stopped instead (higher is better).
+  const caught = !!runs?.after.dataset;
+  const perRound = (r: Replay) => (caught ? stoppedShare(r) : flowByRound(r).map((f) => f.net));
   let segments: Segment[];
   if (compare) {
-    const before = flowByRound(runs!.before!).map((f) => f.net);
-    const after = flowByRound(runs!.after).map((f) => f.net);
+    const before = perRound(runs!.before!);
+    const after = perRound(runs!.after);
     segments = [
       ...runs!.before!.rounds.map((r, i) => ({ stage: "before" as Stage, index: i, round: r.round, value: before[i], ghost: null, frozen: false })),
       ...runs!.after.rounds.map((r, i) => ({ stage: "after" as Stage, index: i, round: r.round, value: after[i], ghost: before[i], frozen: false })),
@@ -88,8 +101,11 @@ export function Timeline() {
         <div className={`bars${compare ? " net" : ""}`} role="group" aria-label="Rounds">
           {segments.map((s, i) => {
             const who = compare ? (s.stage === "before" ? `${label}, round ${s.round}` : `TagTeam, round ${s.round}`) : `Round ${s.round}`;
-            const what = compare ? `net ${money(s.value)}` : `${money(s.value)} still stealable`;
-            const extra = s.ghost !== null ? `; ${label} on the same payments: net ${money(s.ghost)}` : "";
+            const what = caught
+              ? `${Math.round(s.value * 100)}% of phishing stopped`
+              : compare ? `net ${money(s.value)}` : `${money(s.value)} still stealable`;
+            const extra =
+              s.ghost === null ? "" : `; ${label} on the same payments: ${caught ? `${Math.round(s.ghost * 100)}% stopped` : `net ${money(s.ghost)}`}`;
             return (
               <button
                 key={`${s.stage}-${s.index}`}
@@ -138,12 +154,13 @@ export function Timeline() {
         {compare ? (
           <p className="key">
             <span>
-              Net each round: honest payments through minus stolen. <b>Higher is better</b>
+              {caught ? "Share of each round's phishing payments stopped." : "Net each round: honest payments through minus stolen."}{" "}
+              <b>Higher is better</b>
             </span>
             <span><i className="tagteam" /> TagTeam</span>
             <span><i className="model" /> {label.split(",")[0]}</span>
             <span><i className="ghost-key" /> {label.split(",")[0]} on the same payments</span>
-            <span><i className="negative" /> More stolen than paid</span>
+            {!caught && <span><i className="negative" /> More stolen than paid</span>}
             {growing && (
               <span className="growth">
                 Attacks grow each round: {money(attempted[0])} tried in round 1, {money(attempted[attempted.length - 1])} in round{" "}
