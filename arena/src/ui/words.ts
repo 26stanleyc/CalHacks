@@ -7,10 +7,11 @@ const STYLE: Record<string, string> = {
   many_accounts: "Many accounts",
   hijack_injection: "Hijack and injection",
 };
-// Real-data runs are in the dataset's currency (euros for the ULB card data); set when a run loads.
+// Real-data runs are in the dataset's currency (euros for the ULB card data, ether for the Ethereum
+// data, in hundredths); set when a run loads.
 let symbol = "$";
 export const setCurrency = (code: string | undefined) => {
-  symbol = code === "EUR" ? "€" : "$";
+  symbol = code === "EUR" ? "€" : code === "ETH" ? "Ξ" : "$";
 };
 
 const AMOUNT: Record<string, () => string> = {

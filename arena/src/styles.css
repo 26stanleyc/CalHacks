@@ -185,7 +185,7 @@ button:focus-visible { outline: 3px solid var(--seraph); outline-offset: 2px; }
   flex: none; align-self: flex-end; max-width: 100%; background: var(--paper); border: 2px solid var(--edge); border-radius: 18px;
   box-shadow: var(--lift); padding: 6px;
 }
-.data-switch .seg { display: flex; gap: 2px; }
+.data-switch .seg { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; }
 .data-switch .seg button {
   border: none; background: none; color: var(--ink-soft); font-weight: 700; font-size: 13px; padding: 6px 12px; border-radius: 999px;
   white-space: nowrap;

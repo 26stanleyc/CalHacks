@@ -1,24 +1,31 @@
 import { useEffect, useState } from "react";
 import { flowByRound } from "../data/baseline";
-import type { Replay } from "../data/types";
+import type { DatasetInfo, Replay } from "../data/types";
 import { useArena, phaseAt, ROUND_LEN, waveStart, THROW_WINDOW, FLIGHT, LEARN_START, type Stage } from "../store";
 import { getRoundModel, tallyAt } from "../world/roundModel";
 import { ACTOR_NAME, attackerName, money, ruleName, shelfName } from "./words";
 
-// Hours into a dataset as h:mm, e.g. 2.6667 -> "2:40".
-const clock = (hours: number) => {
+// A moment in a dataset: a UTC date and time when it has real dates ("Jul 28, 08:00"), otherwise hours
+// since its first payment as h:mm ("2:40").
+function clock(hours: number, start: string | null): string {
+  if (start) {
+    const at = new Date(Date.parse(start) + Math.round(hours * 60) * 60_000);
+    return at.toLocaleString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
+  }
   const m = Math.round(hours * 60);
-  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
-};
+  return `hour ${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+}
+const span = (from: number, to: number, start: string | null) =>
+  `${clock(from, start)} to ${clock(to, start)}${start ? " UTC" : ""}`;
 
-// `hours` is set for a dataset run: each round is that many hours of the dataset, three waves to a round.
-function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string, hours?: number): string {
+// `ds` is set for a dataset run: each round is ds.round_hours of the dataset, three waves to a round.
+function phaseLine(stage: Stage, round: number, t: number, spawns: number, frozen: boolean, model: string, ds?: DatasetInfo): string {
   const p = phaseAt(t);
   const wave =
     p.kind !== "wave"
       ? ""
-      : hours !== undefined
-        ? `Wave ${p.wave} of 3: the dataset's payments from hour ${clock(((round * 3 + p.wave - 1) * hours) / 3)} to ${clock(((round * 3 + p.wave) * hours) / 3)}`
+      : ds
+        ? `Wave ${p.wave} of 3: the dataset's payments from ${span(((round * 3 + p.wave - 1) * ds.round_hours) / 3, ((round * 3 + p.wave) * ds.round_hours) / 3, ds.start)}`
         : `Wave ${p.wave} of 3: attackers try to pay their way through the gate`;
   if (stage === "before") {
     // The baseline only trains after round 1's labels arrive, so round 1 is decided untrained.
@@ -26,10 +33,10 @@ function phaseLine(stage: Stage, round: number, t: number, spawns: number, froze
     if (p.kind === "spawn") return `${model} is guarding the checkpoint alone`;
     if (p.kind === "wave") return wave;
     // Recorded data doesn't adapt, so a dataset run doesn't claim it does.
-    return round === 0 ? `${model} trains once, on this round's fraud` : `${model} stays frozen${hours !== undefined ? "" : " while the attackers adapt"}`;
+    return round === 0 ? `${model} trains once, on this round's fraud` : `${model} stays frozen${ds ? "" : " while the attackers adapt"}`;
   }
   if (p.kind === "spawn") {
-    if (hours !== undefined) return `Next: hours ${clock(round * hours)} to ${clock((round + 1) * hours)} of the dataset`;
+    if (ds) return `Next: the dataset's payments from ${span(round * ds.round_hours, (round + 1) * ds.round_hours, ds.start)}`;
     return spawns ? "Defenders are building attackers aimed at their weak spots" : "Attackers take their places";
   }
   if (p.kind === "wave") return wave;
@@ -92,7 +99,7 @@ export function Hud() {
         <h1>
           Round {r.round} <span>of {replay.rounds.length}</span>
         </h1>
-        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label), replay.dataset?.round_hours)}</p>
+        <p>{phaseLine(stage, round, tq, spawns, r.metrics.frozen, shortName(label), replay.dataset)}</p>
         {r.metrics.frozen && <p className="frozen">Learning frozen</p>}
       </header>
       <section className={`scoreboard${before ? " breach" : ""}`} aria-label="This round's score">

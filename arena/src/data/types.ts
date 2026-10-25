@@ -31,6 +31,7 @@ export interface DatasetInfo {
   license: string;
   currency: string; // ISO code, e.g. "EUR"
   round_hours: number; // each round is this many hours of the dataset, in time order
+  start: string | null; // ISO time where round 1 starts, when the dataset has real dates (ULB only counts seconds)
 }
 
 export interface DefenderInfo {
