@@ -51,6 +51,10 @@ STACK_CALIBRATION_FOLDS = 3  # the guard, part 1: calibrate with voter copies tr
 STACK_GUARD_TIGHTEN_ABOVE = 0.75  # of the FP cap: a round this high tightens the next target (the guard, part 2)
 STACK_GUARD_RELAX_BELOW = 0.25  # of the FP cap: rounds this quiet relax it slowly back toward STACK_AT
 STACK_GUARD_MIN = 0.25  # the tightest the feedback goes: a quarter of STACK_AT
+STACK_GUARD_TIGHTEN_FACTOR = 0.6  # how hard a round over the line tightens the target
+STACK_GUARD_RELAX_FACTOR = 1.1  # how fast quiet rounds relax it
+STACK_DROP_VOTERS: tuple[str, ...] = ()  # extra voters the combiner leaves out (e.g. "anomaly")
+STACK_BOOTSTRAP_VOTERS: tuple[str, ...] | None = None  # if set, the round-2 bootstrap uses only these voters, no lanes
 STACK_WARMUP_ROUNDS = 2  # the first rounds have little agent history yet (no baselines), so honest traffic
 #                          looks unlike later rounds; they're left out of calibration once later rounds exist
 REVET_HONEST_SHARE = 0.003  # a learned rule firing on more of the growing honest record than this retires
@@ -226,27 +230,37 @@ class LearningLoop:
         else:
             oof = self._out_of_fold([r for rnd in window for r in rnd])
 
+        only = STACK_BOOTSTRAP_VOTERS if bootstrap else None
+
+        def keep(name: str) -> bool:
+            return name not in STACK_DROP_VOTERS and (only is None or name in only)
+
         def extra(r: Record) -> list[Vote]:
             return [Vote.model_construct(tx_id=r.tx.tx_id, voter=name, score=score, vote=Action.ALLOW, rule_ids=[],
-                                         rationale=None) for name, score in oof.get(r.tx.tx_id, {}).items()]
+                                         rationale=None) for name, score in oof.get(r.tx.tx_id, {}).items() if keep(name)]
 
-        rounds = [[([v for v in r.decision.votes if v.voter in lanes] + extra(r), r.tx.amount_cents, r.truth.is_fraud)
-                   for r in rnd] for rnd in window]
+        def lane_votes(r: Record, cast: bool) -> list[Vote]:
+            if only is not None:
+                return []
+            return [v for v in r.decision.votes if v.voter in lanes] if cast else \
+                [self.pipeline.vote(lane, r.tx, r.features) for lane in self.pipeline.lanes]
+
+        rounds = [[(lane_votes(r, True) + extra(r), r.tx.amount_cents, r.truth.is_fraud) for r in rnd] for rnd in window]
         if use_oof:
-            calibration = [[([self.pipeline.vote(lane, r.tx, r.features) for lane in self.pipeline.lanes] + extra(r),
-                             r.tx.amount_cents) for r in rnd if not r.truth.is_fraud] for rnd in calibrate_on]
+            calibration = [[(lane_votes(r, False) + extra(r), r.tx.amount_cents) for r in rnd if not r.truth.is_fraud]
+                           for rnd in calibrate_on]
         else:  # re-scored by the staged defense: its new rulebooks, and extra voters as they'll be deployed
             nos = [no for rnd, no in zip(window, self.stack_round_nos) if any(rnd is c for c in calibrate_on)]
             fresh = self._held_out_scores(calibrate_on, nos, STACK_CALIBRATION_FOLDS) if STACK_CALIBRATION_FOLDS else None
 
             def voters_now(r: Record) -> list[Vote]:
                 if fresh is None:
-                    return [voter.score(r.tx, r.features) for voter in self.pipeline.voters]
+                    return [v for v in (voter.score(r.tx, r.features) for voter in self.pipeline.voters) if keep(v.voter)]
                 return [Vote.model_construct(tx_id=r.tx.tx_id, voter=name, score=score, vote=Action.ALLOW, rule_ids=[],
-                                             rationale=None) for name, score in fresh.get(r.tx.tx_id, {}).items()]
+                                             rationale=None) for name, score in fresh.get(r.tx.tx_id, {}).items() if keep(name)]
 
-            calibration = [[([self.pipeline.vote(lane, r.tx, r.features) for lane in self.pipeline.lanes] + voters_now(r),
-                             r.tx.amount_cents) for r in rnd if not r.truth.is_fraud] for rnd in calibrate_on]
+            calibration = [[(lane_votes(r, False) + voters_now(r), r.tx.amount_cents) for r in rnd if not r.truth.is_fraud]
+                           for rnd in calibrate_on]
         target = self.fp_cap * (STACK_BOOTSTRAP_AT if bootstrap else STACK_AT * self.stack_margin)
         combiner = stacking.train(rounds, calibration, self.pipeline.orchestrator.costs, target, self.stack_version + 1,
                                   min_rounds=1 if bootstrap else stacking.MIN_ROUNDS)
@@ -267,9 +281,9 @@ class LearningLoop:
             return
         fp = sum(r.decision.action != Action.ALLOW for r in honest) / len(honest)
         if fp > self.fp_cap * STACK_GUARD_TIGHTEN_ABOVE:
-            self.stack_margin = max(STACK_GUARD_MIN, self.stack_margin * 0.6)
+            self.stack_margin = max(STACK_GUARD_MIN, self.stack_margin * STACK_GUARD_TIGHTEN_FACTOR)
         elif fp < self.fp_cap * STACK_GUARD_RELAX_BELOW:
-            self.stack_margin = min(1.0, self.stack_margin * 1.1)
+            self.stack_margin = min(1.0, self.stack_margin * STACK_GUARD_RELAX_FACTOR)
 
     def _held_out_scores(self, rounds: list[list[Record]], round_nos: list[int], folds: int) -> dict[str, dict[str, float]]:
         """The guard, part 1: each extra voter's score on each calibration round's honest payments, from a

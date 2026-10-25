@@ -122,7 +122,7 @@ class FraudEngine:
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
                  arena: bool = True, hijacker: bool = True, merchants: bool = True, drafts: bool = False,
                  threat_intel: bool = False, intel_watch: bool = True, threat_source=None, stacking: bool = True,
-                 crs: CrsEscalation | None = None, crs_enrollment: bool | None = None):
+                 crs: CrsEscalation | None = None, crs_enrollment: bool | None = None, roster=None):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -197,6 +197,9 @@ class FraudEngine:
                                    intel_on=intel_watch, seed=seed) if threat_intel and arena else None
         self.learning.watchlist = self.watchlist
         self.archive = Archive()
+        # roster(round_no, running) -> running: lets another run see or replace each round's attackers
+        # before the waves (engine/live_vs_xgboost.py runs XGBoost against TagTeam's attackers).
+        self.roster = roster
         # Without the arena (M3 alone: "until the archive exists, outsiders run on their own") no
         # attackers are spawned or replayed and there's no exam.
         self.arena = Arena(self.brain, self.archive, self.world, self.run_id, seed, self.pipeline.lanes,
@@ -362,6 +365,8 @@ class FraudEngine:
             extras = self.arena.attackers_for_round(round_no, self.pipeline) if self.arena else []  # spawned and archive
             intel = [(a, INTEL_PAYMENTS) for a in self.watchlist.running(round_no)] if self.watchlist else []
             running = [(a, self.fraud_per_persona) for a in self.attackers] + intel + extras
+            if self.roster:
+                running = self.roster(round_no, running)
             pass_rate = {a.attacker_id: getattr(getattr(a, "persona", None), "step_up_pass",
                                                 getattr(a, "step_up_pass", costs.fraud_step_up_pass)) for a, _ in running}
             lane_names = {lane.value for lane in self.pipeline.lanes}

@@ -76,6 +76,10 @@ def _settlements():
 def _brain() -> Brain:
     """Bitdeer when it's configured, with the engine's mock brains as the fallback (a plain MockLLM
     can't answer the engine's questions), and the mock brains alone otherwise."""
+    if os.environ.get("LLM_PROVIDER", "").strip().lower() == "claude":  # a fast stand-in while iterating
+        from integrations.claude_llm import ClaudeLLM
+
+        return Brain(ClaudeLLM())
     if use_mock_llm():
         return Brain(MockBrains())
     try:

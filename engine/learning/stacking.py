@@ -29,6 +29,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 
 from contracts.schemas import Action, Vote
+from engine.orchestrator import decision_costs
 
 MIN_ROUNDS = 2
 OUT_OF_FOLD = False  # see the module docstring and evidence/stacking/strategy-log.md (S2)
@@ -57,8 +58,9 @@ class StackedCombiner:
         logits = [math.log((x + 0.01) / (1.01 - x)) / 5 for x in s] if LOGIT_INPUTS else []
         return s + logits + [a * b for a, b in combinations(s, 2)] + [math.log1p(max(0, amount_cents)) / 10]
 
-    def probability(self, votes: list[Vote], amount_cents: int) -> float:
-        z = float(np.dot(self._coef, self.row(self.voters, votes, amount_cents))) + self._intercept - self.shift
+    def probability(self, votes: list[Vote], amount_cents: int, shifted: bool = True) -> float:
+        """shifted=False gives the calibrated probability before the false-positive shift."""
+        z = float(np.dot(self._coef, self.row(self.voters, votes, amount_cents))) + self._intercept - (self.shift if shifted else 0.0)
         return 1.0 / (1.0 + math.exp(-max(-60.0, min(60.0, z))))
 
 
@@ -94,7 +96,8 @@ def train(rounds: list[list[tuple]], calibration: list[list[tuple]], costs, targ
         X = np.array([StackedCombiner.row(voters, votes, amount) for votes, amount in rnd])
         scored.append(list(zip(model.predict_proba(X)[:, 1], (amount for _, amount in rnd))))
     for s in SHIFTS:  # judged on its worst calibration round (or all of them pooled, with POOLED_CALIBRATION)
-        flagged = [sum(_action(costs, _shifted(float(p), s), amount) != Action.ALLOW for p, amount in rnd) for rnd in scored]
+        flagged = [sum(_action(decision_costs(costs), _shifted(float(p), s), amount) != Action.ALLOW for p, amount in rnd)
+                   for rnd in scored]
         rate = (sum(flagged) / sum(len(rnd) for rnd in scored) if POOLED_CALIBRATION
                 else max(f / len(rnd) for f, rnd in zip(flagged, scored)))
         if rate <= target_fpr:

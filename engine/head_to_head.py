@@ -60,6 +60,29 @@ class RulesPlusXGBoost:
         self.xgb.freeze(on)
 
 
+class XGBoostEveryRound:
+    """XGBoost alone, refitted on all labels so far after every round (bench/'s schedule is every 2)."""
+
+    name = "xgboost_every_round"
+
+    def __init__(self):
+        from bench.baselines import XGBoostDefense
+
+        self.xgb = XGBoostDefense()
+
+    def decide(self, tx, features):
+        return self.xgb.decide(tx, features)
+
+    def learn(self, round, labeled):
+        from bench.baselines import trainable
+
+        self.xgb.history.extend((fv, truth.is_fraud) for tx, fv, truth in labeled if trainable(tx))
+        self.xgb.voter.retrain(self.xgb.history)
+
+    def freeze(self, on):
+        pass
+
+
 def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
     from bench.baselines import StaticRulesDefense, XGBoostDefense, trainable
     from bench.metrics import cost_cents
@@ -93,8 +116,21 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
     introduced: dict[str, int] = {}
     for r in store.rows["attackers"]:
         introduced.setdefault(r["attacker_id"], r["round"])
-    contenders = {"xgboost_retrained": XGBoostDefense(), "xgboost_frozen": XGBoostDefense(), "static_rules": StaticRulesDefense(),
-                  "rules_plus_xgboost": RulesPlusXGBoost()}
+    contenders = {"xgboost_retrained": XGBoostDefense(), "xgboost_every_round": XGBoostEveryRound(),
+                  "xgboost_frozen": XGBoostDefense(), "static_rules": StaticRulesDefense(), "rules_plus_xgboost": RulesPlusXGBoost()}
+
+    # Money that actually got through, every contender's step-ups resolved by the engine's own draw at
+    # each attacker's pass rate (engine.engine.resolve), so the full system is scored like the rest.
+    from types import SimpleNamespace
+
+    from engine.engine import resolve
+    from engine.export_baseline import step_up_pass
+    from engine.orchestrator import CostMatrix
+
+    costs = CostMatrix()
+    lineage = {r["attacker_id"]: (r["payload"] or {}).get("lineage") for r in store.rows["attackers"]}
+    fraud_through: dict[str, float] = defaultdict(float)
+    honest_through: dict[str, float] = defaultdict(float)
 
     # cost per (contender, attacker, round) for fraud; false positives per (contender, round)
     fraud_cost: dict[tuple, float] = defaultdict(float)
@@ -107,7 +143,13 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
             actions[name] = {t.tx_id: defense.decide(t, features[t.tx_id]).action for t in txs}
         for t in txs:
             g = truth[t.tx_id]
+            pass_rate = step_up_pass(sources.get(t.attacker_id, "legit"), lineage.get(t.attacker_id), costs)
             for name, acts in actions.items():
+                if resolve(t, g, SimpleNamespace(action=acts[t.tx_id]), pass_rate, costs.legit_step_up_abandon).settled:
+                    if g.is_fraud:
+                        fraud_through[name] += t.amount_cents
+                    else:
+                        honest_through[name] += t.amount_cents
                 if g.is_fraud:
                     fraud_cost[(name, t.attacker_id, rnd)] += cost_cents(True, acts[t.tx_id], t.amount_cents)
                 elif not g.breaches_mandate:
@@ -136,7 +178,15 @@ def run_one(seed: int, rounds: int, real: bool, record: str = "") -> dict:
         fps = [statistics.mean(honest[(name, rnd)]) for rnd in range(1, rounds + 1) if honest[(name, rnd)]]
         out["by_contender"][name] = {"new_first_round_usd": first / 100, "new_first_3_rounds_usd": first3 / 100,
                                      "all_fraud_usd": total / 100, "honest_cost_usd": honest_cost[name] / 100,
-                                     "total_cost_usd": (total + honest_cost[name]) / 100, "fp_mean": statistics.mean(fps), "fp_max": max(fps)}
+                                     "total_cost_usd": (total + honest_cost[name]) / 100, "fp_mean": statistics.mean(fps), "fp_max": max(fps),
+                                     "fraud_through_usd": fraud_through[name] / 100, "honest_through_usd": honest_through[name] / 100,
+                                     "net_usd": (honest_through[name] - fraud_through[name]) / 100}
+    last = {d.tx_id: d for d in store.decisions}  # the final decision per payment
+    checked = [d.crs for d in last.values() if d.crs is not None]
+    out["crs"] = {"payments_with_crs": len(checked),
+                  "by_action": {a: sum(c.decision.value == a for c in checked) for a in ("allow", "step_up", "block")},
+                  "watch_added": sum(c.watch == "added" for c in checked), "on_watch_list": sum(c.watch == "on_list" for c in checked),
+                  "fraud_checked": sum(c.tx_id in truth and truth[c.tx_id].is_fraud for c in checked)}
     return out
 
 
