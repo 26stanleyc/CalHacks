@@ -4,10 +4,11 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { ALL_SHELVES } from "../data/mock";
 import { C, M, shelfColor } from "../palette";
-import { LEARN_START, ROUND_LEN, useArena } from "../store";
+import { useArena } from "../store";
 import { shelfName } from "../ui/words";
 import { Pickable } from "./creatures";
 import { HEX, SHELF_TILE, TILE_TOP, ring } from "./layout";
+import { liveShelves } from "./shelfLive";
 
 const TILE_R = HEX * 0.95;
 const hexGeo = new THREE.CylinderGeometry(TILE_R, TILE_R, 1, 6);
@@ -28,19 +29,14 @@ function HexTile({ x, z, top, color, material }: { x: number; z: number; top: nu
 function Shelf({ id }: { id: string }) {
   const tile = SHELF_TILE[id];
   const mat = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.75 }), []);
-  const from = useRef(new THREE.Color());
-  const to = useRef(new THREE.Color());
+  const target = useRef(new THREE.Color());
   const selected = useArena((s) => s.selected?.kind === "shelf" && s.selected.id === id);
   useFrame(() => {
     const { replay, round, t } = useArena.getState();
     if (!replay) return;
-    // The tile shows last round's verdict, then recolours while the defense learns.
-    const before = round > 0 ? replay.rounds[round - 1].shelves.find((s) => s.shelf === id) : undefined;
-    const after = replay.rounds[round].shelves.find((s) => s.shelf === id);
-    from.current.set(shelfColor(before));
-    to.current.set(shelfColor(after));
-    const k = Math.min(1, Math.max(0, (t - LEARN_START - 0.5) / (ROUND_LEN - LEARN_START - 1)));
-    mat.color.copy(from.current).lerp(to.current, k);
+    // Live catch rate, eased so the tile shifts colour as coins land rather than snapping.
+    target.current.set(shelfColor(liveShelves(replay, round, t).get(id)));
+    mat.color.lerp(target.current, 0.12);
     mat.emissive.copy(mat.color).multiplyScalar(selected ? 0.35 : 0.08);
   });
   return (

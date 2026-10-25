@@ -3,6 +3,7 @@
 import type { Actor, Lane } from "../data/types";
 import { useArena, waveStart, THROW_WINDOW, FLIGHT } from "../store";
 import { getRoundModel, latestAttacker } from "../world/roundModel";
+import { RECENT_ROUNDS, liveShelves } from "../world/shelfLive";
 import { ACTOR_NAME, SOURCE_LINE, attackerName, modelName, money, paramLines, ruleName, shelfName } from "./words";
 
 function Close() {
@@ -197,11 +198,13 @@ function ShelfCard({ id }: { id: string }) {
   const replay = useArena((s) => s.replay)!;
   const round = useArena((s) => s.round);
   const select = useArena((s) => s.select);
-  const r = replay.rounds[round];
-  const s = r.shelves.find((x) => x.shelf === id)!;
+  const tq = useArena((s) => Math.floor(s.t * 4) / 4);
+  // Same live tally as the tile and the shelf map, so the three always agree.
+  const s = liveShelves(replay, round, tq).get(id)!;
   const rate = s.attempts ? s.caught / s.attempts : null;
   const name = (aid: string) => attackerName(latestAttacker(replay, round, aid)?.info.name ?? aid);
-  const ids = [...(s.outsider_slot ? [s.outsider_slot] : []), ...s.attacker_ids];
+  // The engine can list the outsider-spot attacker in attacker_ids too; show each attacker once.
+  const ids = [...new Set([...(s.outsider_slot ? [s.outsider_slot] : []), ...s.attacker_ids])];
 
   return (
     <article className="card shelf-card">
@@ -212,9 +215,12 @@ function ShelfCard({ id }: { id: string }) {
         <span style={{ width: `${Math.round((rate ?? 0) * 100)}%` }} />
       </div>
       <p className="muted">
-        {s.unknown
-          ? `Only ${s.attempts} recent attempts, so it's too early to trust the catch rate.`
-          : `The defense caught ${s.caught} of the last ${s.attempts} attempts (${Math.round(rate! * 100)}%).`}
+        {s.attempts === 0
+          ? "No attacks here yet."
+          : s.unknown
+            ? `Only ${s.attempts} recent attempts, so it's too early to trust the catch rate.`
+            : `The defense caught ${s.caught} of the last ${s.attempts} attempts (${Math.round(rate! * 100)}%).`}{" "}
+        Counts the last {RECENT_ROUNDS} rounds, this one included as it plays.
       </p>
       <h3>Top attackers kept here</h3>
       {ids.length ? (

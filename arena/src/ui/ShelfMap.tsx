@@ -1,11 +1,11 @@
-// The arena flattened into the Rainbow Teaming grid: one cell per shelf, coloured by
-// catch rate and recoloured during learning, exactly like the 3D ring. A gold halo marks
+// The arena flattened into the Rainbow Teaming grid: one cell per shelf, coloured by its live
+// catch rate, exactly like the 3D ring. A gold halo marks
 // the shelves a defender built an attacker for this round (orange: a news scam landed).
 
-import * as THREE from "three";
 import { AMOUNTS, SIDES, STYLES, shelfId } from "../data/mock";
 import { C, shelfColor } from "../palette";
-import { LEARN_START, ROUND_LEN, useArena } from "../store";
+import { useArena } from "../store";
+import { liveShelves } from "../world/shelfLive";
 import { ACTOR_NAME, shelfName } from "./words";
 
 const ROW_LABEL: Record<string, string> = {
@@ -16,19 +16,17 @@ const ROW_LABEL: Record<string, string> = {
 };
 const AMOUNT_LABEL: Record<string, string> = { under_10: "<$10", "10_to_100": "$10–100", over_100: ">$100" };
 
-const mix = (a: string, b: string, k: number) => `#${new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString()}`;
-const step20 = (x: number) => Math.round(Math.min(1, Math.max(0, x)) * 20) / 20;
 
 export function ShelfMap() {
   const replay = useArena((s) => s.replay)!;
   const round = useArena((s) => s.round);
   const selected = useArena((s) => s.selected);
   const select = useArena((s) => s.select);
-  // Coarse steps keep React re-renders to a handful per round.
-  const learnK = useArena((s) => step20((s.t - LEARN_START - 0.5) / (ROUND_LEN - LEARN_START - 1)));
+  // Quarter-second steps keep React re-renders down; the numbers come from the same live tally as the tiles.
+  const tq = useArena((s) => Math.floor(s.t * 4) / 4);
+  const live = liveShelves(replay, round, tq);
 
   const r = replay.rounds[round];
-  const before = round > 0 ? replay.rounds[round - 1].shelves : [];
   const aimedBy = new Map<string, string>();
   for (const a of r.actions) if (a.action === "spawn" && a.shelf) aimedBy.set(a.shelf, `${ACTOR_NAME[a.actor]} built an attacker here`);
   const news = new Map(r.news.map((n) => [n.shelf, `New scam from the news: ${n.title}`]));
@@ -58,16 +56,14 @@ export function ShelfMap() {
                 ...(si === 1 ? [<td key={`${style}-gap`} className="gap" />] : []),
                 ...AMOUNTS.map((amount) => {
                   const id = shelfId(style, amount, side);
-                  const prev = before.find((s) => s.shelf === id);
-                  const next = r.shelves.find((s) => s.shelf === id);
-                  const shown = learnK < 0.5 ? prev : next;
+                  const shown = live.get(id);
                   const rate = shown && !shown.unknown && shown.attempts ? Math.round((shown.caught / shown.attempts) * 100) : null;
                   const mark = news.get(id) ?? aimedBy.get(id);
                   return (
                     <td key={id}>
                       <button
                         className={`cell${selected?.kind === "shelf" && selected.id === id ? " selected" : ""}`}
-                        style={{ background: mix(shelfColor(prev), shelfColor(next), learnK) }}
+                        style={{ background: shelfColor(shown) }}
                         onClick={() => select({ kind: "shelf", id })}
                         title={`${shelfName(id)}${rate === null ? "" : `: caught ${rate}%`}${mark ? `. ${mark}.` : ""}`}
                       >
