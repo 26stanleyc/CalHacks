@@ -3,6 +3,7 @@ name = "fraud-defense"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=2.3.0",
     "apify-client>=3.3.0",
     "cdp-sdk>=1.51.0",
     "certifi>=2026.10.23",

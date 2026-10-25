@@ -12,6 +12,13 @@ from dataclasses import dataclass, field
 from contracts.schemas import Action, Decision, FeatureVector, Transaction, Vote
 
 ESCALATION_BAND = 0.25  # relative cost gap under which a call counts as close (used by S5)
+# Tuning knobs (engine/tune.py), decision-only: the simulator and the scorer keep the real CostMatrix.
+SPLIT_BLOCK = False  # choose step-up vs block from the combiner's probability before its false-positive shift
+SPLIT_BLOCK_AT = 0.0  # with SPLIT_BLOCK: block only when that probability is at least this (else step up)
+DECISION_COSTS = None  # a CostMatrix the defense decides with, in place of `costs`
+VOTER_FLOOR_UNTIL = 0  # while the combiner is at most this version (1 = the round-2 bootstrap), never act softer
+#                        than TagTeam's own XGBoost voter's verdict
+STRICTNESS = {Action.ALLOW: 0, Action.STEP_UP: 1, Action.BLOCK: 2}
 
 
 @dataclass(frozen=True)
@@ -37,6 +44,11 @@ class CostMatrix:
             + p * self.fraud_step_up_pass * amount_cents,
             Action.BLOCK: (1 - p) * lost_sale,
         }
+
+
+def decision_costs(costs: "CostMatrix") -> "CostMatrix":
+    """The cost matrix the defense decides with (DECISION_COSTS when tuning sets it)."""
+    return DECISION_COSTS or costs
 
 
 def hard_veto(features: FeatureVector) -> str | None:
@@ -88,8 +100,17 @@ class Orchestrator:
     def decide(self, tx: Transaction, votes: list[Vote], features: FeatureVector) -> Decision:
         p = self.probability(tx, votes)
         veto = hard_veto(features)
-        costs = self.costs.expected_costs(p, tx.amount_cents)
+        matrix = decision_costs(self.costs)
+        costs = matrix.expected_costs(p, tx.amount_cents)
         action = Action.BLOCK if veto else min(costs, key=costs.get)
+        if SPLIT_BLOCK and not veto and action != Action.ALLOW and self.combiner is not None:
+            # the shift is for the false-positive cap, which only bounds allow vs flag
+            p_raw = self.combiner.probability(votes, tx.amount_cents, shifted=False)
+            raw = matrix.expected_costs(p_raw, tx.amount_cents)
+            action = Action.BLOCK if raw[Action.BLOCK] < raw[Action.STEP_UP] and p_raw >= SPLIT_BLOCK_AT else Action.STEP_UP
+        if not veto and self.combiner is not None and self.combiner.version <= VOTER_FLOOR_UNTIL:
+            own = next((v.vote for v in votes if v.voter == "xgboost"), Action.ALLOW)
+            action = max(action, own, key=STRICTNESS.get)
         return Decision(
             tx_id=tx.tx_id, action=action, weighted_score=1.0 if veto else round(p, 6), votes=votes,
             weights={v.voter: self.weights.get(v.voter, 1.0) for v in votes},
@@ -98,7 +119,7 @@ class Orchestrator:
 
     def is_close_call(self, p: float, amount_cents: int) -> bool:
         """True when the best and second-best actions cost about the same (S5 escalates these)."""
-        best, second = sorted(self.costs.expected_costs(p, amount_cents).values())[:2]
+        best, second = sorted(decision_costs(self.costs).expected_costs(p, amount_cents).values())[:2]
         return second - best <= ESCALATION_BAND * max(second, 1.0)
 
 
