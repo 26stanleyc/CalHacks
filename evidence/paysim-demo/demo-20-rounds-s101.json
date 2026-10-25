@@ -1,0 +1,491 @@
+{
+ "seed": 101,
+ "rounds": 20,
+ "real": true,
+ "seconds_per_round": 117.27238749999961,
+ "investigator": {
+  "cases": 0,
+  "timed_out": 0,
+  "no_decision": 0,
+  "decided": 0,
+  "timeout_s": 5.0,
+  "seconds": []
+ },
+ "same_roster_every_round": true,
+ "roster_mismatch": {},
+ "roster_sizes": [
+  6,
+  12,
+  18,
+  18,
+  18,
+  15,
+  18,
+  15,
+  18,
+  15,
+  18,
+  15,
+  15,
+  12,
+  12,
+  12,
+  12,
+  12,
+  12,
+  12
+ ],
+ "tagteam_live": {
+  "total": {
+   "cost": 31139.71,
+   "fraud_tried": 175631.62,
+   "fraud_through": 26594.95,
+   "honest_tried": 179431.78,
+   "honest_through": 165867.83,
+   "net": 139272.88,
+   "honest": 5819,
+   "flagged": 99,
+   "money_lost": 40158.90000000002
+  },
+  "per_round": [
+   {
+    "fraud_tried": 6640.96,
+    "fraud_through": 2623.11,
+    "cost": 2650.0779999999995,
+    "honest_tried": 7716.08,
+    "honest_through": 7716.08,
+    "honest": 300,
+    "flagged": 0,
+    "net": 5092.97
+   },
+   {
+    "fraud_tried": 10345.05,
+    "fraud_through": 1844.71,
+    "cost": 1470.4625,
+    "honest_tried": 7168.85,
+    "honest_through": 6897.75,
+    "honest": 300,
+    "flagged": 2,
+    "net": 5053.04
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2442.42,
+    "cost": 2213.5482499999994,
+    "honest": 119,
+    "flagged": 2,
+    "fraud_tried": 11556.63,
+    "fraud_through": 2080.49,
+    "net": 361.93
+   },
+   {
+    "fraud_tried": 10807.53,
+    "fraud_through": 1012.03,
+    "cost": 1548.5055000000002,
+    "honest_tried": 8610.88,
+    "honest_through": 6922.74,
+    "honest": 300,
+    "flagged": 8,
+    "net": 5910.71
+   },
+   {
+    "fraud_tried": 5672.45,
+    "fraud_through": 2296.58,
+    "cost": 2452.07375,
+    "honest_tried": 9322.38,
+    "honest_through": 8790.08,
+    "honest": 300,
+    "flagged": 9,
+    "net": 6493.5
+   },
+   {
+    "fraud_tried": 4141.9,
+    "fraud_through": 1715.3,
+    "cost": 1756.52,
+    "honest_tried": 8542.21,
+    "honest_through": 8542.21,
+    "honest": 300,
+    "flagged": 0,
+    "net": 6826.91
+   },
+   {
+    "fraud_tried": 12298.07,
+    "fraud_through": 1869.01,
+    "cost": 2034.10875,
+    "honest_tried": 8553.01,
+    "honest_through": 8011.71,
+    "honest": 300,
+    "flagged": 5,
+    "net": 6142.7
+   },
+   {
+    "fraud_tried": 11190.24,
+    "fraud_through": 791.85,
+    "cost": 714.90875,
+    "honest_tried": 7027.92,
+    "honest_through": 6927.31,
+    "honest": 300,
+    "flagged": 4,
+    "net": 6135.46
+   },
+   {
+    "fraud_tried": 6228.59,
+    "fraud_through": 791.3,
+    "cost": 902.69125,
+    "honest_tried": 7218.01,
+    "honest_through": 6772.42,
+    "honest": 300,
+    "flagged": 3,
+    "net": 5981.12
+   },
+   {
+    "fraud_tried": 6141.57,
+    "fraud_through": 447.22,
+    "cost": 579.1447499999999,
+    "honest_tried": 7732.7,
+    "honest_through": 7568.88,
+    "honest": 300,
+    "flagged": 7,
+    "net": 7121.66
+   },
+   {
+    "fraud_tried": 9489.94,
+    "fraud_through": 851.36,
+    "cost": 980.7004999999997,
+    "honest_tried": 7860.26,
+    "honest_through": 7859.76,
+    "honest": 300,
+    "flagged": 5,
+    "net": 7008.4
+   },
+   {
+    "fraud_tried": 9721.89,
+    "fraud_through": 892.77,
+    "cost": 2640.8492499999998,
+    "honest_tried": 11110.19,
+    "honest_through": 5882.49,
+    "honest": 300,
+    "flagged": 4,
+    "net": 4989.72
+   },
+   {
+    "fraud_tried": 14648.55,
+    "fraud_through": 2187.61,
+    "cost": 2176.4275000000007,
+    "honest_tried": 20748.29,
+    "honest_through": 17985.44,
+    "honest": 300,
+    "flagged": 17,
+    "net": 15797.83
+   },
+   {
+    "fraud_tried": 2715.22,
+    "fraud_through": 911.18,
+    "cost": 1374.94125,
+    "honest_tried": 13354.95,
+    "honest_through": 12881.51,
+    "honest": 300,
+    "flagged": 12,
+    "net": 11970.33
+   },
+   {
+    "fraud_tried": 11445.85,
+    "fraud_through": 1353.96,
+    "cost": 1392.90075,
+    "honest_tried": 9546.25,
+    "honest_through": 9143.7,
+    "honest": 300,
+    "flagged": 3,
+    "net": 7789.74
+   },
+   {
+    "fraud_tried": 10947.44,
+    "fraud_through": 1169.15,
+    "cost": 1550.3625000000002,
+    "honest_tried": 9196.34,
+    "honest_through": 9196.34,
+    "honest": 300,
+    "flagged": 2,
+    "net": 8027.19
+   },
+   {
+    "fraud_tried": 7550.81,
+    "fraud_through": 1105.09,
+    "cost": 1130.0547500000002,
+    "honest_tried": 8577.22,
+    "honest_through": 8577.22,
+    "honest": 300,
+    "flagged": 1,
+    "net": 7472.13
+   },
+   {
+    "fraud_tried": 11258.58,
+    "fraud_through": 1183.62,
+    "cost": 1291.2959999999998,
+    "honest_tried": 7867.97,
+    "honest_through": 7867.41,
+    "honest": 300,
+    "flagged": 2,
+    "net": 6683.79
+   },
+   {
+    "fraud_tried": 4922.53,
+    "fraud_through": 875.6,
+    "cost": 831.67875,
+    "honest_tried": 6565.19,
+    "honest_through": 6544.85,
+    "honest": 300,
+    "flagged": 4,
+    "net": 5669.25
+   },
+   {
+    "fraud_tried": 7907.82,
+    "fraud_through": 593.01,
+    "cost": 1448.4572500000002,
+    "honest_tried": 10141.98,
+    "honest_through": 9337.51,
+    "honest": 300,
+    "flagged": 9,
+    "net": 8744.5
+   }
+  ]
+ },
+ "xgboost_live": {
+  "total": {
+   "cost": 50829.0515,
+   "fraud_tried": 192387.79,
+   "fraud_through": 47079.27,
+   "honest_tried": 179431.78,
+   "honest_through": 170168.43,
+   "net": 123089.16,
+   "honest": 5819,
+   "flagged": 95,
+   "money_lost": 56342.619999999995
+  },
+  "per_round": [
+   {
+    "fraud_tried": 10838.99,
+    "fraud_through": 10838.99,
+    "cost": 10838.99,
+    "honest_tried": 7716.08,
+    "honest_through": 7716.08,
+    "honest": 300,
+    "flagged": 0,
+    "net": -3122.91
+   },
+   {
+    "fraud_tried": 15831.47,
+    "fraud_through": 2012.86,
+    "cost": 2030.76375,
+    "honest_tried": 7168.85,
+    "honest_through": 7168.85,
+    "honest": 300,
+    "flagged": 2,
+    "net": 5155.99
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2571.1,
+    "cost": 3283.6607499999996,
+    "honest": 119,
+    "flagged": 3,
+    "fraud_tried": 13815.16,
+    "fraud_through": 3326.49,
+    "net": -755.39
+   },
+   {
+    "fraud_tried": 11361.59,
+    "fraud_through": 2202.66,
+    "cost": 2413.67575,
+    "honest_tried": 8610.88,
+    "honest_through": 8324.45,
+    "honest": 300,
+    "flagged": 8,
+    "net": 6121.79
+   },
+   {
+    "fraud_tried": 5717.15,
+    "fraud_through": 1748.32,
+    "cost": 1886.8557500000004,
+    "honest_tried": 9322.38,
+    "honest_through": 8891.02,
+    "honest": 300,
+    "flagged": 7,
+    "net": 7142.7
+   },
+   {
+    "fraud_tried": 3699.49,
+    "fraud_through": 1605.59,
+    "cost": 1610.394,
+    "honest_tried": 8542.21,
+    "honest_through": 8541.69,
+    "honest": 300,
+    "flagged": 3,
+    "net": 6936.1
+   },
+   {
+    "fraud_tried": 13492.65,
+    "fraud_through": 2043.16,
+    "cost": 2393.11125,
+    "honest_tried": 8553.01,
+    "honest_through": 8342.16,
+    "honest": 300,
+    "flagged": 5,
+    "net": 6299.0
+   },
+   {
+    "fraud_tried": 13324.06,
+    "fraud_through": 1811.08,
+    "cost": 1867.3557500000002,
+    "honest_tried": 7027.92,
+    "honest_through": 6913.31,
+    "honest": 300,
+    "flagged": 7,
+    "net": 5102.23
+   },
+   {
+    "fraud_tried": 6537.35,
+    "fraud_through": 2241.98,
+    "cost": 2336.5039999999995,
+    "honest_tried": 7218.01,
+    "honest_through": 7217.52,
+    "honest": 300,
+    "flagged": 6,
+    "net": 4975.54
+   },
+   {
+    "fraud_tried": 6554.86,
+    "fraud_through": 1096.54,
+    "cost": 1267.1544999999999,
+    "honest_tried": 7732.7,
+    "honest_through": 7732.17,
+    "honest": 300,
+    "flagged": 7,
+    "net": 6635.63
+   },
+   {
+    "fraud_tried": 10265.97,
+    "fraud_through": 1591.43,
+    "cost": 2164.8360000000002,
+    "honest_tried": 7860.26,
+    "honest_through": 7859.25,
+    "honest": 300,
+    "flagged": 5,
+    "net": 6267.82
+   },
+   {
+    "fraud_tried": 10142.68,
+    "fraud_through": 1060.65,
+    "cost": 2671.27,
+    "honest_tried": 11110.19,
+    "honest_through": 5882.49,
+    "honest": 300,
+    "flagged": 3,
+    "net": 4821.84
+   },
+   {
+    "fraud_tried": 14865.73,
+    "fraud_through": 2498.47,
+    "cost": 2263.6010000000006,
+    "honest_tried": 20748.29,
+    "honest_through": 18748.29,
+    "honest": 300,
+    "flagged": 12,
+    "net": 16249.82
+   },
+   {
+    "fraud_tried": 2398.07,
+    "fraud_through": 1002.03,
+    "cost": 1275.446,
+    "honest_tried": 13354.95,
+    "honest_through": 12881.51,
+    "honest": 300,
+    "flagged": 8,
+    "net": 11879.48
+   },
+   {
+    "fraud_tried": 11494.56,
+    "fraud_through": 1901.45,
+    "cost": 1934.1835,
+    "honest_tried": 9546.25,
+    "honest_through": 9085.33,
+    "honest": 300,
+    "flagged": 5,
+    "net": 7183.88
+   },
+   {
+    "fraud_tried": 10678.21,
+    "fraud_through": 2899.59,
+    "cost": 3002.8585,
+    "honest_tried": 9196.34,
+    "honest_through": 9195.67,
+    "honest": 300,
+    "flagged": 4,
+    "net": 6296.08
+   },
+   {
+    "fraud_tried": 7660.13,
+    "fraud_through": 1679.58,
+    "cost": 1779.2925,
+    "honest_tried": 8577.22,
+    "honest_through": 8577.22,
+    "honest": 300,
+    "flagged": 3,
+    "net": 6897.64
+   },
+   {
+    "fraud_tried": 11379.45,
+    "fraud_through": 1298.14,
+    "cost": 1401.65925,
+    "honest_tried": 7867.97,
+    "honest_through": 7867.41,
+    "honest": 300,
+    "flagged": 2,
+    "net": 6569.27
+   },
+   {
+    "fraud_tried": 4510.97,
+    "fraud_through": 1036.71,
+    "cost": 1060.326,
+    "honest_tried": 6565.19,
+    "honest_through": 6565.19,
+    "honest": 300,
+    "flagged": 0,
+    "net": 5528.48
+   },
+   {
+    "fraud_tried": 7819.25,
+    "fraud_through": 3183.55,
+    "cost": 3347.1132499999994,
+    "honest_tried": 10141.98,
+    "honest_through": 10087.72,
+    "honest": 300,
+    "flagged": 5,
+    "net": 6904.17
+   }
+  ]
+ },
+ "name": "control",
+ "config": {
+  "split": true,
+  "stack_at": 1.0,
+  "split_block_at": 0.8,
+  "escalation_share": 0.0,
+  "bootstrap_voters": [
+   "xgboost"
+  ],
+  "bootstrap_at": 0.9,
+  "guard_tighten_above": 1.0,
+  "guard_relax_below": 0.75,
+  "guard_min": 0.5,
+  "guard_tighten_factor": 0.8,
+  "guard_relax_factor": 1.25,
+  "warmup_rounds": 1,
+  "combiner_drop_voters": [
+   "anomaly"
+  ],
+  "passthrough": true,
+  "retire_after": 6
+ },
+ "seconds": 2361
+}

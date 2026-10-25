@@ -1,0 +1,197 @@
+{
+ "seed": 101,
+ "rounds": 6,
+ "real": true,
+ "seconds_per_round": 122.28670136800308,
+ "investigator": {
+  "cases": 0,
+  "timed_out": 0,
+  "no_decision": 0,
+  "decided": 0,
+  "timeout_s": 5.0,
+  "seconds": []
+ },
+ "same_roster_every_round": true,
+ "roster_mismatch": {},
+ "roster_sizes": [
+  6,
+  11,
+  18,
+  18,
+  18,
+  18
+ ],
+ "tagteam_live": {
+  "total": {
+   "cost": 11840.138,
+   "fraud_tried": 60219.54,
+   "fraud_through": 11443.14,
+   "honest_tried": 43931.5,
+   "honest_through": 41494.69,
+   "net": 30051.55,
+   "honest": 1619,
+   "flagged": 15,
+   "money_lost": 13879.949999999997
+  },
+  "per_round": [
+   {
+    "fraud_tried": 10243.7,
+    "fraud_through": 2737.77,
+    "cost": 2764.51,
+    "honest_tried": 7716.08,
+    "honest_through": 7716.08,
+    "honest": 300,
+    "flagged": 0,
+    "net": 4978.31
+   },
+   {
+    "fraud_tried": 12207.2,
+    "fraud_through": 2320.32,
+    "cost": 1891.0380000000005,
+    "honest_tried": 7168.85,
+    "honest_through": 7168.85,
+    "honest": 300,
+    "flagged": 1,
+    "net": 4848.53
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2427.17,
+    "cost": 1296.34,
+    "honest": 119,
+    "flagged": 3,
+    "fraud_tried": 9304.89,
+    "fraud_through": 1284.65,
+    "net": 1142.52
+   },
+   {
+    "fraud_tried": 15397.23,
+    "fraud_through": 1915.87,
+    "cost": 2407.627,
+    "honest_tried": 8610.88,
+    "honest_through": 7100.97,
+    "honest": 300,
+    "flagged": 7,
+    "net": 5185.1
+   },
+   {
+    "fraud_tried": 6330.99,
+    "fraud_through": 1335.28,
+    "cost": 1582.171,
+    "honest_tried": 9322.38,
+    "honest_through": 8539.41,
+    "honest": 300,
+    "flagged": 4,
+    "net": 7204.13
+   },
+   {
+    "fraud_tried": 6735.53,
+    "fraud_through": 1849.25,
+    "cost": 1898.4520000000002,
+    "honest_tried": 8542.21,
+    "honest_through": 8542.21,
+    "honest": 300,
+    "flagged": 0,
+    "net": 6692.96
+   }
+  ]
+ },
+ "xgboost_live": {
+  "total": {
+   "cost": 24131.514750000002,
+   "fraud_tried": 69635.25,
+   "fraud_through": 23590.4,
+   "honest_tried": 43931.5,
+   "honest_through": 42916.83,
+   "net": 19326.43,
+   "honest": 1619,
+   "flagged": 28,
+   "money_lost": 24605.069999999992
+  },
+  "per_round": [
+   {
+    "fraud_tried": 10838.99,
+    "fraud_through": 10838.99,
+    "cost": 10838.99,
+    "honest_tried": 7716.08,
+    "honest_through": 7716.08,
+    "honest": 300,
+    "flagged": 0,
+    "net": -3122.91
+   },
+   {
+    "fraud_tried": 12856.54,
+    "fraud_through": 2022.89,
+    "cost": 2040.6697500000002,
+    "honest_tried": 7168.85,
+    "honest_through": 7168.85,
+    "honest": 300,
+    "flagged": 2,
+    "net": 5145.96
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2442.42,
+    "cost": 2913.14525,
+    "honest": 119,
+    "flagged": 3,
+    "fraud_tried": 10187.46,
+    "fraud_through": 2834.6,
+    "net": -392.18
+   },
+   {
+    "fraud_tried": 19281.33,
+    "fraud_through": 3766.86,
+    "cost": 4024.5847500000004,
+    "honest_tried": 8610.88,
+    "honest_through": 8214.94,
+    "honest": 300,
+    "flagged": 15,
+    "net": 4448.08
+   },
+   {
+    "fraud_tried": 9000.49,
+    "fraud_through": 2020.29,
+    "cost": 2113.114,
+    "honest_tried": 9322.38,
+    "honest_through": 8832.85,
+    "honest": 300,
+    "flagged": 7,
+    "net": 6812.56
+   },
+   {
+    "fraud_tried": 7470.44,
+    "fraud_through": 2106.77,
+    "cost": 2201.011,
+    "honest_tried": 8542.21,
+    "honest_through": 8541.69,
+    "honest": 300,
+    "flagged": 1,
+    "net": 6434.92
+   }
+  ]
+ },
+ "name": "control",
+ "config": {
+  "split": true,
+  "stack_at": 1.0,
+  "split_block_at": 0.8,
+  "escalation_share": 0.0,
+  "bootstrap_voters": [
+   "xgboost"
+  ],
+  "bootstrap_at": 0.9,
+  "guard_tighten_above": 1.0,
+  "guard_relax_below": 0.75,
+  "guard_min": 0.5,
+  "guard_tighten_factor": 0.8,
+  "guard_relax_factor": 1.25,
+  "warmup_rounds": 1,
+  "combiner_drop_voters": [
+   "anomaly"
+  ],
+  "passthrough": true,
+  "retire_after": 6
+ },
+ "seconds": 748
+}

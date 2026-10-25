@@ -1,0 +1,197 @@
+{
+ "seed": 102,
+ "rounds": 6,
+ "real": true,
+ "seconds_per_round": 112.44385786816322,
+ "investigator": {
+  "cases": 0,
+  "timed_out": 0,
+  "no_decision": 0,
+  "decided": 0,
+  "timeout_s": 5.0,
+  "seconds": []
+ },
+ "same_roster_every_round": true,
+ "roster_mismatch": {},
+ "roster_sizes": [
+  6,
+  12,
+  18,
+  18,
+  18,
+  18
+ ],
+ "tagteam_live": {
+  "total": {
+   "cost": 16265.1285,
+   "fraud_tried": 81599.4,
+   "fraud_through": 14928.46,
+   "honest_tried": 44423.53,
+   "honest_through": 41875.88,
+   "net": 26947.42,
+   "honest": 1619,
+   "flagged": 28,
+   "money_lost": 17476.11
+  },
+  "per_round": [
+   {
+    "fraud_tried": 12036.74,
+    "fraud_through": 4372.11,
+    "cost": 4397.84,
+    "honest_tried": 8125.11,
+    "honest_through": 8125.11,
+    "honest": 300,
+    "flagged": 0,
+    "net": 3753.0
+   },
+   {
+    "fraud_tried": 18500.36,
+    "fraud_through": 2785.18,
+    "cost": 3011.6545,
+    "honest_tried": 7818.91,
+    "honest_through": 7789.83,
+    "honest": 300,
+    "flagged": 4,
+    "net": 5004.65
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2427.18,
+    "cost": 1372.6792500000001,
+    "honest": 119,
+    "flagged": 3,
+    "fraud_tried": 13761.53,
+    "fraud_through": 1253.76,
+    "net": 1173.42
+   },
+   {
+    "fraud_tried": 12481.05,
+    "fraud_through": 2613.03,
+    "cost": 2834.63625,
+    "honest_tried": 7859.61,
+    "honest_through": 7210.59,
+    "honest": 300,
+    "flagged": 6,
+    "net": 4597.56
+   },
+   {
+    "fraud_tried": 14959.25,
+    "fraud_through": 1431.16,
+    "cost": 1966.4555000000003,
+    "honest_tried": 10116.72,
+    "honest_through": 8486.54,
+    "honest": 300,
+    "flagged": 14,
+    "net": 7055.38
+   },
+   {
+    "fraud_tried": 9860.47,
+    "fraud_through": 2473.22,
+    "cost": 2681.863,
+    "honest_tried": 7932.08,
+    "honest_through": 7836.63,
+    "honest": 300,
+    "flagged": 1,
+    "net": 5363.41
+   }
+  ]
+ },
+ "xgboost_live": {
+  "total": {
+   "cost": 26835.712749999995,
+   "fraud_tried": 87557.5,
+   "fraud_through": 25808.5,
+   "honest_tried": 44423.53,
+   "honest_through": 42274.66,
+   "net": 16466.16,
+   "honest": 1619,
+   "flagged": 34,
+   "money_lost": 27957.369999999995
+  },
+  "per_round": [
+   {
+    "fraud_tried": 13749.88,
+    "fraud_through": 13749.88,
+    "cost": 13749.88,
+    "honest_tried": 8125.11,
+    "honest_through": 8125.11,
+    "honest": 300,
+    "flagged": 0,
+    "net": -5624.77
+   },
+   {
+    "fraud_tried": 22727.83,
+    "fraud_through": 3000.26,
+    "cost": 3565.887749999999,
+    "honest_tried": 7818.91,
+    "honest_through": 7636.81,
+    "honest": 300,
+    "flagged": 6,
+    "net": 4636.55
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2442.42,
+    "cost": 2117.0519999999997,
+    "honest": 119,
+    "flagged": 1,
+    "fraud_tried": 15226.99,
+    "fraud_through": 2283.67,
+    "net": 158.75
+   },
+   {
+    "fraud_tried": 12580.35,
+    "fraud_through": 3101.06,
+    "cost": 3268.2717499999994,
+    "honest_tried": 7859.61,
+    "honest_through": 7345.07,
+    "honest": 300,
+    "flagged": 10,
+    "net": 4244.01
+   },
+   {
+    "fraud_tried": 13855.67,
+    "fraud_through": 1033.91,
+    "cost": 1348.8352499999999,
+    "honest_tried": 10116.72,
+    "honest_through": 9090.52,
+    "honest": 300,
+    "flagged": 12,
+    "net": 8056.61
+   },
+   {
+    "fraud_tried": 9416.78,
+    "fraud_through": 2639.72,
+    "cost": 2785.7859999999996,
+    "honest_tried": 7932.08,
+    "honest_through": 7634.73,
+    "honest": 300,
+    "flagged": 5,
+    "net": 4995.01
+   }
+  ]
+ },
+ "name": "control",
+ "config": {
+  "split": true,
+  "stack_at": 1.0,
+  "split_block_at": 0.8,
+  "escalation_share": 0.0,
+  "bootstrap_voters": [
+   "xgboost"
+  ],
+  "bootstrap_at": 0.9,
+  "guard_tighten_above": 1.0,
+  "guard_relax_below": 0.75,
+  "guard_min": 0.5,
+  "guard_tighten_factor": 0.8,
+  "guard_relax_factor": 1.25,
+  "warmup_rounds": 1,
+  "combiner_drop_voters": [
+   "anomaly"
+  ],
+  "passthrough": true,
+  "retire_after": 6
+ },
+ "seconds": 687
+}

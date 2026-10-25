@@ -1,0 +1,23 @@
+{
+ "at100": {
+  "split": true,
+  "stack_at": 1.0,
+  "split_block_at": 0.8,
+  "escalation_share": 0.0,
+  "bootstrap_voters": [
+   "xgboost"
+  ],
+  "bootstrap_at": 0.9,
+  "guard_tighten_above": 1.0,
+  "guard_relax_below": 0.75,
+  "guard_min": 0.5,
+  "guard_tighten_factor": 0.8,
+  "guard_relax_factor": 1.25,
+  "warmup_rounds": 1,
+  "combiner_drop_voters": [
+   "anomaly"
+  ],
+  "passthrough": true,
+  "retire_after": 6
+ }
+}

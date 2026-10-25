@@ -1,0 +1,134 @@
+{
+ "seed": 101,
+ "rounds": 3,
+ "real": true,
+ "seconds_per_round": 579.3101287780058,
+ "investigator": {
+  "cases": 0,
+  "timed_out": 0,
+  "no_decision": 0,
+  "decided": 0,
+  "timeout_s": 5.0,
+  "seconds": []
+ },
+ "same_roster_every_round": true,
+ "roster_mismatch": {},
+ "roster_sizes": [
+  6,
+  13,
+  18
+ ],
+ "tagteam_live": {
+  "total": {
+   "cost": 9974.041000000001,
+   "fraud_tried": 47733.08,
+   "fraud_through": 10069.92,
+   "honest_tried": 17456.03,
+   "honest_through": 17326.73,
+   "net": 7256.8099999999995,
+   "honest": 719,
+   "flagged": 6,
+   "money_lost": 10199.219999999998
+  },
+  "per_round": [
+   {
+    "fraud_tried": 7965.73,
+    "fraud_through": 3112.51,
+    "cost": 3112.6459999999997,
+    "honest_tried": 7716.08,
+    "honest_through": 7716.08,
+    "honest": 300,
+    "flagged": 0,
+    "net": 4603.57
+   },
+   {
+    "fraud_tried": 20511.63,
+    "fraud_through": 5210.53,
+    "cost": 5102.35875,
+    "honest_tried": 7168.85,
+    "honest_through": 7168.85,
+    "honest": 300,
+    "flagged": 2,
+    "net": 1958.32
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2441.8,
+    "cost": 1759.03625,
+    "honest": 119,
+    "flagged": 4,
+    "fraud_tried": 19255.72,
+    "fraud_through": 1746.88,
+    "net": 694.92
+   }
+  ]
+ },
+ "xgboost_live": {
+  "total": {
+   "cost": 18838.881,
+   "fraud_tried": 53121.47,
+   "fraud_through": 19274.09,
+   "honest_tried": 17456.03,
+   "honest_through": 17327.35,
+   "net": -1946.7399999999998,
+   "honest": 719,
+   "flagged": 5,
+   "money_lost": 19402.769999999997
+  },
+  "per_round": [
+   {
+    "fraud_tried": 10838.99,
+    "fraud_through": 10838.99,
+    "cost": 10838.99,
+    "honest_tried": 7716.08,
+    "honest_through": 7716.08,
+    "honest": 300,
+    "flagged": 0,
+    "net": -3122.91
+   },
+   {
+    "fraud_tried": 22820.07,
+    "fraud_through": 5740.17,
+    "cost": 5459.36975,
+    "honest_tried": 7168.85,
+    "honest_through": 7168.85,
+    "honest": 300,
+    "flagged": 2,
+    "net": 1428.68
+   },
+   {
+    "honest_tried": 2571.1,
+    "honest_through": 2442.42,
+    "cost": 2540.52125,
+    "honest": 119,
+    "flagged": 3,
+    "fraud_tried": 19462.41,
+    "fraud_through": 2694.93,
+    "net": -252.51
+   }
+  ]
+ },
+ "name": "control",
+ "config": {
+  "split": true,
+  "stack_at": 1.0,
+  "split_block_at": 0.8,
+  "escalation_share": 0.0,
+  "bootstrap_voters": [
+   "xgboost"
+  ],
+  "bootstrap_at": 0.9,
+  "guard_tighten_above": 1.0,
+  "guard_relax_below": 0.75,
+  "guard_min": 0.5,
+  "guard_tighten_factor": 0.8,
+  "guard_relax_factor": 1.25,
+  "warmup_rounds": 1,
+  "combiner_drop_voters": [
+   "anomaly"
+  ],
+  "passthrough": true,
+  "retire_after": 6
+ },
+ "seconds": 1775
+}
