@@ -131,8 +131,22 @@ class ChatRouter:
 
         try:
             result = self.tools.call(name, arguments, sender=sender)
-        except NotAllowed as exc:
-            logger.info("Refused %s from %s: %s", name, sender, exc)
+        except NotAllowed:
+            # The full address, on its own line, so it can be copied into .env as it is.
+            if sender in self.allowlist:  # we allowed it, the engine (engine.serve) did not
+                logger.warning(
+                    "Refused %s: the engine does not allowlist this sender yet. Restart engine.serve "
+                    "so it reads TEAM_ALLOWLIST_ADDRESSES again. Sender:\n%s",
+                    name,
+                    sender,
+                )
+            else:
+                logger.warning(
+                    "Refused %s: sender is not in TEAM_ALLOWLIST_ADDRESSES. To allow it, add this "
+                    "address to TEAM_ALLOWLIST_ADDRESSES in .env and restart the engine and agents:\n%s",
+                    name,
+                    sender,
+                )
             turn.refused = True
             turn.answer = REFUSAL_TEAM_ONLY
             self.turns.append(turn)

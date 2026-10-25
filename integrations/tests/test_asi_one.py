@@ -304,11 +304,17 @@ def test_free_text_lands_only_in_data_fields(engine, team_sender):
 # --- engine source (the I2 switch) ----------------------------------------------------
 
 
-def test_the_default_engine_is_the_stub(monkeypatch):
-    monkeypatch.setenv("USE_STUB_ENGINE", "1")
+def test_the_default_engine_is_the_real_one_over_http(monkeypatch):
+    """No ENGINE_SOURCE means engine.serve, never the canned stub."""
+    monkeypatch.setenv("ENGINE_HTTP_URL", "http://127.0.0.1:9")  # nothing listens: logged, not fatal
     engine = get_engine()
     assert isinstance(engine, Engine)
-    assert type(engine).__name__ == "StubEngine"
+    assert type(engine).__name__ == "HttpEngine"
+
+
+def test_the_stub_is_used_only_when_asked_for_by_name(monkeypatch):
+    monkeypatch.setenv("ENGINE_SOURCE", "stub")
+    assert type(get_engine()).__name__ == "StubEngine"
 
 
 def test_the_engine_can_be_switched_to_http(monkeypatch):
@@ -325,10 +331,57 @@ def test_inprocess_returns_an_engine(monkeypatch):
     engine = get_engine()
     try:
         assert isinstance(engine, Engine)
+        assert type(engine).__name__ != "StubEngine"
     finally:
         getattr(engine, "stop", lambda: None)()
 
 
-def test_an_unknown_engine_source_falls_back_to_the_stub(monkeypatch):
+def test_inprocess_fails_loudly_instead_of_falling_back_to_the_stub(monkeypatch):
+    import integrations.asi_one.engine_source as engine_source
+
+    monkeypatch.setattr(engine_source, "INPROCESS_FACTORIES", (("no_such_engine_module", "build_engine"),))
+    with pytest.raises(RuntimeError, match="inprocess"):
+        get_engine("inprocess")
+
+
+def test_an_unknown_engine_source_is_an_error_not_the_stub(monkeypatch):
     monkeypatch.setenv("ENGINE_SOURCE", "nonsense")
-    assert type(get_engine()).__name__ == "StubEngine"
+    with pytest.raises(ValueError, match="nonsense"):
+        get_engine()
+
+
+# --- the allowlist lives in one place, and refusals say who to add ---------------------
+
+
+def test_the_router_reads_the_allowlist_from_the_environment(monkeypatch, engine, team_sender):
+    monkeypatch.setenv("TEAM_ALLOWLIST_ADDRESSES", f" {team_sender} , agent1qsomeoneelse ")
+    router = ChatRouter(engine=engine, llm=ScriptedLLM("run_round"))
+    assert router.allowlist == {team_sender, "agent1qsomeoneelse"}
+    assert router.handle_turn(team_sender, "run a round").refused is False
+    assert engine.round == 1
+
+
+def test_a_stranger_is_still_refused_when_the_allowlist_is_filled_in(monkeypatch, engine, team_sender):
+    monkeypatch.setenv("TEAM_ALLOWLIST_ADDRESSES", team_sender)
+    router = ChatRouter(engine=engine, llm=ScriptedLLM("run_round"))
+    turn = router.handle_turn(STRANGER, "run a round")
+    assert turn.refused is True and turn.answer == REFUSAL_TEAM_ONLY
+    assert engine.round == 0
+
+
+def test_a_refusal_logs_the_full_sender_address_to_copy_into_env(engine, team_sender, caplog):
+    router = router_for(engine, ScriptedLLM("run_round"), team_sender)
+    with caplog.at_level("WARNING", logger="integrations.asi_one.router"):
+        router.handle_turn(STRANGER, "run a round")
+    logged = caplog.text
+    assert "TEAM_ALLOWLIST_ADDRESSES" in logged
+    assert STRANGER in logged.splitlines()  # alone on its line, so it copies cleanly
+
+
+def test_a_refusal_by_the_engine_itself_says_to_restart_it(team_sender, caplog):
+    """In http mode engine.serve checks its own copy of the allowlist, read at its startup."""
+    stale = StubEngine(allowlist=set())  # an engine started before the address was added
+    router = router_for(stale, ScriptedLLM("run_round"), team_sender)
+    with caplog.at_level("WARNING", logger="integrations.asi_one.router"):
+        assert router.handle_turn(team_sender, "run a round").refused is True
+    assert "Restart engine.serve" in caplog.text

@@ -5,8 +5,8 @@ Maps chat onto five entry points: `check_payment`, `explain`, `get_metrics`,
 
     uv run python -m integrations.asi_one.fraud_desk
 
-It talks to whichever engine `ENGINE_SOURCE` selects (the stub until I2), so it runs
-before Stanley's engine exists and needs no code change when it lands.
+It talks to whichever engine `ENGINE_SOURCE` selects: by default the real one served by
+`uv run python -m engine.serve`. `evidence/m08/README.md` starts all of it in one command.
 """
 
 import logging

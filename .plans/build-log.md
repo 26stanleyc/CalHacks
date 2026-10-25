@@ -35,10 +35,14 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 - **Show:** a live Base Sepolia settlement, then its hash opening on basescan.
 - **True today:** 3 real testnet settlements (hashes in `evidence/m0/x402-settlement.md`). A blocked or stepped-up payment makes no network call at all. The facilitator pays the gas. Each real settlement is capped (`X402_MAX_SETTLE_CENTS`).
 
-### 5. "Anyone can use it by chatting in ASI:One" 🟡 (I2 merged; needs a live ASI:One run on the real engine)
+### 5. "Anyone can use it by chatting in ASI:One" ✅ (M8; screenshot and recording still to do)
 - **Say:** "Judges can talk to our Fraud Desk and Merchant Scanner agents in ASI:One. They're a front door to the same engine the dashboard uses, so chat and dashboard always agree."
 - **Show:** ASI:One with the dashboard beside it.
-- **True today:** both agents are registered on Agentverse with the Chat Protocol and a mailbox, and answered 5 of 5 scripted prompts over the real mailbox. Since the I2 merge they can run on the real engine (`ENGINE_SOURCE=inprocess`, or `http` against `engine.serve`). Not yet re-run over the real mailbox against the real engine.
+- **True today:**
+  - Both agents are registered on Agentverse with the Chat Protocol and a mailbox, and by default they call the real engine (`ENGINE_SOURCE=http` against `engine.serve`). The stub is used only when it's asked for by name.
+  - One command starts everything: `uv run python -m integrations.asi_one.demo`.
+  - Over the real mailbox, on the real engine, 5/5 prompts answered as expected (`evidence/m08/mailbox-transcript.md`): a real over-cap block, the explanation of that same payment, the real run's metrics, the team-only refusal, and a live Apify scan.
+  - Not yet seen in the ASI:One UI itself; that needs a human (`evidence/m08/README.md` §4).
 - **Safety, enforced in code, worth one sentence:** chat-checked payments never train the defense, only our team can run rounds or freeze, and chat text reaches the model only inside a marked data block.
 
 ### 6. "It protects both sides: bad buyers and bad stores" ✅ (M10)
@@ -69,7 +73,7 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 
 | Sponsor | One-line pitch | Proof on screen | Status |
 |---|---|---|---|
-| **Fetch.ai** (uAgents, Agentverse, ASI:One) | Every defender, attacker and shopper is a uAgent; two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat at I2 |
+| **Fetch.ai** (uAgents, Agentverse, ASI:One) | Every defender, attacker and shopper is a uAgent; two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat, verified over the real mailbox (M8, `evidence/m08/`); ASI:One screenshot and recording still to do |
 | **Bitdeer** | Every AI in the system is an open-weight model on Bitdeer, a different model per role | Model-per-role table; a rulebook rewritten by its model | 🟡 all 5 answered at E3, credits now in doubt; agents get their brains at S4–S6 |
 | **Coinbase x402** | Fraud check inside the facilitator, before settlement | Live Base Sepolia tx on basescan | ✅ (E4) |
 | **Apify** | Scans merchant pages for hidden instructions (core); scrapes news of new scams (bonus) | Merchant Scanner flags the poisoned page | 🟡 detector real; Apify fetch at M10 |
@@ -100,9 +104,9 @@ Only numbers we can back up. Add a source for each.
 
 - [x] **A visible trace of the agents messaging each other.** `uv run python -m engine.trace`. It's on branch `stanley/uagent-trace` until merged.
 - [ ] **Re-check Bitdeer credits** with the probe. Talking point 2 and the Bitdeer sponsor row depend on it.
-- [ ] **Add our own ASI:One sender addresses to `TEAM_ALLOWLIST_ADDRESSES`** in `.env`. Without them, "freeze learning" from chat is refused for everyone, including us, which kills a live beat (CONTRACT_NOTES item 8).
+- [ ] **Add our own ASI:One sender addresses to `TEAM_ALLOWLIST_ADDRESSES`** in `.env`. Without them, "freeze learning" from chat is refused for everyone, including us, which kills a live beat (CONTRACT_NOTES item 8). The Fraud Desk now logs each refused sender's full address to copy; steps in `evidence/m08/README.md` §2.
 - [ ] **ASI:One screenshot** of the hello agent → `evidence/m0/asi-one-hello.png` (manual-checks §1).
-- [ ] **Recording** of the 3 Fraud Desk prompts → `evidence/m08/` (manual-checks §2).
+- [ ] **Recording** of the 3 Fraud Desk prompts → `evidence/m08/` (runbook: `evidence/m08/README.md`).
 - [ ] **Bitdeer prices** from the console → `integrations/model_prices.py`, so the spend panel is real.
 - [ ] **Check the Cal Hacks hackpack** on custom frontends. If it rules them out, chat carries the story and the dashboard is supporting visuals (spec §7).
 - [ ] **Backup recording** of a full run.
@@ -626,6 +630,40 @@ bad stores — same engine, same payment path."
 **Proof:** `engine/tests/test_crs.py` (hidden-details section: the append threshold edge, each path, a 2-round run with hiders) and `engine/tests/test_crs_live.py::test_forward_append_is_answered_locally_and_never_sent`.
 
 **Demo angle:** "an attacker hiding their phone and email doesn't escape the check: CRS looks them up from name and address, then verifies".
+
+### Sun Oct 25, 02:50 · M8 ASI:One agents on the real engine · Eric's integration, finished by Claude
+
+**Did:**
+- **The real engine is the default.**
+  - `ENGINE_SOURCE` now defaults to `http`, which is `engine.serve`, the engine the dashboard uses.
+  - The canned `StubEngine` is used only with `ENGINE_SOURCE=stub`.
+  - `inprocess` failing to build, or an unknown value, is now an error instead of a silent fallback to canned answers.
+  - An unreachable engine is logged at startup, with the command that fixes it.
+- **One command for the demo:** `uv run python -m integrations.asi_one.demo`.
+  - It starts (or reuses) `engine.serve`, then both agents.
+  - It waits for both mailboxes to link, then prints each agent's address, inspector link and Agentverse profile link.
+  - `--addresses` prints only those.
+- **Mailbox check:** `uv run python -m integrations.asi_one.mailbox_check`.
+  - A separate uAgent with its own mailbox sends the M8 prompts through Agentverse and writes a transcript.
+  - The explain prompt asks about the payment the first prompt just checked, not a made-up `tx-1234`.
+- **Allowlist, in one place:** `TEAM_ALLOWLIST_ADDRESSES` in `.env`, now documented in `.env.example`.
+  - A refusal logs the sender's full address on its own line, ready to copy.
+  - If our side allowed the sender but `engine.serve` didn't, the log says to restart it.
+
+**Proof:**
+- `evidence/m08/mailbox-transcript.md`: 5/5 over the real mailbox, on the real engine (run `m08-mailbox-check`, round 1).
+- `integrations/tests/test_m08_real_engine.py`: the three automated M8 checks on the real `FraudEngine`, in process and over HTTP.
+- `integrations/tests/test_asi_one.py`: the allowlist and engine-source tests.
+- `uv run pytest` passes.
+- Runbook: `evidence/m08/README.md`.
+
+**Still needs a human:**
+- the hello-agent screenshot (`evidence/m0/asi-one-hello.png`);
+- the screen recording of the three prompts (`evidence/m08/`);
+- our ASI:One sender addresses in `TEAM_ALLOWLIST_ADDRESSES`;
+- the hackpack check.
+
+**Demo angle:** talking point 5 ⭐. A judge asks the Fraud Desk about a $49 charger with a $30 mandate and gets the real engine's block, then asks why and gets the same decision back.
 
 ---
 

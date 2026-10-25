@@ -5,9 +5,8 @@ so there is nothing on it to restrict.
 
     uv run python -m integrations.asi_one.merchant_scanner
 
-Until M10 the scan comes from whatever `ENGINE_SOURCE` points at (the stub's canned
-answer by default). At M10 `scan_page` becomes a real Apify scrape plus the injection
-detector, behind the same entry point, so this agent does not change.
+The scan comes from whatever `ENGINE_SOURCE` points at, by default the real engine served
+by `engine.serve`, where `scan_page` is a real Apify scrape plus the injection detector.
 """
 
 import logging

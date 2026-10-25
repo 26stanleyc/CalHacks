@@ -57,24 +57,24 @@ def flag(name: str, default: bool = False) -> bool:
 
 # --- Engine source (spec 8.4 rule 3; the I2 switch) ---------------------------------
 #
-# "stub"      contracts.stubs.StubEngine, in process. The default until Stanley's engine lands.
-# "http"      contracts.api.HttpEngine against ENGINE_HTTP_URL (his engine, or create_stub_app).
-# "inprocess" the real engine object, imported lazily from engine/.
-#
-# At I2 this becomes a one-line change: set ENGINE_SOURCE=http (or inprocess) in .env.
+# "http"      contracts.api.HttpEngine against ENGINE_HTTP_URL: the real engine served by
+#             `uv run python -m engine.serve`. The default since I2.
+# "inprocess" the real engine object, built in the agent's own process from engine/.
+# "stub"      contracts.stubs.StubEngine (canned answers). Only when asked for by name.
 
 
 def engine_source() -> str:
     """Which Engine the chat agents talk to.
 
-    The default is the stub, not HTTP: there is no engine serving those routes yet, and a
-    chat agent that answers every question with a connection error is worse than one that
-    answers with canned data. `ENGINE_SOURCE` is the deliberate switch at I2.
+    The default is HTTP to `engine.serve`, so the chat agents and the dashboard share one
+    engine: a round run from the dashboard shows up in "how is the defense doing?", and a
+    payment checked in chat can be explained from the dashboard. The stub is never chosen
+    by default any more, because canned answers in a judge's chat look like real ones.
     """
     explicit = os.environ.get("ENGINE_SOURCE", "").strip().lower()
     if explicit:
         return explicit
-    return "stub"
+    return "http"
 
 
 def engine_http_url() -> str:
