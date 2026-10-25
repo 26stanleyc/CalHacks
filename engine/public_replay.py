@@ -47,13 +47,15 @@ import csv
 import gzip
 import json
 import statistics
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 DAY_SECONDS = 86_400
 WAVES = 3
-BURN_IN_CAP = 0.02  # the learning loop's false-alarm budget (LearningLoop fp_cap): a rule firing on more is off
+MEMORY = "g_receiver_reported"  # past labelled-phishing payments into this receiver, from labels already learned
+BURN_IN_CAP = 0.02
+ESCALATION_CAP = 40  # investigated payments per round at most, the engine's precompute cap (engine.engine)  # the learning loop's false-alarm budget (LearningLoop fp_cap): a rule firing on more is off
 V_COLUMNS = [f"V{k}" for k in range(1, 29)]
 BANDS = (("under_10", 1_000), ("10_to_100", 10_000), ("over_100", None))  # cents, as the arena's shelves
 DATASETS = {
@@ -148,7 +150,8 @@ def load_ethereum(folder: Path, days: int, max_payments: int, start: str | None,
 
 
 def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, run_id: str, meta: dict,
-        real: bool = False, burn: list[tuple] = (), train: list[tuple] = ()) -> tuple[dict, dict]:
+        real: bool = False, burn: list[tuple] = (), train: list[tuple] = (), receiver_day: bool = False,
+        memory: bool = False, investigate: bool = False) -> tuple[dict, dict]:
     """TagTeam and the baseline on the same payments, round by round: rounds split [t0, t0 + span) evenly.
     `burn`: payments before the window for a shadow burn-in. They warm up the shared feature history (both
     contenders score from it) and TagTeam switches off any seed rule that would flag more than BURN_IN_CAP
@@ -156,6 +159,13 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
     `train`: labelled payments before the window, a training period. TagTeam learns from them one day at a
     time as it would live (rules, voters, combiner); the baseline is fitted once on all of them and frozen,
     so it decides round 1 trained. Neither sees a test payment's label before deciding it.
+    `receiver_day`: add two graph-lane features over a day instead of 10 minutes: distinct payers into this
+    receiver, and payments into it from brand-new payers. Both contenders score from them.
+    `memory`: a graph-lane feature counting past labelled-phishing payments into the receiver (like a blocklist
+    of reported scam addresses). Each contender's count only holds labels it has learned: the baseline's
+    stops at the training period, TagTeam's grows each night. Needs a training period.
+    `investigate`: TagTeam's LLM investigator reviews close calls as in the engine (engine.engine._escalates),
+    up to 10% of a round and ESCALATION_CAP, spread over the waves; it remembers every labelled case.
     Returns (replay, baseline)."""
     from bench.baselines import XGBoostDefense
     from bench.metrics import cost_cents
@@ -173,12 +183,33 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
     round_s = span / n_rounds
     store = MemoryStore()
     pipeline = DefensePipeline(voters=_voters())
+    if receiver_day:
+        from contracts.schemas import Lane
+        from engine.features import Primitive
+
+        pipeline.catalog.add_primitive("g_principals_per_merchant_1d", Lane.GRAPH, Primitive("merchant_id", "principal_id", "distinct", DAY_SECONDS))
+        pipeline.catalog.add_primitive("g_new_agent_tx_merchant_1d", Lane.GRAPH, Primitive("merchant_id", "new_agent", "sum", DAY_SECONDS))
     burned = shadow_burn_in(pipeline, burn, run_id) if burn else {}
+    if memory and not train:
+        raise ValueError("the receiver memory needs a training period")
+    reported: Counter | None = None
+    if memory:
+        from contracts.schemas import Lane
+
+        pipeline.catalog.lanes[MEMORY] = Lane.GRAPH
+        reported = Counter()
     brain = _brain() if real else Brain()  # real: the Bitdeer models from .env reflect and write rules
     loop = LearningLoop(pipeline, brain, store, run_id)
     costs = pipeline.orchestrator.costs
     baseline = XGBoostDefense()
-    trained_days = train_period(pipeline, loop, baseline, train, run_id, costs) if train else []
+    investigator = None
+    if investigate:
+        from contracts.stubs import StubPageScanner
+        from engine.investigator import Investigator
+
+        investigator = Investigator(brain, pipeline, StubPageScanner())
+    trained_days = train_period(pipeline, loop, baseline, train, run_id, costs, reported, investigator) if train else []
+    frozen_reported = Counter(reported) if reported is not None else None  # the baseline's: training labels only
     offset = len(trained_days)  # the learning loop counts training days as its first rounds
 
     by_round: dict[int, list] = defaultdict(list)
@@ -199,15 +230,24 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
         flagged = {name: [] for name in totals}
         stolen_by_band: dict[str, int] = defaultdict(int)
         tried_by_band: dict[str, list] = defaultdict(lambda: [0, 0])  # attempts, caught
+        budget, escalated = min(ESCALATION_CAP, len(by_round[rnd]) // 10), 0
         for tx, extra, truth in by_round[rnd]:
             base = pipeline.featurize(tx, commit=True)
             features = FeatureVector(tx_id=tx.tx_id, values={**base.values, **extra}) if extra else base
+            theirs_features = features
+            if reported is not None:
+                theirs_features = FeatureVector(tx_id=tx.tx_id, values={**features.values, MEMORY: float(frozen_reported[tx.merchant_id])})
+                features = FeatureVector(tx_id=tx.tx_id, values={**features.values, MEMORY: float(reported[tx.merchant_id])})
             ours = pipeline.score(tx, features)
+            code_action = ours.action
+            if investigator and escalated < budget * tx.wave // WAVES and escalates(investigator, pipeline, tx, ours, features):
+                escalated += 1  # unspent escalations carry into later waves
+                ours, _ = investigator.investigate(tx, features, ours)
             settled = resolve(tx, truth, ours, costs.fraud_step_up_pass, costs.legit_step_up_abandon).settled
-            records.append(Record(tx, features, ours, truth, settled=settled))
+            records.append(Record(tx, features, ours, truth, settled=settled, code_action=code_action))
             labeled.append((tx, features, truth))
 
-            theirs = baseline.decide(tx, features)
+            theirs = baseline.decide(tx, theirs_features)
             their_settled = resolve(tx, truth, theirs, costs.fraud_step_up_pass, costs.legit_step_up_abandon).settled
             if theirs.action != Action.ALLOW or not their_settled:
                 decisions[tx.tx_id] = {"action": theirs.action.value, "settled": their_settled}
@@ -228,7 +268,7 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
                 if v.voter in LANES:
                     t["votes"].append((tx.tx_id, v.voter, {"vote": v.vote.value}))
             t["payments"].append((tx.tx_id, rnd, tx.wave, "dataset" if truth.is_fraud else "legit", group,
-                                  {"amount_cents": tx.amount_cents}, ours.action.value, False,
+                                  {"amount_cents": tx.amount_cents}, ours.action.value, bool(ours.escalated),
                                   {"explanation": "" if ours.action == Action.ALLOW and not truth.is_fraud else ours.explanation},
                                   truth.is_fraud, settled))
 
@@ -252,10 +292,16 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
                                                                    "attempts": attempts, "caught": caught}))
 
         loop.learn(rnd + offset, records)
+        if investigator:
+            for r in records:
+                investigator.remember(r.tx, r.features, r.decision, r.truth.is_fraud)
+        if reported is not None:  # tonight's labels: TagTeam now remembers these receivers too
+            reported.update(r.tx.merchant_id for r in records if r.truth.is_fraud)
         if not trained_days:
             baseline.freeze(rnd >= 2)  # one fit, on round 1's labels; it decides each round before learning it
             baseline.learn(rnd, labeled)
-        print(f"round {rnd}: {len(records):,} payments, {sum(r.truth.is_fraud for r in records)} fraud", flush=True)
+        print(f"round {rnd}: {len(records):,} payments, {sum(r.truth.is_fraud for r in records)} fraud"
+              + (f", {escalated} investigated" if investigator else ""), flush=True)
 
     # Rules the burn-in switched off, or the training period left, are in place from round 1 on, before the
     # round's own learning; test rounds' versions follow at their own round.
@@ -293,10 +339,11 @@ def run(rows: list[tuple], t0: float, span: float, dated: bool, n_rounds: int, r
     return replay, out
 
 
-def train_period(pipeline, loop, baseline, train: list[tuple], run_id: str, costs) -> list[str]:
+def train_period(pipeline, loop, baseline, train: list[tuple], run_id: str, costs, reported: Counter | None = None,
+                 investigator=None) -> list[str]:
     """TagTeam learns from the training payments a day at a time, deciding each day before learning its labels,
     as it would live. The baseline is then fitted once on all of them and frozen. Returns the days (ISO dates)."""
-    from contracts.schemas import GroundTruth, TrafficSource, Transaction
+    from contracts.schemas import FeatureVector, GroundTruth, TrafficSource, Transaction
     from engine.engine import resolve
     from engine.learning.labels import Record
 
@@ -311,23 +358,41 @@ def train_period(pipeline, loop, baseline, train: list[tuple], run_id: str, cost
                              category="payment", amount_cents=cents, source=TrafficSource.LEGIT)
             truth = GroundTruth(tx_id=tx_id, is_fraud=fraud)
             features = pipeline.featurize(tx, commit=True)
+            if reported is not None:  # only earlier days' labels
+                features = FeatureVector(tx_id=tx_id, values={**features.values, MEMORY: float(reported[payee])})
             decision = pipeline.score(tx, features)
             settled = resolve(tx, truth, decision, costs.fraud_step_up_pass, costs.legit_step_up_abandon).settled
             records.append(Record(tx, features, decision, truth, settled=settled))
             examples.append((features, fraud))
         loop.learn(k, records)
+        if investigator:  # labelled cases for similar_cases; it doesn't investigate during training
+            for r in records:
+                investigator.remember(r.tx, r.features, r.decision, r.truth.is_fraud)
+        if reported is not None:
+            reported.update(r.tx.merchant_id for r in records if r.truth.is_fraud)
         print(f"training day {k}: {len(records):,} payments, {sum(r.truth.is_fraud for r in records)} fraud", flush=True)
     baseline.voter.retrain(examples)
     baseline.freeze(True)
     return [datetime.fromtimestamp(d * DAY_SECONDS, timezone.utc).date().isoformat() for d in sorted(days)]
 
 
+def escalates(investigator, pipeline, tx, decision, features) -> bool:
+    """A close call goes to the investigator, as engine.engine.FraudEngine._escalates decides it."""
+    from contracts.schemas import Action
+
+    if decision.vetoed_by:
+        return False
+    split = decision.action != Action.BLOCK and any(v.vote == Action.BLOCK and decision.weights.get(v.voter, 1.0) > 0
+                                                    for v in decision.votes)
+    if not (split or pipeline.orchestrator.is_close_call(decision.weighted_score, tx.amount_cents)):
+        return False
+    return not investigator.memory.familiar(features, decision.action != Action.ALLOW)
+
+
 def shadow_burn_in(pipeline, burn: list[tuple], run_id: str) -> dict:
     """Score the burn-in payments without acting on them and switch off every rule that fires on more than
     BURN_IN_CAP of them. Label-free: only how often a rule fires on ordinary traffic. Returns
     {lane: (rules left, ids switched off)} for each lane that changed."""
-    from collections import Counter
-
     from contracts.schemas import TrafficSource, Transaction
     from engine.specialists import Specialist
 
@@ -384,6 +449,9 @@ def main() -> None:
     parser.add_argument("--real", action="store_true", help="reflect with the Bitdeer models (.env) instead of the mock brains")
     parser.add_argument("--burn-in-days", type=int, default=0, help="ethereum: days before the window for the shadow burn-in")
     parser.add_argument("--train-days", type=int, default=0, help="ethereum: labelled days before the window to train both on")
+    parser.add_argument("--receiver-day", action="store_true", help="add 1-day receiver features (distinct payers, new payers)")
+    parser.add_argument("--memory", action="store_true", help="add the reported-receiver memory feature (needs --train-days)")
+    parser.add_argument("--investigate", action="store_true", help="TagTeam's LLM investigator reviews close calls")
     parser.add_argument("--out", type=Path, required=True, help="a directory: replay.json.gz and baseline.json go there")
     args = parser.parse_args()
 
@@ -398,8 +466,10 @@ def main() -> None:
         burn, train = (before, []) if args.burn_in_days else ([], before)
         run_id = f"eth-phishing-{datetime.fromtimestamp(t0, timezone.utc).date()}-{args.days}d-{args.rounds}r"
     run_id += ("-real" if args.real else "") + (f"-burnin{args.burn_in_days}d" if burn else "") + (
-        f"-train{args.train_days}d" if train else "")
-    replay, baseline = run(rows, t0, span, dated, args.rounds, run_id, DATASETS[args.dataset], args.real, burn, train)
+        f"-train{args.train_days}d" if train else "") + ("-rx1d" if args.receiver_day else "") + ("-mem" if args.memory else "") + (
+        "-inv" if args.investigate else "")
+    replay, baseline = run(rows, t0, span, dated, args.rounds, run_id, DATASETS[args.dataset], args.real, burn, train,
+                           args.receiver_day, args.memory, args.investigate)
     args.out.mkdir(parents=True, exist_ok=True)
     # Every payment is in the replay (the arena's scoreboard counts them all), so it's gzipped; the arena unzips it.
     (args.out / "replay.json.gz").write_bytes(gzip.compress(json.dumps(replay, separators=(",", ":"), ensure_ascii=False).encode(), 9, mtime=0))

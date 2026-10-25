@@ -35,7 +35,8 @@ any result was seen; it was then held fixed. Net = honest money through minus mo
 | No training; XGBoost fitted on day 1, mock reflection | Ξ459,999 | Ξ465,250 | 0 / 15 | 603 / 20 |
 | Same, real Bitdeer reflection (GLM-5.3) | Ξ459,999 | Ξ465,250 | 0 / 15 | 603 / 20 |
 | Same, plus a 1-day label-free shadow burn-in (Mar 4) | Ξ461,556 | Ξ465,248 | 0 / 9 | 404 / 16 |
-| **7 training days (Feb 26 - Mar 4, 61,621 payments), real reflection** (in the arena) | **Ξ465,257** | **Ξ465,246** | **58 / 0** | **32 / 0** |
+| 7 training days (Feb 26 - Mar 4, 61,621 payments), real reflection | Ξ465,257 | Ξ465,246 | 58 / 0 | 32 / 0 |
+| **Same, plus the receiver memory** (in the arena) | **Ξ465,896** | **Ξ465,636** | **634 / 417** | **5 / 0** |
 
 Why the first three lose: TagTeam's seed rules were written for our simulated marketplace and fire on ordinary
 Ethereum traffic (many fresh addresses paying one exchange address looks like graph.farm_swarm). 595 honest payments
@@ -60,3 +61,27 @@ Reproduce (engine branch stanley/real-data-engine):
         --rounds 6 --train-days 7 --real --out ../arena-real-data/arena/public/eth
 
 Run id: eth-phishing-2018-03-05-6d-6r-real-train7d.
+
+## Improving it: validation week first (Feb 19-24, 2018; trained on Feb 12-18)
+Every change was tried on a separate validation week (67,812 payments, 615 phishing), and only one that beat the
+current setup there was run, once, on the test week. All attempts:
+
+| Validation week | TagTeam net | XGBoost net | Phishing stopped (TagTeam / XGBoost) | Honest flagged | Verdict |
+|---|---|---|---|---|---|
+| Current setup (7 training days, real reflection) | Ξ787,713 | Ξ787,717 | 0 / 15 | 0 / 28 | baseline |
+| + 1-day receiver features (distinct payers, new payers) | Ξ787,714 | Ξ787,724 | n/a | 1 / 50 | rejected: XGBoost gains more |
+| + LLM investigator on close calls | Ξ787,713 | Ξ787,717 | 0 / 15 | 0 / 28 | no effect: no close calls, 0 escalations |
+| **+ receiver memory** | **Ξ788,040** | **Ξ787,969** | **414 / 331** | **0 / 0** | **passed; run on the test week** |
+
+The receiver memory (`--memory`) is one graph-lane feature: how many labelled phishing payments this receiver got
+before, like a blocklist of reported scam addresses. 54% of the validation week's phishing payments (43% of the test
+week's) went to addresses already confirmed as phishing in the training days. Each contender's count holds only the
+labels it has learned: XGBoost's stops at the training period (it is trained once); TagTeam's grows every night from
+the day's labels. On the test week TagTeam stops 634 of 979 phishing payments against XGBoost's 417 (Ξ364 lost
+against Ξ628), with 5 false alarms against 0; the gap widens by day (day 1: 98 vs 98; day 4: 161 vs 64), which is
+the nightly learning. Net: Ξ465,896 against Ξ465,636.
+
+Run id eth-phishing-2018-03-05-6d-6r-real-train7d-mem:
+
+    uv run python -m engine.public_replay ethereum --data ~/calhacks-sandbox/eth/arrays --start 2018-03-05 --days 6 \
+        --rounds 6 --train-days 7 --real --memory --out ../arena-real-data/arena/public/eth
