@@ -225,6 +225,7 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
 
 @media (max-width: 900px) {
   main > section { padding: 88px 20px 0; }
+  .hero-screen .hero { padding: 24px 20px 0 !important; }
   .topbar, .site-footer { padding-left: 20px; padding-right: 20px; }
   .hero, .why { grid-template-columns: 1fr; gap: 48px; }
   .steps, .headline-figures, .results-chart, .built dl { grid-template-columns: 1fr; gap: 28px; }
@@ -245,6 +246,15 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
   .seals li, .stamp { animation: none; }
 }
 
+/* The first screen: hero centred in the space below the header, the scroll arrow at its foot. */
+.hero-screen { min-height: calc(100svh - var(--topbar-h, 88px)); display: flex; flex-direction: column; }
+.hero-screen .hero { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; box-sizing: border-box; padding: 24px 40px 0 !important; }
+/* On a short window the hero runs past the fold, so the arrow sticks to the bottom edge until the hero ends. */
+.hero-screen .scroll-cue {
+  position: sticky; bottom: 14px; z-index: 5; margin: 24px auto 28px; padding: 6px 14px 8px; border-radius: 999px;
+  background: rgba(15, 38, 32, 0.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+
 /* Under the hero: a small arrow that says there's more below. Clicking it glides to the first section. */
 .scroll-cue {
   display: flex; flex-direction: column; align-items: center; gap: 2px; width: fit-content; margin: 28px auto 56px;
@@ -252,6 +262,9 @@ main > section { max-width: 1180px; margin: 0 auto; padding: 120px 40px 0; }
   transition: color 0.2s ease;
 }
 .scroll-cue:hover { color: var(--paper); }
+@media (max-width: 900px) {
+  .hero-screen .scroll-cue { position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
 .scroll-cue svg {
   width: 40px; height: 40px; padding: 9px; box-sizing: border-box; margin-top: 6px; border: 1px solid var(--engrave); border-radius: 50%;
   fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: border-color 0.2s ease;

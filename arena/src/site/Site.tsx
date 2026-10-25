@@ -209,8 +209,18 @@ function SectionNav() {
 }
 
 function Hero() {
+  // The hero and its scroll arrow fill the first screen below the header, so nothing of the next
+  // section shows until you scroll.
+  useEffect(() => {
+    const top = document.querySelector<HTMLElement>(".topbar");
+    if (!top) return;
+    const set = () => document.documentElement.style.setProperty("--topbar-h", `${top.offsetHeight}px`);
+    set();
+    addEventListener("resize", set);
+    return () => removeEventListener("resize", set);
+  }, []);
   return (
-    <>
+    <div className="hero-screen">
       <section className="hero">
         <svg className="hero-engraving" viewBox="0 0 1600 640" preserveAspectRatio="none" aria-hidden="true">
           <path d={waveBand(1600, 640, 44, 16, 2.5)} />
@@ -239,7 +249,7 @@ function Hero() {
           <path d="M6 9l6 6 6-6" />
         </svg>
       </a>
-    </>
+    </div>
   );
 }
 
