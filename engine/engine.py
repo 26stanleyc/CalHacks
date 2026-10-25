@@ -34,6 +34,7 @@ exploitability exam (engine/arena/arena.py). Mandate scoring (S7) plugs in later
 """
 
 import hashlib
+import os
 import threading
 from collections import defaultdict
 from dataclasses import dataclass
@@ -54,6 +55,8 @@ from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain, parallel
 from engine.crs import CrsEscalation, crs_from_env
+from engine.crs_enrollment import CrsEnrollment
+from engine.trust_line import TrustLine, apply_trust_line
 from engine.features import PageRisk
 from engine.intel.corpus import CorpusSource
 from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
@@ -119,7 +122,7 @@ class FraudEngine:
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
                  arena: bool = True, hijacker: bool = True, merchants: bool = True, drafts: bool = False,
                  threat_intel: bool = False, intel_watch: bool = True, threat_source=None, stacking: bool = True,
-                 crs: CrsEscalation | None = None):
+                 crs: CrsEscalation | None = None, crs_enrollment: bool | None = None):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -174,6 +177,20 @@ class FraudEngine:
         # CRS checks on uncertain payments: pass one in, or set CRS_ESCALATION (1 = mock, live = sandbox).
         # The bureau has files on everyone who exists now (attackers' later accounts aren't on file).
         self.crs = crs if crs is not None else crs_from_env(self.world.identities, set(self.world.identities))
+        # Enrollment: the same client asks CRS who each person is, once, so the identity and graph
+        # specialists and the trust line vote with the bureau's answer on every payment, not only on
+        # the few the escalation path sees. Off whenever CRS is off.
+        # Enrollment is on whenever CRS is, unless a caller turns it off to measure the escalation
+        # path on its own: once the trust line narrows a made-up identity's cap, most of that
+        # account's payments are hard-vetoed over cap and never reach an escalation at all.
+        if crs_enrollment is None:
+            flag = os.environ.get("CRS_ENROLLMENT", "").strip().lower()
+            enroll = (self.crs is not None) if flag == "" else flag not in ("0", "off", "false", "no")
+        else:
+            enroll = crs_enrollment
+        self.enrollment = CrsEnrollment(self.crs.client) if (self.crs and enroll) else None
+        self.pipeline.features.crs = self.enrollment
+        self.trust_lines: dict[str, TrustLine] = {}  # principal -> the limit CRS underwrote for it
         # The threat-intel watchlist (M11, bonus): needs the arena (its attackers join the archive).
         # intel_watch=False is the "intel off" ablation: the attackers still arrive, no watch rules.
         self.watchlist = Watchlist(self.brain, threat_source or CorpusSource(), self.world, self.run_id,
@@ -252,7 +269,27 @@ class FraudEngine:
             self.bureau.stop()
             self.bureau = None
 
+    def _trust_lined(self, tx: Transaction) -> Transaction:
+        """The payment, against the limits the agent was actually given rather than the ones its
+        owner wrote down (`engine/trust_line.py`). CRS underwrites the mandate once, when the person
+        enrolls; from then on the caps the hard veto enforces are the underwritten ones. With CRS
+        off, or with no mandate, the payment is unchanged."""
+        if self.enrollment is None or tx.mandate is None:
+            return tx
+        line = self.trust_lines.get(tx.principal_id)
+        if line is None:
+            profile = self.enrollment.profile(tx.principal_id)
+            _, line = apply_trust_line(profile, tx.mandate)
+            self.trust_lines[tx.principal_id] = line
+        if (line.per_payment_cap_cents >= tx.mandate.per_payment_cap_cents
+                and line.daily_cap_cents >= tx.mandate.daily_cap_cents):
+            return tx  # a full line changes nothing
+        return tx.model_copy(update={"mandate": tx.mandate.model_copy(
+            update={"per_payment_cap_cents": min(line.per_payment_cap_cents, tx.mandate.per_payment_cap_cents),
+                    "daily_cap_cents": min(line.daily_cap_cents, tx.mandate.daily_cap_cents)})})
+
     def _decide(self, tx: Transaction, commit: bool) -> tuple[Decision, FeatureVector]:
+        tx = self._trust_lined(tx)
         if self.transport == "bureau":
             if self.bureau is None:
                 raise RuntimeError("call start() before deciding with the bureau transport")

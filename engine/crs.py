@@ -87,8 +87,12 @@ def _env_float(name: str, default: float) -> float:
 
 
 class CrsClient(Protocol):
-    """The three CRS products used here. Identity data only, never a credit pull (spec 11), and
-    sandbox credentials from .env only."""
+    """The CRS products used here, all from the sandbox with credentials from .env.
+
+    The first four are identity data and are what decides a payment. `credit_report` is a
+    prequalification (soft) pull and is used for one thing only: the trust line that sets how much a
+    newly enrolled agent may spend (`engine/trust_line.py`). It never scores a payment, because a
+    good credit file says nothing about whether an agent was hijacked."""
 
     mocked: bool
 
@@ -99,6 +103,8 @@ class CrsClient(Protocol):
     def identity_verification(self, principal_id: str, prefill: dict | None) -> dict: ...
 
     def fraud_finder(self, principal_id: str) -> dict: ...
+
+    def credit_report(self, principal_id: str) -> dict: ...  # all three bureaus, merged
 
 
 def _unit(*parts: str) -> float:
@@ -131,6 +137,31 @@ def risk_level(score: int) -> str:
     return "high" if score >= 75 else "medium" if score >= 40 else "low"  # AtData suggests 70-80 for high
 
 
+FARM_CONTACT_POOL = 6  # how few phones and inboxes a bulk-made batch of accounts shares
+
+
+BUREAUS = ("transunion", "equifax", "experian")
+# `creditFiles[].creditFileDetail` values, plus Deceased for the deceased errorMessages the bureaus
+# return instead of a file.
+FILE_RETURNED, NO_HIT, FROZEN, DECEASED = "FileReturned", "NoFileReturnedNoHit", "NoFileReturnedCreditFreeze", "Deceased"
+CREDIT_CONFIGS = {"transunion": "tu-prequal-fico9", "equifax": "efx-prequal-vantage4",
+                  "experian": "exp-prequal-vantage4"}
+CREDIT_PATHS = {b: f"/{b}/credit-report/standard/{CREDIT_CONFIGS[b]}" for b in BUREAUS}
+
+
+def merge_credit_reports(per_bureau: dict[str, dict]) -> dict:
+    """Merge the three bureaus into one answer. They disagree on purpose in CRS's test data (P15 is
+    frozen at TransUnion only, P17 has a file at two of three), so the merge takes the median of
+    the scores that came back and counts how many bureaus actually returned a file."""
+    scored = sorted(b["score"] for b in per_bureau.values() if b.get("score"))
+    files = [b for b in per_bureau.values() if b.get("status") == FILE_RETURNED]
+    deceased = any(b.get("status") == DECEASED for b in per_bureau.values())
+    return {"score": scored[len(scored) // 2] if scored else 0,
+            "bureaus_with_file": len(files), "bureaus_scored": len(scored),
+            "deceased": deceased, "frozen": any(b.get("status") == FROZEN for b in per_bureau.values()),
+            "no_file": not files and not deceased, "per_bureau": per_bureau}
+
+
 @dataclass
 class MockCrs:
     """A simulated credit bureau with the CRS response shapes (see the module docstring)."""
@@ -154,9 +185,13 @@ class MockCrs:
 
     def data_append(self, principal_id: str) -> dict:
         kind, u = self._kind(principal_id), _unit(principal_id, "append")
-        if u < {"real_full": 0.95, "real_thin": 0.85, "bought_full": 0.8}.get(kind, 0.35):  # throwaways rarely link up
-            return {"status": "found", "found": ["email", "phone"]}
-        return {"status": "no_match", "found": []}
+        if u >= {"real_full": 0.95, "real_thin": 0.85, "bought_full": 0.8}.get(kind, 0.35):  # throwaways rarely link up
+            return {"status": "no_match", "found": [], "contact": ""}
+        # Whose phone and email these are. A real person has their own; accounts made in bulk reuse a
+        # small pool of numbers and inboxes, which is what makes a farm visible from outside.
+        pool = FARM_CONTACT_POOL if kind in ("synthetic", "bad") else 0
+        contact = f"c-{int(_unit(principal_id, 'contact') * pool)}" if pool else f"c-{principal_id}"
+        return {"status": "found", "found": ["email", "phone"], "contact": contact}
 
     def identity_verification(self, principal_id: str, prefill: dict | None) -> dict:
         kind, u = self._kind(principal_id), _unit(principal_id, "idv")
@@ -181,8 +216,75 @@ class MockCrs:
             ["phone registered to someone else"] if score >= 60 and u > 0.3 else [])
         return {"risk_score": score, "risk_level": risk_level(score), "signals": signals}
 
+    def credit_report(self, principal_id: str) -> dict:
+        """A soft pull at all three bureaus, in the shape `merge_credit_reports` returns. Only the
+        trust line reads this, and only when an agent enrolls."""
+        kind, u = self._kind(principal_id), _unit(principal_id, "credit")
+        if kind == "bad":
+            per = {b: {"status": DECEASED if u < 0.5 else NO_HIT, "score": 0} for b in BUREAUS}
+        elif kind == "synthetic":
+            per = {b: {"status": NO_HIT, "score": 0} for b in BUREAUS}
+        elif kind == "bought_full":  # a real file behind a stolen identity: good, sometimes frozen
+            score = int(690 + 110 * u)
+            per = {b: {"status": FILE_RETURNED, "score": score} for b in BUREAUS}
+            if u > 0.7:
+                per["transunion"] = {"status": FROZEN, "score": 0}
+        elif kind == "real_thin":
+            per = ({b: {"status": NO_HIT, "score": 0} for b in BUREAUS} if u < 0.3
+                   else {b: {"status": FILE_RETURNED, "score": int(620 + 70 * u)} for b in BUREAUS})
+        else:  # real_full
+            per = {b: {"status": FILE_RETURNED, "score": int(680 + 135 * u)} for b in BUREAUS}
+        return merge_credit_reports(per)
+
 
 PERSONAS: dict[str, dict] = json.loads(Path(__file__).with_name("crs_personas.json").read_text())["personas"]
+
+
+@dataclass
+class PersonaCrs:
+    """A bureau that plays one of CRS's 20 sandbox test persons exactly, from the outcomes CRS
+    publishes for them (`crs_personas.json`). `MockCrs` invents a plausible person from an identity
+    profile, which is right for a simulated marketplace but cannot reproduce a credit freeze, a
+    fraud alert or two bureaus disagreeing. This can, so the conformance suite means something
+    without credentials and offline runs behave like the live sandbox."""
+
+    persona_id: str
+    mocked: bool = True
+
+    @property
+    def person(self) -> dict:
+        return PERSONAS[self.persona_id]
+
+    def data_prefill(self, principal_id: str) -> dict:
+        if self.persona_id in NO_CONTACT_RECORD:
+            return {"status": "no_record"}
+        thin = self.person["decision"] == "NO_FILE" or "thin" in self.person["profile"].lower()
+        return {"status": "found", "fields": ["name", "address"] + ([] if thin else ["dob", "phone", "ssn_last4"]),
+                "record_age_years": 1.0 if thin else 12.0,
+                "matches_payer": self.person["identity_expected"] != "fail"}
+
+    def data_append(self, principal_id: str) -> dict:
+        contact = self.person["contact"]["phone"]
+        if self.persona_id in NO_CONTACT_RECORD or not contact:
+            return {"status": "no_match", "found": [], "contact": ""}
+        return {"status": "found", "found": ["email", "phone"], "contact": contact}
+
+    def identity_verification(self, principal_id: str, prefill: dict | None) -> dict:
+        verdict = self.person["identity_expected"]
+        return {"persona": self.persona_id, "result": verdict, "score": {"pass": 90, "review": 55, "fail": 15}[verdict],
+                "reason": self.person["identity_verification_expected"]}
+
+    def fraud_finder(self, principal_id: str) -> dict:
+        score = int(self.person["fraud_score_expected"])
+        text = self.person["fraud_finder_expected"]
+        signals = [s for s in ("email 3 days old", "email invalid", "phone dead", "voip prepaid",
+                               "phone owner no_match") if s in text]
+        return {"persona": self.persona_id, "risk_score": score, "risk_level": risk_level(score),
+                "signals": signals}
+
+    def credit_report(self, principal_id: str) -> dict:
+        return {"persona": self.persona_id} | merge_credit_reports(
+            {b: dict(v) for b, v in self.person["credit_expected"].items()})
 # Which of CRS's sandbox test persons plays a simulated principal, by what a bureau would know about it.
 PERSONA_GROUPS = {
     "real_full": ("P01", "P02", "P10", "P19"),  # clean identities that verify
@@ -266,6 +368,23 @@ def fraud_signals(body: dict, today: date) -> list[str]:
     return out
 
 
+def parse_credit_report(body: dict) -> dict:
+    """One bureau's answer, from the fields CRS documents. A credit report reports trouble as HTTP
+    200 with `errorMessages`, so only the body decides: a missing file, a credit freeze, a deceased
+    flag and a wrong config all arrive as a success."""
+    errors = [str(e.get("creditErrorMessageText", "")) for e in (body.get("errorMessages") or [])]
+    if any("deceased" in e.lower() for e in errors):
+        return {"status": DECEASED, "score": 0, "errors": errors}
+    files = body.get("creditFiles") or []
+    status = str(files[0].get("creditFileDetail") or "") if files else (NO_HIT if not errors else "")
+    scores = body.get("scores") or []
+    value = next((s.get("scoreValue") for s in scores if s.get("scoreValue") not in (None, "")), None)
+    model = next((str(s.get("modelName")) for s in scores if s.get("modelName")), "")
+    reason = next((str(s.get("noScoreReasonType")) for s in scores if s.get("noScoreReasonType")), "")
+    return {"status": status or NO_HIT, "score": int(value) if value is not None else 0,
+            "model": model, "no_score_reason": reason, "errors": errors}
+
+
 def _json(response: httpx.Response) -> dict:
     try:
         body = response.json()
@@ -286,6 +405,7 @@ class HttpCrs:
     on_file: set[str] = field(default_factory=set)
     http: httpx.Client = field(default_factory=lambda: httpx.Client(timeout=10.0))
     mocked: bool = False
+    requests: list[dict] = field(default_factory=list)  # every live call, with its RequestID
 
     def __post_init__(self):
         if not self.base_url.startswith("https://api-sandbox."):
@@ -311,6 +431,14 @@ class HttpCrs:
             self._token = token
         return self._token
 
+    def _record(self, product: str, persona: str, response: httpx.Response) -> None:
+        """Every live call, with the RequestID CRS returns. CRS's `debug_request` takes that id, and
+        the FCRA expects a lender to be able to say which bureau calls it made about a person and
+        why, so the id is the one field worth keeping (`engine/crs_audit.py`)."""
+        self.requests.append({"product": product, "persona": persona,
+                              "request_id": response.headers.get("RequestID", ""),
+                              "status": response.status_code})
+
     def _ask(self, product: str, path: str, principal_id: str) -> tuple[str, dict]:
         persona = self.persona(principal_id)
         if (persona, product) not in self._answers:
@@ -318,8 +446,26 @@ class HttpCrs:
                                headers={"Authorization": f"Bearer {self._login()}"})
             if r.status_code != 200:
                 raise CrsUnavailable(f"{product}: HTTP {r.status_code} {_json(r).get('codes', '')}")
+            self._record(product, persona, r)
             self._answers[(persona, product)] = _json(r)
         return persona, self._answers[(persona, product)]
+
+    def logs(self) -> list[dict]:
+        """CRS's own record of this account's recent requests (`GET /users/logs`), to check ours
+        against theirs."""
+        r = self.http.get(f"{self.base_url}/users/logs", headers={"Authorization": f"Bearer {self._login()}"})
+        if r.status_code != 200:
+            raise CrsUnavailable(f"logs: HTTP {r.status_code}")
+        body = r.json()
+        return body if isinstance(body, list) else body.get("content", [])
+
+    def retention(self, request_id: str) -> dict:
+        """What CRS retained for one request (`GET /users/retention/{id}`)."""
+        r = self.http.get(f"{self.base_url}/users/retention/{request_id}",
+                          headers={"Authorization": f"Bearer {self._login()}"})
+        if r.status_code != 200:
+            raise CrsUnavailable(f"retention {request_id}: HTTP {r.status_code}")
+        return _json(r)
 
     def data_prefill(self, principal_id: str) -> dict:
         persona, body = self._ask("data_prefill", "/accurate-append/reverse", principal_id)
@@ -331,8 +477,11 @@ class HttpCrs:
         so it's answered here from the test person and never sent."""
         persona = self.persona(principal_id)
         found = [] if persona in NO_CONTACT_RECORD else ["email", "phone"]
+        # The test person's own phone and email. Several principals play the same test person, so
+        # they share a contact, which is exactly the shape a farm has.
+        contact = PERSONAS[persona]["contact"]["phone"] if found else ""
         return {"persona": persona, "status": "found" if found else "no_match", "found": found,
-                "simulated": "no sandbox data for forward append; not sent"}
+                "contact": contact, "simulated": "no sandbox data for forward append; not sent"}
 
     def identity_verification(self, principal_id: str, prefill: dict | None) -> dict:
         persona, body = self._ask("identity_verification", "/transunion/identity-manager-verification/basic", principal_id)
@@ -341,6 +490,25 @@ class HttpCrs:
     def fraud_finder(self, principal_id: str) -> dict:
         persona, body = self._ask("fraud_finder", "/fraud-finder/fraud-finder", principal_id)
         return {"persona": persona} | parse_fraud_finder(body)
+
+    def credit_report(self, principal_id: str) -> dict:
+        """One soft pull per bureau, merged. Each bureau takes the same body at the root, so this is
+        three calls; the sandbox answers a test person the same way every time, so they are cached
+        like every other product."""
+        persona = self.persona(principal_id)
+        bodies = PERSONAS[persona]["credit_report"]
+        per_bureau = {}
+        for bureau in BUREAUS:
+            product = f"credit_report_{bureau}"
+            if (persona, product) not in self._answers:
+                r = self.http.post(self.base_url + CREDIT_PATHS[bureau], json=bodies[bureau]["body"],
+                                   headers={"Authorization": f"Bearer {self._login()}"})
+                if r.status_code != 200:
+                    raise CrsUnavailable(f"{product}: HTTP {r.status_code} {_json(r).get('codes', '')}")
+                self._record(product, persona, r)
+                self._answers[(persona, product)] = _json(r)
+            per_bureau[bureau] = parse_credit_report(self._answers[(persona, product)])
+        return {"persona": persona} | merge_credit_reports(per_bureau)
 
 
 @dataclass

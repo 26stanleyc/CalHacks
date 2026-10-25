@@ -22,10 +22,10 @@ class DefensePipeline:
     def __init__(self, lanes: tuple[Lane, ...] = ALL_LANES, catalog: FeatureCatalog | None = None,
                  rulebooks: dict[Lane, Rulebook] | None = None, identities: dict[str, IdentityStatus] | None = None,
                  orchestrator: Orchestrator | None = None, voters: list[Voter] | None = None,
-                 product_text: dict[str, str] | None = None):
+                 product_text: dict[str, str] | None = None, crs=None):
         self.lanes = lanes
         self.catalog = catalog or FeatureCatalog()
-        self.features = FeatureService(self.catalog, identities, product_text)
+        self.features = FeatureService(self.catalog, identities, product_text, crs=crs)
         rulebooks = rulebooks or load_seed_rulebooks(self.catalog, lanes)
         self.specialists = {lane: Specialist(lane, rulebooks[lane], self.catalog) for lane in lanes}
         self.orchestrator = orchestrator or Orchestrator()

@@ -47,6 +47,7 @@ class Sandbox:
         self.combiner = pipeline.orchestrator.combiner  # never mutated after training, so sharing is safe
         self.voters = list(pipeline.voters)
         self.product_text = pipeline.features.product_text
+        self.crs = pipeline.features.crs  # forked per run: sandbox accounts never reach the live cache
         self.identities = dict(identities)
         self.products = products
         self.round_seconds = round_seconds
@@ -71,7 +72,7 @@ class Sandbox:
         identities = dict(self.identities)
         pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, identities,
                                    Orchestrator(costs=self.costs, weights=dict(self.weights), combiner=self.combiner), voters=self.voters,
-                                   product_text=self.product_text)
+                                   product_text=self.product_text, crs=self.crs.fork() if self.crs else None)
         txs, accounts = [], {}
         per_wave = [n // WAVES + (w < n % WAVES) for w in range(WAVES)]
         for wave, count in enumerate(per_wave):
@@ -111,7 +112,7 @@ class Sandbox:
         self.runs += 1
         pipeline = DefensePipeline(self.lanes, self.catalog, self.rulebooks, dict(self.identities),
                                    Orchestrator(costs=self.costs, weights=dict(self.weights), combiner=self.combiner), voters=self.voters,
-                                   product_text=self.product_text)
+                                   product_text=self.product_text, crs=self.crs.fork() if self.crs else None)
         txs = []
         for wave in range(WAVES):
             txs += attacker.generate("sandbox", round_no, wave, n // WAVES + (wave < n % WAVES), seed)

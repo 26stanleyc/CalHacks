@@ -35,6 +35,15 @@ DAY_SECONDS = 86_400
 IDENTITY_CODE = {IdentityStatus.VERIFIED: 0.0, IdentityStatus.THIN_FILE: 1.0,
                  IdentityStatus.MISMATCH: 2.0, IdentityStatus.FLAGGED: 3.0}
 UNKNOWN_IDENTITY = 1.0  # treated like a thin file
+
+# What the CRS features read when nobody asked CRS: verified, no risk, a full file, a settled inbox,
+# a clean phone, a contact nobody else shares. Every one is the quiet end of its own
+# SUSPICIOUS_WHEN direction, so with CRS off no rule resting on them can fire and every number a
+# benchmark produced before CRS existed still holds.
+CRS_NO_EVIDENCE: dict[str, float] = {
+    "i_crs_verified": 0.0, "i_crs_fraud_score": 0.0, "i_crs_file_depth": 1.0,
+    "i_crs_email_age_days": 3650.0, "i_crs_phone_risk": 0.0, "g_crs_principals_per_contact": 1.0,
+}
 # integrations.page_scanner.INJECTION_THRESHOLD; repeated so the feature service imports nothing
 PAGE_RISK_THRESHOLD = 0.5
 
@@ -108,6 +117,16 @@ STATIC_FEATURES: dict[str, Lane] = {
     "g_agent_new": Lane.GRAPH,  # the paying agent itself was first seen under NEW_AGENT_SECONDS ago
     "i_identity_status": Lane.IDENTITY,
     "i_principal_age_s": Lane.IDENTITY,
+    # CRS: what a credit bureau knows about the human behind the agent, looked up once when the
+    # agent enrolls (engine/crs_enrollment.py). With CRS off every one of these sits at its
+    # no-evidence value, so no rule can fire on them and nothing else changes.
+    "i_crs_verified": Lane.IDENTITY,
+    "i_crs_fraud_score": Lane.IDENTITY,
+    "i_crs_file_depth": Lane.IDENTITY,
+    "i_crs_email_age_days": Lane.IDENTITY,
+    "i_crs_phone_risk": Lane.IDENTITY,
+    # CRS resolves a person to a phone and an inbox. Accounts made in bulk share them.
+    "g_crs_principals_per_contact": Lane.GRAPH,
     "m_over_cap_ratio": Lane.MANDATE,
     "m_daily_spend_ratio": Lane.MANDATE,
     "m_category_allowed": Lane.MANDATE,
@@ -140,6 +159,8 @@ SUSPICIOUS_WHEN: dict[str, str] = {
     "v_amount_cents": "either", "v_threshold_gap_frac": "low", "v_price_ratio": "high",
     "g_agents_per_principal": "high", "g_principals_per_agent": "high", "g_agent_new": "high",
     "i_identity_status": "high", "i_principal_age_s": "low",
+    "i_crs_verified": "high", "i_crs_fraud_score": "high", "i_crs_file_depth": "low",
+    "i_crs_email_age_days": "low", "i_crs_phone_risk": "high", "g_crs_principals_per_contact": "high",
     "m_over_cap_ratio": "high", "m_daily_spend_ratio": "high", "m_category_allowed": "low", "m_merchant_allowed": "low",
     "m_request_match": "low", "m_amount_vs_agent": "high", "m_new_merchant_for_agent": "high",
     "m_new_category_for_agent": "high", "m_hour_shift": "high", "m_day_spend_vs_agent": "high",
@@ -236,9 +257,11 @@ class FeatureService:
     remembering the transaction (chat-submitted checks must not change the defense's state)."""
 
     def __init__(self, catalog: FeatureCatalog | None = None, identities: dict[str, IdentityStatus] | None = None,
-                 product_text: dict[str, str] | None = None, page_risk: PageRisk | None = None):
+                 product_text: dict[str, str] | None = None, page_risk: PageRisk | None = None,
+                 crs=None):
         self.catalog = catalog or FeatureCatalog()
         self.page_risk = page_risk  # set by FraudEngine once it knows the world's pages (M10)
+        self.crs = crs  # CrsEnrollment, or None when CRS is off; see CRS_NO_EVIDENCE
         self.identities = identities if identities is not None else {}
         self.product_text = product_text if product_text is not None else {}  # product id -> title and category
         self.baseline: dict[str, deque] = defaultdict(lambda: deque(maxlen=BASELINE_KEEP))  # agent -> past payments
@@ -253,6 +276,22 @@ class FeatureService:
         self.attempted_today: dict[str, tuple[float, int]] = {}  # agent -> (day, cents attempted that day)
         self.clock = 0.0  # latest committed transaction time
 
+
+    def _crs_values(self, principal_id: str) -> dict[str, float]:
+        """The bureau's answer about this person, looked up once at enrollment and cached there, so
+        this costs a dict lookup per payment and never a network call. With CRS off, or when CRS
+        couldn't be reached, every value is the no-evidence one and no rule fires."""
+        if self.crs is None:
+            return dict(CRS_NO_EVIDENCE)
+        profile = self.crs.profile(principal_id)
+        if not profile.available:
+            return dict(CRS_NO_EVIDENCE)
+        return {"i_crs_verified": profile.verified,
+                "i_crs_fraud_score": float(profile.fraud_score),
+                "i_crs_file_depth": profile.file_depth,
+                "i_crs_email_age_days": profile.email_age_days,
+                "i_crs_phone_risk": profile.phone_risk,
+                "g_crs_principals_per_contact": float(self.crs.principals_sharing_contact(principal_id))}
 
     def _max_window(self, entity: str) -> int:
         windows = [p.window_s for p in self.catalog.primitives.values() if p.entity == entity]
@@ -312,6 +351,7 @@ class FeatureService:
         values["i_identity_status"] = IDENTITY_CODE[identity] if identity is not None else UNKNOWN_IDENTITY
         first_principal = self.first_seen_principal.get(tx.principal_id)
         values["i_principal_age_s"] = now - first_principal if first_principal is not None else 0.0
+        values.update(self._crs_values(tx.principal_id))
 
         day = now // DAY_SECONDS  # the daily cap resets at midnight (UTC), like a card's daily limit
         spent_today = sum(a for ts, a in self.spend_principal.get(tx.principal_id, ()) if ts <= now and ts // DAY_SECONDS == day)

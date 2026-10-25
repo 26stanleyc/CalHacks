@@ -35,6 +35,16 @@
         "op": ">=",
         "value": 4
       }
+    },
+    {
+      "id": "graph.crs_shared_contact",
+      "score": 0.65,
+      "description": "Three or more people resolve to the same phone or inbox at the bureau: accounts made in bulk by one operator.",
+      "when": {
+        "feature": "g_crs_principals_per_contact",
+        "op": ">=",
+        "value": 3
+      }
     }
   ]
 }
