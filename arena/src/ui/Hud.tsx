@@ -3,7 +3,7 @@ import { flowByRound } from "../data/baseline";
 import type { DatasetInfo, Replay } from "../data/types";
 import { useArena, phaseAt, ROUND_LEN, waveStart, THROW_WINDOW, FLIGHT, LEARN_START, type Stage } from "../store";
 import { getRoundModel, tallyAt } from "../world/roundModel";
-import { ACTOR_NAME, attackerName, money, ruleName, sameWhat, shelfName } from "./words";
+import { ACTOR_NAME, attackerName, money, ruleName, shelfName } from "./words";
 
 // A moment in a dataset: a UTC date and time when it has real dates ("Jul 28, 08:00"), otherwise hours
 // since its first payment as h:mm ("2:40").
@@ -83,8 +83,6 @@ export function Hud() {
   const honest = model.coins.filter((c) => !c.attack && c.launch <= tq).length;
   const flaggedNow = model.coins.filter((c) => !c.attack && c.payment.action !== "allow" && c.intercept <= tq).length;
   const spawns = r.actions.filter((a) => a.action === "spawn").length;
-  const done = tq >= LEARN_START;
-  const held = Math.round(r.metrics.shelves_defended * 24);
   const attacks = tally.blocked + tally.through;
   const label = runs?.baseline?.label ?? "The baseline";
   const before = stage === "before";
@@ -119,21 +117,16 @@ export function Hud() {
           <strong>{money(tally.stolen)}</strong>
         </div>
         <p className="fine">
-          {attacks > 0 && <>Caught {Math.round((tally.blocked / attacks) * 100)}% of attack payments<br /></>}
-          {flaggedNow} honest {flaggedNow === 1 ? "payment" : "payments"} flagged out of {honest}
-          {done && !runs?.before && <><br />{held} of 24 shelves held after learning</>}
+          {attacks > 0 && <>Caught {Math.round((tally.blocked / attacks) * 100)}% · </>}
+          {flaggedNow} of {honest} honest flagged
         </p>
         <p className={`run-total${ours.net < 0 ? " negative" : ""}`}>
           <span>Net so far</span>
           <b>{money(ours.net)}</b>
         </p>
-        <p className="breakdown">
-          {money(ours.honest)} honest payments through, minus {money(ours.stolen)} stolen
-        </p>
         {theirs && (
           <p className="versus">
-            {shortName(label)} {sameWhat(runs?.baseline?.live)}: net <b>{money(theirs.net)}</b> ({money(theirs.stolen)} stolen,{" "}
-            {theirs.flagged} honest flagged).{" "}
+            {shortName(label)}: net <b>{money(theirs.net)}</b>{" "}
             <span className={ours.net >= theirs.net ? "saved" : "behind"}>
               {ours.net >= theirs.net
                 ? `TagTeam is ${money(ours.net - theirs.net)} ahead so far`
@@ -216,7 +209,6 @@ function changingPlan(name: string, trigger: string): string {
 
 function Feed() {
   const replay = useArena((s) => s.replay)!;
-  const compare = useArena((s) => !!s.runs?.before);
   const round = useArena((s) => s.round);
   const tq = useArena((s) => Math.floor(s.t * 4) / 4);
   const r = replay.rounds[round];
@@ -270,8 +262,8 @@ function Feed() {
         }),
       );
 
-  // The comparison scoreboard is taller, so the feed shows fewer lines to stay clear of it.
-  const shown = items.filter((i) => i.at <= tq && tq < ROUND_LEN).sort((a, b) => b.at - a.at).slice(0, compare ? 2 : 3);
+  // Only the newest event, so the feed never stacks up over the board.
+  const shown = items.filter((i) => i.at <= tq && tq < ROUND_LEN).sort((a, b) => b.at - a.at).slice(0, 1);
   return (
     <ol className="feed" aria-live="polite">
       {shown.map((i) => (
