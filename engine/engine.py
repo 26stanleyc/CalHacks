@@ -25,6 +25,8 @@ waves, reflection, the critic) never block check_payment or explain.
 
 Close calls go to the investigator (spec 3.4 point 4, M6) within an escalation budget: at most 10% of
 a round's payments, and at most `escalation_cap` (100 in live and dev rounds, 40 in precompute).
+Before that, with CRS escalation on, payments whose combined score falls in the uncertain band get
+the CRS checks (engine/crs.py; mocked until there's sandbox access).
 
 The Tag-Team Arena (spec 3.9, M7) adds spawned insiders and archive attackers to each round, keeps the
 attack archive, re-scores it after learning, lets the specialists choose actions, and runs the
@@ -51,6 +53,7 @@ from engine.arena.outsiders import PERSONAS, OutsiderAttacker
 from engine.arena import sandbox as arena_sandbox
 from engine.arena.playbooks import WAVES
 from engine.brains import Brain, parallel
+from engine.crs import CrsEscalation, crs_from_env
 from engine.features import PageRisk
 from engine.intel.corpus import CorpusSource
 from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
@@ -114,7 +117,8 @@ class FraudEngine:
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
                  arena: bool = True, hijacker: bool = True, merchants: bool = True, drafts: bool = False,
-                 threat_intel: bool = False, intel_watch: bool = True, threat_source=None, stacking: bool = True):
+                 threat_intel: bool = False, intel_watch: bool = True, threat_source=None, stacking: bool = True,
+                 crs: CrsEscalation | None = None):
         if transport not in ("inprocess", "bureau"):
             raise ValueError("transport must be 'inprocess' or 'bureau'")
         self.store = store or MemoryStore()
@@ -164,6 +168,9 @@ class FraudEngine:
         self.page_risk = PageRisk(self.scanner, self.page_url_for)
         self.pipeline.features.page_risk = self.page_risk
         self.escalation_seconds: list[float] = []  # every escalated case's decision time
+        # CRS checks on uncertain payments: pass one in, or set CRS_ESCALATION (1 = mock, live = sandbox).
+        # The bureau has files on everyone who exists now (attackers' later accounts aren't on file).
+        self.crs = crs if crs is not None else crs_from_env(self.world.identities, set(self.world.identities))
         # The threat-intel watchlist (M11, bonus): needs the arena (its attackers join the archive).
         # intel_watch=False is the "intel off" ablation: the attackers still arrive, no watch rules.
         self.watchlist = Watchlist(self.brain, threat_source or CorpusSource(), self.world, self.run_id,
@@ -187,6 +194,8 @@ class FraudEngine:
             if self.watchlist:
                 self.watchlist.restore(self.store.get_rows("defender_actions", self.run_id),
                                        [r for s in self.pipeline.specialists.values() for r in s.rulebook.rules], self.round)
+            if self.crs:
+                self.crs.restore(self.store.get_rows("defender_actions", self.run_id))
             if self.arena:
                 self.arena.restore(self.store.get_rows("archive_snapshots", self.run_id),
                                    self.store.get_rows("attackers", self.run_id),
@@ -321,7 +330,7 @@ class FraudEngine:
             self._live_sent = 0
             expected = self.n_legit + sum(n for _, n in running)
             budget = min(self.escalation_cap, int(ESCALATION_SHARE * expected))
-            escalated = 0
+            escalated = crs_checked = 0
             with self.store.batch():
                 for wave, legit in enumerate(self._legit_by_wave(round_no)):
                     traffic = list(legit)
@@ -335,6 +344,11 @@ class FraudEngine:
                         with self._lock:  # the defense is fixed within the round
                             decision, features = self._decide(tx, commit=True)
                         code_action = decision.action
+                        if self.crs and self.crs.is_watched(tx.principal_id) and not decision.vetoed_by:
+                            decision = self.crs.watch(tx, decision)  # no new CRS call
+                        elif self.crs and crs_checked < self.crs.max_per_round and self.crs.in_band(decision):
+                            crs_checked += 1  # CRS calls run outside the lock, like the investigator
+                            decision = self.crs.check(tx, features, decision)
                         if escalated < wave_budget and self._escalates(tx, decision, features):
                             escalated += 1  # the investigator runs outside the lock: checks can interleave
                             decision, seconds = self.investigator.investigate(tx, features, decision)
@@ -355,6 +369,12 @@ class FraudEngine:
                         self._log_wave(attacker, round_no)
                 self.store.log_rows("merchant_pages", page_rows)
                 self.store.log_rows("shopper_sessions", self._session_rows(round_no, running))
+                if self.crs and self.crs.new_watches:
+                    self.store.log_rows("defender_actions", [{
+                        "run_id": self.run_id, "round": round_no, "actor": "crs", "action": "watch", "cost": 0,
+                        "granted": True, "reason": f"FraudFinder rated this person high risk ({w['risk_score']})",
+                        "detail": w} for w in self.crs.new_watches])
+                    self.crs.new_watches = []
                 if self.arena:
                     self.arena.after_waves(round_no, records, self.attackers + [a for a, _ in intel])
                 if not frozen:  # labeled cases for the investigator's similar_cases (a frozen defense keeps no labels)
@@ -498,8 +518,8 @@ class FraudEngine:
         about the same, or a specialist wanted a block the combined decision didn't give, unless the
         pattern is a familiar one the code already handles the way past cases went. Hard vetoes never
         escalate."""
-        if decision.vetoed_by:
-            return False
+        if decision.vetoed_by or decision.crs is not None and (decision.crs.decision != Action.STEP_UP or decision.crs.watch):
+            return False  # CRS already allowed or blocked it, or the person is on the CRS watch list (never allowed)
         split = decision.action != Action.BLOCK and any(v.vote == Action.BLOCK and decision.weights.get(v.voter, 1.0) > 0
                                                         for v in decision.votes)  # a voter sitting out doesn't count
         if not (split or self.pipeline.orchestrator.is_close_call(decision.weighted_score, tx.amount_cents)):

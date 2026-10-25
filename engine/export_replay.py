@@ -39,6 +39,15 @@ def plain_reason(reason: str) -> str:
     return reason[:1].upper() + reason[1:]
 
 
+def crs_entry(report: dict | None) -> dict | None:
+    """A payment's CRS checks (engine/crs.py), or None when its score was outside the band."""
+    if not report:
+        return None
+    return {"action": report["decision"], "reasons": report["reasons"], "mocked": report.get("mocked", True),
+            "watch": report.get("watch"), "hidden": report.get("hidden", []),
+            "calls": [{"tool": c["tool"], "summary": c["output_summary"]} for c in report["tool_calls"]]}
+
+
 def db_tables(conn, run_id: str) -> dict:
     """The run's raw rows from the team database, one query per table."""
     def rows(sql: str, *args):
@@ -150,7 +159,7 @@ def build(t: dict, run_id: str) -> dict:
                                       "attacker_id": attacker_id, "amount_cents": tx["amount_cents"], "action": action,
                                       "settled": bool(settled), "is_fraud": bool(fraud),
                                       "objected_by": sorted(set(votes[tx_id])), "escalated": escalated,
-                                      "explanation": decision.get("explanation", "")})
+                                      "explanation": decision.get("explanation", ""), "crs": crs_entry(decision.get("crs"))})
 
     retunes = defaultdict(list)
     for attacker_id, rnd, wave, changed, trigger, pb in t["waves"]:

@@ -154,3 +154,16 @@ def test_spawned_attackers_have_roles_on_the_other_family():
     for lane in ("timing", "graph", "identity", "velocity", "mandate"):
         assert config.family(config.MODEL_ROLES[f"spawn_{lane}"]) != config.family(config.MODEL_ROLES[lane])
     assert config.MODEL_ROLES["held_out"] not in {m for r, m in config.MODEL_ROLES.items() if r != "held_out"}
+
+
+def test_decision_carries_an_optional_crs_report():
+    tx = conformance.sample_tx()
+    plain = schemas.Decision(tx_id=tx.tx_id, action=schemas.Action.ALLOW, weighted_score=0.0, votes=[])
+    assert plain.crs is None
+    report = schemas.CrsReport(tx_id=tx.tx_id, score=0.5, band=(0.3, 0.7), decision=schemas.Action.STEP_UP, reasons="test",
+                               tool_calls=[schemas.ToolCall(tool="crs_identity_verification", output_summary="review")])
+    checked = plain.model_copy(update={"crs": report})
+    assert schemas.Decision.model_validate_json(checked.model_dump_json()).crs == report
+    assert report.watch is None and report.hidden == []
+    watched = report.model_copy(update={"watch": "on_list", "tool_calls": []})
+    assert schemas.CrsReport.model_validate_json(watched.model_dump_json()).watch == "on_list"
