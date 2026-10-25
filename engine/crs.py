@@ -48,7 +48,8 @@ def _env_float(name: str, default: float) -> float:
 
 
 class CrsClient(Protocol):
-    """The three CRS products used here. A real client (once there's sandbox access) implements this."""
+    """The three CRS products used here. A real client (once there's sandbox access) implements this.
+    Identity data only, never a credit pull (spec 11), and sandbox credentials from .env only."""
 
     mocked: bool
 
@@ -87,7 +88,7 @@ class MockCrs:
         thin = kind in ("real_thin", "synthetic")
         fields = ["name", "address"] + ([] if thin else ["dob", "phone", "ssn_last4"])
         years = round((0.2 + 1.8 * u) if thin else (3 + 27 * u), 1)
-        return {"status": "found", "fields": fields, "file_age_years": years, "tradelines": int(u * 3) if thin else 3 + int(u * 12)}
+        return {"status": "found", "fields": fields, "record_age_years": years}
 
     def identity_verification(self, principal_id: str, prefill: dict | None) -> dict:
         kind, u = self._kind(principal_id), _unit(principal_id, "idv")
