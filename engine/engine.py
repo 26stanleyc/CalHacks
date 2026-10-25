@@ -60,6 +60,7 @@ from engine.intel.watchlist import INTEL_PAYMENTS, Watchlist
 from engine.investigator import Investigator
 from engine.learning.labels import Record, realized_cost
 from engine.learning.loop import LearningLoop
+from engine.page_cache import PrescannedPages
 from engine.pipeline import DefensePipeline
 from engine.sim.pages import WorldPageScanner
 from engine.sim.world import World
@@ -112,7 +113,7 @@ class FraudEngine:
     def __init__(self, store: LogStore | None = None, pipeline: DefensePipeline | None = None, run_id: str | None = None,
                  seed: int = 42, allowlist: set[str] | None = None, scanner: PageScanner | None = None,
                  settlement: Settlement | None = None, live_settlement: Settlement | None = None,
-                 live_per_round: int = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
+                 live_per_round: int | None = 1, transport: str = "inprocess", world: World | None = None, n_legit: int = 300,
                  fraud_per_persona: int = 25, brain: Brain | None = None, attackers: list | None = None,
                  voters: list | None = None, round_budget_usd: float = ROUND_BUDGET_USD,
                  escalation_cap: int = ESCALATION_CAP, held_out: list | None = None, tuning_tries: int | None = None,
@@ -135,7 +136,8 @@ class FraudEngine:
                                    else StubPageScanner())
         self.settlement = settlement or StubSettlement()  # every allowed round payment; must be a stub
         # The demo's live tail: at most `live_per_round` honest allowed payments per round also go
-        # through real x402, at a token amount within the testnet cap (spec M13).
+        # through real x402, at a token amount within the testnet cap (spec M13). None settles every
+        # allowed payment live, fraud that got through included (ENGINE_LIVE_SETTLEMENT=all).
         self.live_settlement = live_settlement
         self.live_per_round = live_per_round
         self.transport = transport
@@ -162,7 +164,8 @@ class FraudEngine:
                                      drafts=drafts, stacking=stacking)
         self.escalation_cap = escalation_cap
         self.page_url_for = getattr(self.world, "page_url_for", lambda tx: None)
-        self.investigator = Investigator(self.brain, self.pipeline, self.scanner, page_url_for=self.page_url_for)
+        self.pages = PrescannedPages(self.scanner)  # payments never wait on a live page scan
+        self.investigator = Investigator(self.brain, self.pipeline, self.pages, page_url_for=self.page_url_for)
         # Merchant-risk features read cached page scans only (spec 3.2): pages are scanned once per
         # round in _prime_pages, never on a payment's decision path.
         self.page_risk = PageRisk(self.scanner, self.page_url_for)
@@ -301,7 +304,7 @@ class FraudEngine:
         return with_tx_id(decision, tx_id)
 
     def scan_page(self, url: str) -> PageScan:
-        return self.scanner.scan(url)
+        return self.pages.scan_now(url)
 
     def get_metrics(self, run_id: str | None = None, round: int | None = None) -> RoundMetrics:
         run = run_id or self.run_id
@@ -439,6 +442,7 @@ class FraudEngine:
             attacker.forget_pages()
         urls = self.world.page_urls() if hasattr(self.world, "page_urls") else []
         fresh = self.page_risk.prime(urls)
+        self.pages.keep(fresh)  # the investigator reads the same scans
         return [{"url": scan.url, "merchant_id": scan.merchant_id, "payload": scan.model_dump(mode="json")}
                 for scan in fresh]
 
@@ -544,7 +548,8 @@ class FraudEngine:
         self._round_decisions[tx.tx_id] = decision
         outcome = resolve(tx, truth, decision, fraud_step_up_pass, costs.legit_step_up_abandon)
         if decision.action == Action.ALLOW:  # the gate: only allowed payments reach x402
-            if self.live_settlement is not None and not truth.is_fraud and self._live_sent < self.live_per_round:
+            if self.live_settlement is not None and (self.live_per_round is None or
+                                                     (not truth.is_fraud and self._live_sent < self.live_per_round)):
                 self._live_sent += 1
                 self.store.log_settlement(self._settle_live(tx, decision))
             else:

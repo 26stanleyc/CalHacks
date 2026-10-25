@@ -29,6 +29,9 @@ DESCRIPTION = (
 
 README = """# Fraud Desk
 
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
 The public face of a **self-red-teaming, multi-agent fraud defense** for agentic
 commerce. It sits at the Coinbase **x402** facilitator, the checkpoint every payment
 passes through, so it protects merchants from bad buyer agents *and* buyer agents from

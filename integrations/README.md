@@ -8,6 +8,7 @@ Everything that talks to something outside the repo. Each piece sits behind a co
 | `bitdeer.py` | `contracts.llm.LLMClient` | **real**, credits live; falls back to `MockLLM` |
 | `x402_settlement.py` | `contracts.interfaces.Settlement` | **real** on Base Sepolia; stub mode for precompute |
 | `page_scanner.py` | `contracts.interfaces.PageScanner` | detector real, Apify fetch ready; wired up at M10 |
+| `threat_intel.py` | `contracts.interfaces.ThreatIntelSource` | **real** Apify crawl of public scam alerts when `APIFY_TOKEN` is set; corpus fallback |
 | `asi_one/` | calls `contracts.entrypoints.Engine` | **real** agents on Agentverse, on the stub engine until I2 |
 
 ```bash

@@ -13,10 +13,10 @@ Plans: [plain-english-overview.md](plain-english-overview.md) · [technical spec
 The lines we most need judges to hear. **Say** is the sentence, **Show** is what's on screen while we say it.
 
 ### 1. "Our agents are Fetch.ai uAgents that talk to each other" ✅ (S1)
-- **Say:** "Every defender is its own uAgent. When a payment arrives, the orchestrator agent sends it to four specialist agents, each one votes back by message, and the orchestrator makes the call."
-- **Show:** `uv run python -m engine.trace` in a big terminal. It prints the 6 agents with their `agent1q...` addresses, then one card tester's payment hopping between them: `SubmitTx` → 4× `ScoreRequest` → 4× `VoteReply` → `DecisionReply`, each hop timed. Timing and velocity vote BLOCK, graph and identity vote ALLOW, the orchestrator blocks, and the whole thing takes about 1 ms. `--scenario legit` shows an honest payment for contrast: all four allow.
-- **True today:** 6 agents in one Bureau (ingress, orchestrator, timing, graph, identity and velocity specialists). A test proves the agent path gives exactly the same decisions as calling the code directly. The agents are locked down: each one drops messages from anyone but the expected agent, and the Bureau listens on localhost only.
-- **Line to add while the trace runs:** "Each specialist only sees its own facts: timing sees 6, identity sees 2. They can't copy each other, and they disagree here: two say block, two say allow."
+- **Say:** "Every defender is its own uAgent. When a payment arrives, the orchestrator agent sends it to five specialist agents, each one votes back by message, and the orchestrator makes the call."
+- **Show:** `uv run python -m engine.trace` in a big terminal. It prints the 7 agents with their `agent1q...` addresses, then one card tester's payment hopping between them: `SubmitTx` → 5× `ScoreRequest` → 5× `VoteReply` → `DecisionReply`, each hop timed. Timing and velocity vote BLOCK, graph, identity and mandate vote ALLOW, the orchestrator blocks, and the whole thing takes about 1 ms. `--scenario legit` shows an honest payment for contrast: all five allow.
+- **True today:** 7 agents in one Bureau (ingress, orchestrator, timing, graph, identity, velocity and mandate specialists). The XGBoost and anomaly voters are plain code inside the orchestrator, not agents, and all agents share one process and one `DefensePipeline` object: the votes really travel by message, but don't pitch the specialists as agents with private memory. A test proves the agent path gives exactly the same decisions as calling the code directly. The agents are locked down: each one drops messages from anyone but the expected agent, and the Bureau listens on localhost only.
+- **Line to add while the trace runs:** "Each specialist only sees its own facts: timing sees 6, identity sees 2. They can't copy each other, and they disagree here: two say block, three say allow."
 
 ### 2. "Every agent's brain is an open model on Bitdeer" 🟡
 - **Say (once S4 lands):** "Each defender is a uAgent with its own open-weight model on Bitdeer as its brain: GLM and DeepSeek for defense and attack, with Qwen kept back for the final exam. Between rounds the model rewrites its agent's rulebook. During a round the rulebook runs as code, so a payment is checked in milliseconds. AI writes the rules, code applies them, and AI steps back in for the hard cases."
@@ -67,11 +67,11 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 - **Say:** "XGBoost is strong on fixed data, but once attackers adapt it falls apart. Ours stays hard to beat."
 - **Show:** the benchmark chart: us vs fixed rules vs XGBoost vs us without self-made attackers.
 
-### 9. "It's ready before the attack" 🔜 (M11, bonus)
+### 9. "It's ready before the attack" 🟡 (M11, bonus)
 - Only if M11 ships: a news report becomes a watch rule and new attackers, and the scam is caught on first contact. Show the watchlist on vs off.
 
 ### Don't claim
-- **CRS:** on hold; we have no key (`evidence/m0/crs-decision.md`). Identities are simulated, and we're not entering the CRS track.
+- **CRS beyond what's proven:** the sandbox works live (`evidence/crs-live-sandbox.md`) and CRS checks the uncertain band when `CRS_ESCALATION=live`, but it confirms a person exists, not that they authorized the payment. Say "sandbox", never "production credit bureau".
 - **Spend numbers:** Bitdeer's API doesn't expose prices, so spend shows $0 until someone copies them from the console.
 - **Anything on the 🔜 list** until its milestone is merged and rehearsed.
 
@@ -81,10 +81,11 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 
 | Sponsor | One-line pitch | Proof on screen | Status |
 |---|---|---|---|
-| **Fetch.ai** (uAgents, Agentverse, ASI:One) | Every defender, attacker and shopper is a uAgent; two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat; intent-to-action buy flow with a review card and x402 settlement, verified over the real mailbox (M8, `evidence/m08/`); ASI:One screenshot and recording still to do; agents must be kept running for judging |
+| **Fetch.ai** (uAgents, Agentverse, ASI:One) | The orchestrator and the 5 specialists are uAgents that vote by message (attackers and shoppers are plain code); two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat; intent-to-action buy flow with a review card and x402 settlement, verified over the real mailbox (M8, `evidence/m08/`); ASI:One screenshot and recording still to do; agents must be kept running for judging |
 | **Bitdeer** | Every AI in the system is an open-weight model on Bitdeer, a different model per role | Model-per-role table; a rulebook rewritten by its model | 🟡 all 5 answered at E3, credits now in doubt; agents get their brains at S4–S6 |
 | **Coinbase x402** | Fraud check inside the facilitator, before settlement | Live Base Sepolia tx on basescan | ✅ (E4) |
-| **Apify** | Scans merchant pages for hidden instructions (core); scrapes news of new scams (bonus) | Merchant Scanner flags the poisoned page | 🟡 detector real; Apify fetch at M10 |
+| **Apify** | Scans merchant pages for hidden instructions (core); scrapes news of new scams (bonus) | Merchant Scanner flags the poisoned page | ✅ M10 live page scan (`evidence/m10/`); M11 live crawl of FTC alerts → watch rules (`evidence/threat-intel/bitdeer-live.md`) |
+| **CRS** | On close calls, a bureau checks the person behind the agent before money moves | An arena payment card with its 3 CRS calls | 🟡 live sandbox works (`evidence/crs-live-sandbox.md`); opt-in with `CRS_ESCALATION=live` |
 
 ---
 
@@ -95,7 +96,7 @@ Only numbers we can back up. Add a source for each.
 | Number | What it means | Source |
 |---|---|---|
 | 5 / 5 | Bitdeer chat models that answered a live call (Eric's probe; re-check, credits may not be live) | `evidence/m0/model-prices.md` |
-| 10 / ~1 ms | Messages between 6 uAgents to decide one payment, end to end | `uv run python -m engine.trace` |
+| 12 / ~1 ms | Messages between 7 uAgents to decide one payment, end to end | `uv run python -m engine.trace` |
 | 3 | Real x402 settlements on Base Sepolia | `evidence/m0/x402-settlement.md` |
 | 5 / 5 | Scripted chat prompts answered over the real Agentverse mailbox | commit 390d9d2 (E1–E4) |
 | 1.0 vs 0.0 | Injection score, poisoned vs clean product page | `integrations/tests/test_page_scanner.py` |
@@ -110,7 +111,7 @@ Only numbers we can back up. Add a source for each.
 
 ## 4. Open items before the demo
 
-- [x] **A visible trace of the agents messaging each other.** `uv run python -m engine.trace`. It's on branch `stanley/uagent-trace` until merged.
+- [x] **A visible trace of the agents messaging each other.** `uv run python -m engine.trace`. Merged at the integration step.
 - [ ] **Re-check Bitdeer credits** with the probe. Talking point 2 and the Bitdeer sponsor row depend on it.
 - [ ] **Add our own ASI:One sender addresses to `TEAM_ALLOWLIST_ADDRESSES`** in `.env`. Without them, "freeze learning" from chat is refused for everyone, including us, which kills a live beat (CONTRACT_NOTES item 8). The Fraud Desk now logs each refused sender's full address to copy; steps in `evidence/m08/README.md` §2.
 - [ ] **ASI:One screenshot** of the hello agent → `evidence/m0/asi-one-hello.png` (manual-checks §1).
@@ -240,7 +241,7 @@ Schema and seed data, the marketplace (catalog, 5 weird-but-legit personas, iden
 
 **Demo angle:** ⭐ the dashboard is live, not seeded. The Run round button is the beat for "watch one round happen".
 
-### Sat Oct 24, ~03:00 · Demo trace: one payment hopping between the uAgents · Stanley (branch `stanley/uagent-trace`, not merged)
+### Sat Oct 24, ~03:00 · Demo trace: one payment hopping between the uAgents · Stanley (branch `stanley/uagent-trace`, merged at integration)
 **Did:**
 - `EngineBureau` takes an optional `on_hop` callback. Each agent reports a message as it arrives: who sent it, who got it, the message type and the parsed payload. Nothing else in the Bureau changed.
 - `engine/trace.py` sends a card tester's 8th tiny payment in 36 s through the real Bureau and prints the 10 hops with timings, then the decision. `--scenario legit` shows an honest payment, and `--pace` sets the seconds per line for a live audience (default 0.3). Nothing is written to the database.
@@ -639,6 +640,150 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** "an attacker hiding their phone and email doesn't escape the check: CRS looks them up from name and address, then verifies".
 
+### Sat Oct 24, 03:27 · Arena replay (3D battle view) · Stanley (branch `stanley/arena-viz`, merged at integration)
+**Did:**
+- New standalone app in `arena/` (Vite, React Three Fiber). It's separate from Ryan's `dashboard/`, so neither steps on the other.
+- The layout puts the x402 gate at the centre with the 5 specialists and the orchestrator as angels around it. The 24 arena shelves are the outer ring of hex tiles: attacks on stores on one half, attacks on shoppers on the other.
+- Devils throw payment coins at the gate. Angels zap the ones they block, and stolen coins flash in the vault.
+- Each round plays as spawn beams (a defender building an attacker), then 3 waves with devils rethinking between them, then learning, when the shelf tiles recolour.
+- Clicking anything opens a card: an attacker's origin, model, plan, tuned numbers and wave-by-wave results; a defender's question, rulebook, this round's move and next move; a shelf's catch rate and top attackers; the gate's round metrics.
+- The timeline doubles as the exploitability chart.
+- It plays a deterministic mock run until the engine exports a run. The replay format (`arena/src/data/types.ts`) maps field by field onto `contracts/db.sql` tables, and `arena/README.md` lists the mapping.
+
+- The mock draws a fixed attack budget each round, like the spec: every outsider, the new attackers, 6 from the shakiest shelves and 2 at random. Archived attackers that weren't drawn wait on their shelves. An earlier version ran every archived attacker, so traffic grew 10× and losses rose even as the catch rate improved.
+- The mock run (seed 7) now tells the spec's story:
+  - losses fall from $1,744 in round 1 to $695 in round 20, under the M5 target of 60% (numbers updated in the shelf map entry below)
+  - the catch rate climbs from 29% to the low 80s
+  - the round 13 news scam spikes losses
+  - the freeze lifts exploitability from $163 to $457 by round 16, and it recovers after
+- The mock's payment shuffle is now deterministic across JS engines; it used `sort()` with a random comparator before.
+
+**Proof:** `npm run build` passes. Checked in the browser at 1280×800, 1000×700 and on a phone: 120 fps, every card type opens, and the HUD doesn't overlap. Node and Chrome produce identical per-round losses from the same seed. Screenshots are in `evidence/arena/` (round 16 frozen mid-wave; round 13 Velocity angel card).
+
+**Demo angle:** ⭐ the 40 s "arms race" beat. Play rounds 1→20 at 4–8×: shelves go red to green, the timeline bars fall, a news scam drops at round 6, and the freeze at 15–16 makes them jump while the scoreboard's catch rate drops. Then pause and click a devil to show its plan, and an angel to show its rules. 🔜 Needs an exporter from the real run tables to `arena/public/replay.json`.
+
+### Sat Oct 24, ~04:30 · Arena shelf map · Stanley (branch `stanley/arena-viz`, merged at integration)
+**Did:**
+- Added a flat 4×6 shelf grid at the top right of the arena, the Rainbow Teaming figure. Rows are attack styles; columns are amount bands, split into attacks on stores and attacks on shoppers.
+- Cells share the 3D tiles' colours and recolour with them during learning. A gold halo marks each shelf a defender built an attacker for that round (orange for a news scam). Clicking a cell opens the shelf card.
+- The first version drew arrows from 7 badges to the cells, which was too cluttered. The 3D beams already show who aimed where.
+- Mock tweaks:
+  - a shelf's catch rate now uses the last 3 rounds, so more shelves pass the 20-attempt bar
+  - a freeze is gentler (the defense falls behind but keeps what it learned)
+- The mock run now goes:
+  - round 1: $1,744 stolen, $501 still stealable
+  - round 14: $163 still stealable
+  - freeze peak in round 16: $457
+  - round 20: $695 stolen, $182 still stealable
+
+**Proof:** `npm run build` passes. Checked in the browser at the pane's own size, at 1280×800 and on a phone (map hidden, card fits, no sideways scroll).
+
+**Demo angle:** ⭐ the "arena grid" beat from the demo script. Pause during learning and point at cells turning green; the halos show where the defenders aimed this round.
+
+### Sat Oct 24, ~05:30 · TagTeam overview page · Stanley (branch `stanley/arena-viz`, merged at integration)
+**Did:**
+- New landing page at `/` with the 3D arena moved to `/demo/`. Both pages share a nav and the TagTeam mark.
+- The design borrows from security printing, since anti-counterfeiting is literally fraud defense: a banknote-green ground and engraved wave lines. The hero is a payment slip that the five specialists stamp one by one, ending in a "Blocked" stamp. It's the spec's hijacked-shopper example: $99.99 against a mandate of "a charger under $30".
+- Sections:
+  - **Why it matters:** the agent is the real credential holder, so the questions become "who's responsible?" and "is this what they asked for?"
+  - **How it works:** check every payment, attack itself, read the news.
+  - **What it saves:** two bar charts with a table view, and a method note.
+  - **Built on:** Fetch.ai uAgents, Bitdeer, Coinbase x402 and Apify.
+- The arena's panels switched to the same dark green; the island stays daylight.
+
+**Numbers on the page and their sources:**
+- **Results** come from `evidence/head-to-head/bitdeer-stacking.md` (real Bitdeer models, seeds 100–102, 6 rounds each):
+  - 48% lower total cost than static rules ($58.3k vs $111.2k)
+  - 45% less lost to never-seen attacks in their first round ($11.9k vs $21.6k)
+  - honest shoppers flagged at 1.14% vs 4.23% for rules + XGBoost
+- **The page says plainly** that rules + XGBoost is about level with us on total cost ($55.5k), and that these are first readings.
+- **Industry figures:**
+  - $1.5T agentic commerce spending by 2030 (Juniper Research via Retail Systems, 29 Jun 2026)
+  - about half of x402 transactions artificial (Artemis via Forkast, 10 Jul 2026)
+  - $206B merchant online payment fraud losses 2021–2025 (Juniper via Fintech Global, 2 Jul 2021)
+
+**Proof:** `npm run build` passes for both pages, and the overview doesn't load three.js. Checked in the browser at 1280×800 and on a phone with no sideways scroll; chart labels stay inside their panels.
+
+**Demo angle:** ⭐ open on the overview for the 30 s "problem" beat: the stamped slip shows a hijacked agent being stopped. The "What it saves" section is the proof slide. Then click **Live arena**.
+
+### Sat Oct 24, ~17:15 · Arena plays a real run · Stanley (branch `stanley/arena-viz`, merged at integration)
+**Did:**
+- The arena now plays `arena/public/replay.json`: run `h2h-real-42-202610241623` on real Bitdeer models, 4 rounds and 2,056 payments. It was exported by `engine/export_replay.py` on `stanley/core-engine` (the sister session).
+- Adapted the arena to real data:
+  - the engine's playbook parameter names
+  - rule ids shown as plain words
+  - tidier news-attacker names
+  - one devil per attacker even when the export lists it twice
+  - room for 7 devils on a shelf
+  - honest coins sampled to 24 per wave
+  - a legend entry for held-out exam attackers
+  - "Profit so far" shown with a minus sign when negative
+- Sent the exporter cleanups upstream: duplicate attackers, raw names, spawns without an attacker id, and engine bookkeeping in reasons.
+- Page transitions: the overview and arena cross-fade with the browser's View Transitions, the TagTeam header glides between pages, and hovering a link prerenders the other page.
+
+**Proof:** `npm run build` passes. In a visible tab, every round of the real run renders, with no React key errors. Both transition directions run to completion, and the header is captured on both pages.
+
+**Demo angle:** ⭐ "this is a real run": every devil, rule and payment on screen came from GLM and DeepSeek on Bitdeer. The real run shows learning: 38% of attack payments caught in round 1, 57% in round 4. Say it plainly: 4 rounds, one seed.
+
+### Sat Oct 24, ~18:20 · Step 0, net scoring, overview chapters · Stanley (branch `stanley/arena-viz`, merged at integration)
+**Did:**
+- **Arena step 0.** The demo opens with XGBoost trained once deciding the same recorded payments, using real per-payment decisions from `engine/export_baseline.py` (sister session). There are no angels, just one XGBoost pillar, and the screen edges pulse red when money gets through. It flows straight into TagTeam: the team deploys and a short note carries step 0's result across.
+- **Net scoring.** Net is honest payments through minus money stolen. On the real run (h2h-real-42-202610241623):
+
+  | Round | XGBoost net | TagTeam net |
+  |---|---|---|
+  | 1 | $10.6k | $13.9k |
+  | 2 | $12.8k | $10.8k |
+  | 3 | $2.4k | $11.2k |
+  | 4 | −$5.9k | $9.2k |
+  | **Total** | **$19,775** | **$45,137 (2.3×)** |
+
+  - TagTeam let $38,710 of fraud through, XGBoost $64,129.
+  - TagTeam flagged 25 honest shoppers, XGBoost 62.
+- **One continuous timeline** shows XGBoost's rounds, then TagTeam's, with XGBoost's net outlined on TagTeam's bars.
+- **Smaller side panels**, and a quiet closing note instead of a dialog.
+- **Tried a dark restyle (night scene, glow) and reverted it at the user's request.** The daylight colours are back. A backup of the pre-redesign arena is at tag `arena-daylight-v1` and branch `stanley/arena-viz-daylight-backup`.
+- **Overview:**
+  - The hero slip now tells the story in order: the human asked for a charger under $30, the store page said to ignore the budget, and the agent tried to pay $99.99.
+  - The page became a hero plus four chapters, with cross-fade, wipe, title-morph and swipe transitions (View Transitions API) and `#hash` routes.
+
+**Proof:**
+- `npm run build` passes.
+- In the browser, all three overview transition types run, and the title morphs into and out of the right tile.
+- Step 0 auto-deploys into TagTeam round 1.
+- Net totals on screen match a direct calculation from the two JSON files.
+
+**Demo angle:** ⭐ the before/after. Play from the start at 4×. XGBoost's net collapses to negative by round 4, TagTeam deploys, and the outline bars show it holding steady on the same payments. Say plainly: 4 rounds, one seed, XGBoost untrained in round 1.
+
+### Sat Oct 24, 20:35 · Arena on the 20-round real run · Stanley (branch `stanley/arena-viz`, merged at integration)
+**Did:**
+- **20-round replay and baseline.** The arena now plays run h2h-real-42-202610241732 from the sister session.
+
+  | | XGBoost (trained once) | TagTeam |
+  |---|---|---|
+  | Net | −$43,919 | $376,121 |
+  | Fraud let through | $471,963 | $50,014 |
+  | Honest shoppers flagged | 406 | 71 |
+
+  TagTeam's net beats XGBoost's in 19 of 20 rounds.
+- **Crowded shelves.** Up to 8 attackers share a shelf in this run, so past seven they now stand evenly round a ring instead of stacking.
+- **Honest notes.**
+  - Attack money doesn't rise every round here. The timeline note now says where it peaks: $7,871 in round 1, up to $58,408 in round 6.
+  - The deploy note gives the first round XGBoost went negative (4), not its worst one.
+- **Loss outlines.** XGBoost's outline under a TagTeam bar turns translucent red when XGBoost lost money that round. Grey on the dark panel had read as an empty black box.
+- Earlier today, also on this branch: colour roles (blue TagTeam, grey XGBoost, red losses), a two-group legend, the timeline key, a buyer-side injection slip on the overview, and live shelf catch rates shared by the tiles, shelf map and shelf card.
+
+**Proof:**
+- `npx tsc -b` and `npm run build` pass.
+- In the browser:
+  - all 40 timeline segments render;
+  - 8 attackers fit on one shelf, 0.44 apart at the closest;
+  - step 0 hands off to TagTeam round 1 with "XGBoost netted −$43,919, first going negative in round 4";
+  - 10 red loss outlines show.
+- The totals above are recomputed directly from the two JSON files.
+
+**Demo angle:** ⭐ the before/after at scale. At 1× each half runs about 9 minutes, so play at 8× (about 2¼ minutes each) or click ahead on the timeline. Say plainly: one seed, XGBoost trained once and untrained in round 1.
+
 ### Sun Oct 25, 02:50 · M8 ASI:One agents on the real engine · Eric's integration, finished by Claude
 
 **Did:**
@@ -673,6 +818,25 @@ bad stores — same engine, same payment path."
 
 **Demo angle:** talking point 5 ⭐. A judge asks the Fraud Desk about a $49 charger with a $30 mandate and gets the real engine's block, then asks why and gets the same decision back.
 
+### Sun Oct 25, 02:45 · CRS merged into core-engine; first recorded run with live CRS · Stanley
+**Did:**
+- **Merged** `stanley/crs-escalation` into `stanley/core-engine`. The engine conflicts were all side by side with M10 merchants. Full suite: 480 passed.
+- **More of CRS's answers used where they mean something:**
+  - The reverse lookup now checks the phone or email belongs to the payer; if not, no allow.
+  - FraudFinder's red flags (new email, prepaid or VoIP phone, phone or address registered to someone else, proxy IP, IP far from the address) are named in the reasons, without counting twice.
+- **Not used, on purpose:** credit reports (a credit pull, ruled out), criminal, eviction and bankruptcy records. Those are lending and tenant screening, not payment fraud.
+- **Recorded `h2h-real-42-202610250153`** on real models with live CRS. Live mode was set for that process only; `.env` stays at 0, so other sessions' benchmarks don't log in to CRS.
+  - 23 live CRS checks, all on fraud: 13 blocked by failed identity checks, 10 stepped up. No honest shopper was checked.
+  - 11 of the 23 payers hid their phone and email.
+- **Finding:** with the learned combiner, the uncertain zone sits below the 0.30 band edge. In round 3, 94 fraud payments and 0 honest ones scored 0.10–0.30. The 20-a-round cap also left 134 in-band payments unchecked in round 4.
+
+**Proof:**
+- `evidence/crs-live-sandbox.md` (recorded-run section);
+- `evidence/head-to-head/bitdeer-crs-live.md`;
+- `engine/tests/test_crs_live.py` (name check, red flags).
+
+**Demo angle:** ⭐ a real CRS sandbox answer in the arena: "identity verification failed: input SSN belongs to a deceased person". Say "CRS sandbox test identities stand in for our simulated shoppers".
+
 ### Sun Oct 25, 03:40 · Fetch challenge: intent to action, interactive card, root README · Claude
 **Did:**
 - **"Buy this for me, budget $30: <url>"** is now the Fraud Desk's main workflow (`integrations/asi_one/buy.py`). One message runs four steps:
@@ -701,6 +865,22 @@ bad stores — same engine, same payment path."
 **Demo angle:** talking point 5 ⭐. It's the "intent to action" the Fetch challenge asks for, all inside one ASI:One conversation.
 
 ---
+
+### Sun Oct 25, 02:49 · Integration: every branch on one line · Stanley
+**Did:** branch `stanley/integration`, cut from `stanley/core-engine` (which already held Eric's `m10`, Ryan's dashboard, CRS, stacking and per-round saves), plus:
+- `page-scan-cache`: the investigator reads kept page scans, never a live 20 s Apify scan. Combined with core's per-round `PageRisk` priming: the round's fresh scans are handed to the investigator's cache, so nothing is scanned twice.
+- `real-data-engine` (ULB and Ethereum phishing replays), `arena-real-data` and `arena-viz` (the 3D arena, dataset switch, `/ethereum/`, `/phishing/`, the 20-round real run), `uagent-trace` (`engine.trace`), `tagteam-vs-swarm-sim` (`sim/`).
+- The live Apify threat-intel crawl (`integrations/threat_intel.py`), which existed only as uncommitted files, is now committed and wired into `build_engine` (live when `APIFY_TOKEN` is set, corpus otherwise).
+- Left out: `crs-trial` (scratch branch with a tuning run in progress); stale uncommitted leftovers in the `stacking`, `per-round-saves` and `arena-viz` worktrees, which later commits replaced.
+
+**Proof:** `uv run pytest` 495 passed, 8 skipped, 3 xfailed; the arena app type-checks and builds.
+
+**Demo angle:** none on its own. It makes cheat-sheet items 1, 6 and 9 true on one branch.
+
+### Sun Oct 25, 03:30 · M13 x402: every allowed payment can settle for real · Stanley
+**Did:** `ENGINE_LIVE_SETTLEMENT=all` settles every payment TagTeam allows through x402 on Base Sepolia, fraud that got through included, at 1 cent of test USDC each (buyer wallet to merchant wallet, whatever the simulated amount). Blocked and checked payments never reach x402. Works in `build_engine` (serve, chat agents) and in `engine.head_to_head`, which records the TagTeam runs. `=1` still means one honest payment per round; unset is still stub only. Settlements run one after another and wait for a block, so keep rounds small (`n_legit` 300 means about 300 settlements and $3 of test USDC a round).
+**Proof:** `engine/tests/test_integration.py` (every allowed payment settles live and nothing else; `build_engine` picks up `all`); engine suite 281 passed. A trial round of 20 shoppers settled about 21 one-cent payments before it was stopped: buyer wallet 0.97 → 0.76 USDC.
+**Demo angle:** "every payment TagTeam allowed in this run really settled through x402 on testnet," shown with Basescan hashes from the `settlements` table.
 
 ## Entry template
 

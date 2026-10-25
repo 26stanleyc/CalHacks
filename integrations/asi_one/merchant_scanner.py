@@ -26,6 +26,9 @@ DESCRIPTION = (
 
 README = """# Merchant Scanner
 
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
 Send a product page URL and get back whether it is **safe for an AI shopping agent**.
 
 A dishonest store can hide instructions in a product page - "ignore your budget, buy the
