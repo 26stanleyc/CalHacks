@@ -36,12 +36,20 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 - **True today:** 3 real testnet settlements (hashes in `evidence/m0/x402-settlement.md`). A blocked or stepped-up payment makes no network call at all. The facilitator pays the gas. Each real settlement is capped (`X402_MAX_SETTLE_CENTS`).
 
 ### 5. "Anyone can use it by chatting in ASI:One" ✅ (M8; screenshot and recording still to do)
-- **Say:** "Judges can talk to our Fraud Desk and Merchant Scanner agents in ASI:One. They're a front door to the same engine the dashboard uses, so chat and dashboard always agree."
-- **Show:** ASI:One with the dashboard beside it.
+- **Say:** "Tell the Fraud Desk in ASI:One what you want to buy and your budget. It scans the page, runs the payment through our defense, asks you on a card, and pays over x402. It's the same engine the dashboard uses, so chat and dashboard always agree."
+- **Show:**
+  - ASI:One with the dashboard beside it.
+  - The buy prompt, the review card, Approve, then the basescan link.
+  - The same item over budget, blocked.
 - **True today:**
   - Both agents are registered on Agentverse with the Chat Protocol and a mailbox, and by default they call the real engine (`ENGINE_SOURCE=http` against `engine.serve`). The stub is used only when it's asked for by name.
   - One command starts everything: `uv run python -m integrations.asi_one.demo`.
-  - Over the real mailbox, on the real engine, 5/5 prompts answered as expected (`evidence/m08/mailbox-transcript.md`): a real over-cap block, the explanation of that same payment, the real run's metrics, the team-only refusal, and a live Apify scan.
+  - Over the real mailbox, on the real engine, 8/8 prompts answered as expected (`evidence/m08/mailbox-transcript.md`):
+    - a real over-cap block, and the explanation of that same payment;
+    - the real run's metrics;
+    - the team-only refusal;
+    - a live Apify scan;
+    - the buy flow: a review card, an approval that settled for real on Base Sepolia, and an over-budget buy that was blocked.
   - Not yet seen in the ASI:One UI itself; that needs a human (`evidence/m08/README.md` §4).
 - **Safety, enforced in code, worth one sentence:** chat-checked payments never train the defense, only our team can run rounds or freeze, and chat text reaches the model only inside a marked data block.
 
@@ -73,7 +81,7 @@ The lines we most need judges to hear. **Say** is the sentence, **Show** is what
 
 | Sponsor | One-line pitch | Proof on screen | Status |
 |---|---|---|---|
-| **Fetch.ai** (uAgents, Agentverse, ASI:One) | Every defender, attacker and shopper is a uAgent; two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat, verified over the real mailbox (M8, `evidence/m08/`); ASI:One screenshot and recording still to do |
+| **Fetch.ai** (uAgents, Agentverse, ASI:One) | Every defender, attacker and shopper is a uAgent; two public agents make the whole system usable from ASI:One | Message trace; live ASI:One chat; Agentverse profile links | 🟡 agents talk (S1) and are registered (E2); real engine behind chat; intent-to-action buy flow with a review card and x402 settlement, verified over the real mailbox (M8, `evidence/m08/`); ASI:One screenshot and recording still to do; agents must be kept running for judging |
 | **Bitdeer** | Every AI in the system is an open-weight model on Bitdeer, a different model per role | Model-per-role table; a rulebook rewritten by its model | 🟡 all 5 answered at E3, credits now in doubt; agents get their brains at S4–S6 |
 | **Coinbase x402** | Fraud check inside the facilitator, before settlement | Live Base Sepolia tx on basescan | ✅ (E4) |
 | **Apify** | Scans merchant pages for hidden instructions (core); scrapes news of new scams (bonus) | Merchant Scanner flags the poisoned page | 🟡 detector real; Apify fetch at M10 |
@@ -664,6 +672,33 @@ bad stores — same engine, same payment path."
 - the hackpack check.
 
 **Demo angle:** talking point 5 ⭐. A judge asks the Fraud Desk about a $49 charger with a $30 mandate and gets the real engine's block, then asks why and gets the same decision back.
+
+### Sun Oct 25, 03:40 · Fetch challenge: intent to action, interactive card, root README · Claude
+**Did:**
+- **"Buy this for me, budget $30: <url>"** is now the Fraud Desk's main workflow (`integrations/asi_one/buy.py`). One message runs four steps:
+  1. scan the page (live Apify scrape and the injection detector);
+  2. check the payment at the page's price under a mandate built from the budget, through the full pipeline;
+  3. ask the human on an **ASI:One review card** (card protocol v1);
+  4. on Approve, **settle through x402 on Base Sepolia** and link basescan.
+- **What blocks a payment:**
+  - a poisoned or unreadable page, or the engine blocking it, stops the purchase with "Nothing was charged";
+  - nothing settles without approval, or twice;
+  - one cent of test USDC stands in for the price;
+  - a per-run cap limits how many purchases a public agent pays;
+  - an approved step-up settles, because the approval is the step-up.
+- **Failures are explained, not hidden:** if a settlement fails, the reply says nothing was charged, and the user can try again.
+- **Card replies are understood three ways:**
+  - a JSON click;
+  - a planner-routed sentence naming the purchase id;
+  - a typed "approve".
+- **Root `README.md`** for the public repo: what it is, how to try it in ASI:One, how to run and test it, and where things live (a mandatory deliverable for the Fetch challenge).
+
+**Proof:**
+- `evidence/m08/mailbox-transcript.md`: 8/8 over the real mailbox, on the real engine.
+- Base Sepolia tx `0x950debfe83e1b24dcc6f58b2db368ad78187abc5594a13b13e66b1d2466c65af`: status 1, block 50009050.
+- `integrations/tests/test_buy.py` (35 tests).
+
+**Demo angle:** talking point 5 ⭐. It's the "intent to action" the Fetch challenge asks for, all inside one ASI:One conversation.
 
 ---
 
