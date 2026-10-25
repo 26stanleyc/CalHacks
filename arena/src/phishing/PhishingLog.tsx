@@ -116,11 +116,12 @@ export function PhishingLog() {
   return (
     <main className="phishing">
       <header className="phish-head">
-        <p className="kicker chain">
-          <EthLogo /> Ethereum mainnet <span>One real scam, payment by payment</span>
+        <p className="kicker chain big">
+          <EthLogo size={30} />
+          <b>Ethereum</b> <span>One real scam on Ethereum mainnet, payment by payment</span>
         </p>
         <h1>
-          Phishing address <code>{short(log.address)}</code>
+          Ethereum phishing address <code>{short(log.address)}</code>
         </h1>
         <p className="lead">
           Etherscan later labelled this address as phishing. Below are its victims' payments as they happened in March 2018,

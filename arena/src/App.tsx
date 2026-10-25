@@ -91,14 +91,17 @@ function DataSwitch({ data, loading, onChange }: { data: DataSet; loading: boole
         dataset && (
           <>
             {dataset.currency === "ETH" && (
-              <p className="chain">
-                <EthLogo /> Ethereum mainnet
-                {dataset.start && (
-                  <span>
-                    real transactions,{" "}
-                    {new Date(dataset.start).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}
-                  </span>
-                )}
+              <p className="chain big">
+                <EthLogo size={34} />
+                <b>
+                  Ethereum
+                  {dataset.start && (
+                    <span>
+                      Real mainnet transactions,{" "}
+                      {new Date(dataset.start).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}
+                    </span>
+                  )}
+                </b>
               </p>
             )}
             <p className="source">
