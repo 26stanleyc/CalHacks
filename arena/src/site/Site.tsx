@@ -7,10 +7,10 @@ import { waveBand } from "./guilloche";
 // instructions for the fraud checker in its own payment note (the more common direction of prompt
 // injection); TagTeam reads the note as data and the specialists stop the payment.
 const SEALS: { name: string; verdict: "pass" | "flag" | "block"; why: string }[] = [
-  { name: "Timing", verdict: "block", why: "8 payments in 2 minutes" },
+  { name: "Timing", verdict: "flag", why: "One every 15 seconds, like clockwork" },
   { name: "Graph", verdict: "block", why: "Same wallet as 14 accounts made today" },
   { name: "Identity", verdict: "flag", why: "Its human was verified an hour ago" },
-  { name: "Velocity", verdict: "flag", why: "$480 is far above a new agent's spend" },
+  { name: "Velocity", verdict: "block", why: "8 payments of $480 in 2 minutes" },
   { name: "Mandate", verdict: "block", why: "Its human never asked for gift cards" },
 ];
 
@@ -24,7 +24,7 @@ function PaymentSlip() {
       {/* The story in the order it happened, so every number is introduced before it's checked. */}
       <ol className="story">
         <li>
-          <span className="who">A brand-new shopping agent tries to pay gadget-hub.example</span>
+          <span className="who">A brand-new shopping agent tries to pay</span>
           <span className="pay">
             <b>$480</b> for 12 digital gift cards
           </span>
@@ -263,7 +263,7 @@ export function Site() {
                   <>
                     <div className="closing-cta">
                       <a className="button primary" href={DEMO_HREF}>
-                        Open the PaySim arena
+                        Open the PaySim data
                       </a>
                     </div>
                     <footer className="site-footer">
@@ -321,7 +321,7 @@ function Hero({ go }: { go: (to: number) => void }) {
         </p>
         <div className="actions">
           <a className="button primary" href={DEMO_HREF}>
-            Open the PaySim arena
+            Open the PaySim data
           </a>
           <button className="button" onClick={() => go(PAGES.findIndex((p) => p.id === "how"))}>
             How it works
@@ -474,8 +474,10 @@ function BuiltChapter() {
         <div>
           <dt>CRS Credit API</dt>
           <dd>
-            On close calls, checks the human behind the agent: fills in missing details, verifies their identity, and
-            scores their email and phone for fraud.
+            Checks the human behind every agent when it first appears: fills in missing details, verifies their
+            identity, and scores their email and phone for fraud. The identity and graph specialists vote with those
+            answers on every payment, the credit report sets the agent's spending limit, and the investigator calls
+            CRS as a tool on close calls.
           </dd>
         </div>
       </dl>
